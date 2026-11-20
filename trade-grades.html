@@ -1,0 +1,379 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Trade Ledger &amp; Grades · Dynasty Suite</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script>tailwind.config = { darkMode: 'class', theme: { extend: { colors: { slate: { 850: '#151e2e', 900: '#0f172a', 950: '#090d16' } } } } }</script>
+</head>
+<body class="bg-slate-950 text-slate-100 font-sans antialiased min-h-screen flex flex-col">
+<script src="dynasty-nav.js"></script>
+
+<header class="bg-slate-900 border-b border-slate-800 px-4 py-3">
+  <div class="max-w-7xl mx-auto flex flex-wrap items-center justify-between gap-3">
+    <div>
+      <h1 class="font-bold text-lg text-white">Historical Trade Ledger &amp; "Who Won?" Grades</h1>
+      <p class="text-xs text-slate-400">Audits every completed trade across linked seasons and grades both sides using live FantasyCalc dynasty values.</p>
+    </div>
+    <div class="flex flex-wrap items-center gap-2">
+      <input id="user" placeholder="Sleeper username" class="bg-slate-950 border border-slate-700 rounded-lg px-3 py-1.5 text-sm text-white w-40">
+      <select id="season" class="bg-slate-950 border border-slate-700 rounded-lg px-2.5 py-1.5 text-sm text-white"></select>
+      <button id="go" class="bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-medium px-4 py-1.5 rounded-lg cursor-pointer">Grade Trades</button>
+      <select id="league" hidden class="bg-slate-800 border border-slate-600 rounded-lg px-3 py-1.5 text-sm text-emerald-300 max-w-[200px] truncate"></select>
+    </div>
+  </div>
+  <div id="status" class="max-w-7xl mx-auto text-xs text-slate-400 mt-2">Ready.</div>
+</header>
+
+<main id="main" hidden class="max-w-7xl w-full mx-auto px-4 py-6 space-y-6 flex-1">
+  <!-- Manager Trade Leaderboard -->
+  <section class="bg-slate-900 border border-slate-800 rounded-xl p-5 shadow-xl">
+    <div class="flex flex-wrap items-center justify-between gap-2 mb-4">
+      <div>
+        <h2 class="text-lg font-bold text-white">Manager Trade Savvy Leaderboard</h2>
+        <p class="text-xs text-slate-400">Cumulative net dynasty value gained or lost across all historical trades.</p>
+      </div>
+    </div>
+    <div class="overflow-x-auto">
+      <table class="w-full text-left border-collapse text-sm">
+        <thead>
+          <tr class="border-b border-slate-800 text-[11px] uppercase text-slate-400">
+            <th class="py-2.5 px-3">Rank</th>
+            <th class="py-2.5 px-3">Manager</th>
+            <th class="py-2.5 px-3 text-center">Trades</th>
+            <th class="py-2.5 px-3 text-center">Trade W–L–T</th>
+            <th class="py-2.5 px-3 text-right">Net Value Gained</th>
+            <th class="py-2.5 px-3 text-right">Avg Edge / Trade</th>
+          </tr>
+        </thead>
+        <tbody id="mgrRows" class="divide-y divide-slate-800/70"></tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- Filterable Trade Ledger -->
+  <section class="bg-slate-900 border border-slate-800 rounded-xl p-5 shadow-xl">
+    <div class="flex flex-wrap items-center justify-between gap-3 mb-4">
+      <div>
+        <h2 class="text-lg font-bold text-white">Completed Trade Ledger</h2>
+        <p id="tradeCount" class="text-xs text-slate-400"></p>
+      </div>
+      <div class="flex flex-wrap items-center gap-2">
+        <select id="filterMgr" class="bg-slate-950 border border-slate-700 rounded-lg px-3 py-1.5 text-xs text-slate-200">
+          <option value="ALL">All Managers</option>
+        </select>
+        <select id="sortTrades" class="bg-slate-950 border border-slate-700 rounded-lg px-3 py-1.5 text-xs text-slate-200">
+          <option value="newest">Newest First</option>
+          <option value="lopsided">Biggest Fleece First</option>
+          <option value="blockbuster">Biggest Blockbuster First</option>
+        </select>
+      </div>
+    </div>
+    <div id="tradeList" class="space-y-3"></div>
+  </section>
+</main>
+
+<script>
+const $ = id => document.getElementById(id);
+const SL = "https://api.sleeper.app/v1", FC = "https://api.fantasycalc.com/values/current";
+const yr = new Date().getFullYear();
+for (let y = yr; y >= yr - 2; y--) $("season").add(new Option(y, y));
+try {
+  if (localStorage.getItem("dd_user")) $("user").value = localStorage.getItem("dd_user");
+  if (localStorage.getItem("dd_season")) $("season").value = localStorage.getItem("dd_season");
+} catch (e) {}
+
+const j = async u => { const r = await fetch(u); if (!r.ok) throw new Error(r.status); return r.json(); };
+const esc = t => (t || "").replace(/&/g, "&amp;").replace(/</g, "&lt;");
+
+let T = { trades: [], mgrStats: {}, myUid: null };
+
+async function getAllPlayers() {
+  try {
+    const raw = localStorage.getItem("dd_sleeper_players_full_v1");
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (parsed && parsed.data && (Date.now() - parsed.ts < 86400000 * 3)) return parsed.data;
+    }
+  } catch (e) {}
+  $("status").textContent = "Caching Sleeper player names (once per 72h)...";
+  const full = await j(`${SL}/players/nfl`);
+  const slim = {};
+  for (const [id, p] of Object.entries(full)) {
+    if (p && p.full_name) slim[id] = `${p.full_name} (${p.position || "?"})`;
+  }
+  try { localStorage.setItem("dd_sleeper_players_full_v1", JSON.stringify({ ts: Date.now(), data: slim })); } catch (e) {}
+  return slim;
+}
+
+function getPickValue(round, pickSeason, currentSeason, fcPickMap) {
+  const yrDiff = Math.max(0, Number(pickSeason) - Number(currentSeason));
+  const key = `${pickSeason}_R${round}`;
+  if (fcPickMap.has(key)) return fcPickMap.get(key);
+  const baseByRound = { 1: 4200, 2: 2100, 3: 1050, 4: 450 };
+  const base = baseByRound[round] || 250;
+  return Math.round(base * Math.pow(0.88, yrDiff));
+}
+
+function gradeFromEdge(edge, totalVal) {
+  if (totalVal < 500) return { letter: "C", cls: "text-slate-300 border-slate-700 bg-slate-800/60" };
+  const pct = edge / Math.max(1000, totalVal / 2);
+  if (pct >= 0.45) return { letter: "A+", cls: "text-emerald-300 border-emerald-500/50 bg-emerald-500/20" };
+  if (pct >= 0.28) return { letter: "A", cls: "text-emerald-400 border-emerald-500/40 bg-emerald-500/15" };
+  if (pct >= 0.14) return { letter: "B+", cls: "text-sky-300 border-sky-500/40 bg-sky-500/15" };
+  if (pct >= 0.05) return { letter: "B", cls: "text-sky-400 border-sky-500/30 bg-sky-500/10" };
+  if (pct > -0.05) return { letter: "C+", cls: "text-slate-300 border-slate-700 bg-slate-800/60" };
+  if (pct > -0.14) return { letter: "C-", cls: "text-amber-300 border-amber-500/30 bg-amber-500/10" };
+  if (pct > -0.28) return { letter: "D", cls: "text-orange-400 border-orange-500/40 bg-orange-500/15" };
+  return { letter: "F", cls: "text-rose-400 border-rose-500/50 bg-rose-500/20" };
+}
+
+$("go").onclick = async () => {
+  try {
+    const uname = $("user").value.trim();
+    if (!uname) return $("status").textContent = "Enter a Sleeper username.";
+    localStorage.setItem("dd_user", uname);
+    $("status").textContent = "Fetching user & leagues...";
+    const u = await j(`${SL}/user/${encodeURIComponent(uname)}`);
+    T.myUid = u.user_id;
+    const ls = await j(`${SL}/user/${u.user_id}/leagues/nfl/${$("season").value}`);
+    const sel = $("league"); sel.innerHTML = ""; sel.hidden = false;
+    ls.forEach((l, i) => sel.add(new Option(l.name, i)));
+    sel.onchange = () => loadTrades(ls[sel.value]);
+    loadTrades(ls[0]);
+  } catch (e) { $("status").textContent = "Error: " + e.message; }
+};
+
+async function loadTrades(startLg) {
+  $("status").textContent = "Fetching FantasyCalc values & league history...";
+  const sf = (startLg.roster_positions || []).filter(p => p === "SUPER_FLEX").length;
+  const qb = (startLg.roster_positions || []).filter(p => p === "QB").length;
+  const numQbs = sf || qb > 1 ? 2 : 1, ppr = startLg.scoring_settings?.rec ?? 1;
+
+  const [fc, playerNames] = await Promise.all([
+    j(`${FC}?isDynasty=true&numQbs=${numQbs}&numTeams=${startLg.total_rosters}&ppr=${ppr}`),
+    getAllPlayers()
+  ]);
+
+  const valMap = new Map();
+  const nameMap = new Map();
+  const fcPickMap = new Map();
+
+  fc.forEach(e => {
+    if (e.player.sleeperId) {
+      valMap.set(String(e.player.sleeperId), e.value);
+      nameMap.set(String(e.player.sleeperId), `${e.player.name} (${e.player.position})`);
+    } else if (e.player.name) {
+      const m = e.player.name.match(/^(\d{4})\s+(?:Mid\s+)?(\d)(?:st|nd|rd|th)/i);
+      if (m) fcPickMap.set(`${m[1]}_R${m[2]}`, e.value);
+    }
+  });
+
+  // Walk previous_league_id chain (up to 6 seasons)
+  const chain = [];
+  let cur = startLg;
+  const seen = new Set();
+  while (cur && !seen.has(cur.league_id) && chain.length < 6) {
+    seen.add(cur.league_id);
+    chain.push(cur);
+    if (!cur.previous_league_id || cur.previous_league_id === "0") break;
+    try { cur = await j(`${SL}/league/${cur.previous_league_id}`); } catch (e) { break; }
+  }
+
+  T.trades = [];
+  T.mgrStats = {};
+  const ensureMgr = (uid, name) => {
+    if (!T.mgrStats[uid]) T.mgrStats[uid] = { uid, name, count: 0, w: 0, l: 0, t: 0, net: 0 };
+    else if (name && !T.mgrStats[uid].name) T.mgrStats[uid].name = name;
+    return T.mgrStats[uid];
+  };
+
+  for (let idx = 0; idx < chain.length; idx++) {
+    const lg = chain[idx];
+    $("status").textContent = `Scanning ${lg.season} transactions (${idx + 1}/${chain.length})...`;
+    const [rosters, users] = await Promise.all([
+      j(`${SL}/league/${lg.league_id}/rosters`),
+      j(`${SL}/league/${lg.league_id}/users`)
+    ]);
+
+    const ridToUid = {};
+    const ridToName = {};
+    rosters.forEach(r => {
+      const u = users.find(x => x.user_id === r.owner_id);
+      const uid = r.owner_id || `unowned_${lg.league_id}_${r.roster_id}`;
+      const label = u?.metadata?.team_name || u?.display_name || `Team ${r.roster_id}`;
+      ridToUid[r.roster_id] = uid;
+      ridToName[r.roster_id] = label;
+      const m = ensureMgr(uid, idx === 0 ? label : null);
+      if (!m.name) m.name = label;
+    });
+
+    // Weeks 1..18 cover offseason + regular season + playoffs in Sleeper
+    const weeks = Array.from({ length: 18 }, (_, i) => i + 1);
+    const txByWeek = await Promise.all(
+      weeks.map(w => j(`${SL}/league/${lg.league_id}/transactions/${w}`).catch(() => []))
+    );
+
+    const seenTx = new Set();
+    txByWeek.flat().forEach(tx => {
+      if (!tx || tx.type !== "trade" || tx.status !== "complete" || seenTx.has(tx.transaction_id)) return;
+      seenTx.add(tx.transaction_id);
+      if (!tx.roster_ids || tx.roster_ids.length !== 2) return;
+
+      const [rA, rB] = tx.roster_ids;
+      const uidA = ridToUid[rA], uidB = ridToUid[rB];
+      const nameA = T.mgrStats[uidA]?.name || ridToName[rA];
+      const nameB = T.mgrStats[uidB]?.name || ridToName[rB];
+
+      const sideA = []; // Assets received by rA
+      const sideB = []; // Assets received by rB
+
+      if (tx.adds) {
+        Object.entries(tx.adds).forEach(([pid, toRid]) => {
+          const v = valMap.get(pid) || 150;
+          const label = nameMap.get(pid) || playerNames[pid] || `Player #${pid}`;
+          if (toRid === rA) sideA.push({ label, v, isPick: false });
+          else if (toRid === rB) sideB.push({ label, v, isPick: false });
+        });
+      }
+
+      if (tx.draft_picks) {
+        tx.draft_picks.forEach(pk => {
+          const v = getPickValue(pk.round, pk.season, startLg.season, fcPickMap);
+          const origName = ridToName[pk.roster_id] ? ` (${ridToName[pk.roster_id]})` : "";
+          const label = `${pk.season} Round ${pk.round}${origName}`;
+          if (pk.owner_id === rA) sideA.push({ label, v, isPick: true });
+          else if (pk.owner_id === rB) sideB.push({ label, v, isPick: true });
+        });
+      }
+
+      if (tx.waiver_budget) {
+        tx.waiver_budget.forEach(faab => {
+          const v = Math.round((faab.amount || 0) * 8);
+          const label = `$${faab.amount} FAAB`;
+          if (faab.receiver === rA) sideA.push({ label, v, isPick: true });
+          else if (faab.receiver === rB) sideB.push({ label, v, isPick: true });
+        });
+      }
+
+      sideA.sort((a, b) => b.v - a.v);
+      sideB.sort((a, b) => b.v - a.v);
+
+      const valA = sideA.reduce((s, x) => s + x.v, 0);
+      const valB = sideB.reduce((s, x) => s + x.v, 0);
+      const diff = Math.abs(valA - valB);
+      const totalVal = valA + valB;
+
+      const mA = ensureMgr(uidA, nameA);
+      const mB = ensureMgr(uidB, nameB);
+      mA.count++; mB.count++;
+      mA.net += (valA - valB);
+      mB.net += (valB - valA);
+
+      if (valA - valB >= 300) { mA.w++; mB.l++; }
+      else if (valB - valA >= 300) { mB.w++; mA.l++; }
+      else { mA.t++; mB.t++; }
+
+      T.trades.push({
+        id: tx.transaction_id,
+        ts: tx.status_updated || tx.created || 0,
+        season: lg.season,
+        uidA, uidB, nameA, nameB,
+        sideA, sideB, valA, valB, diff, totalVal
+      });
+    });
+  }
+
+  // Render Manager Leaderboard
+  const mgrRanked = Object.values(T.mgrStats)
+    .filter(m => m.count > 0)
+    .sort((a, b) => b.net - a.net);
+
+  $("mgrRows").innerHTML = mgrRanked.map((m, i) => {
+    const avg = Math.round(m.net / Math.max(1, m.count));
+    const netCls = m.net >= 0 ? "text-emerald-400" : "text-rose-400";
+    return `
+      <tr class="hover:bg-slate-850/60 ${m.uid === T.myUid ? "bg-emerald-500/5" : ""}">
+        <td class="py-3 px-3 font-mono text-xs text-slate-400">#${i + 1}</td>
+        <td class="py-3 px-3 font-bold text-white">${esc(m.name)}${m.uid === T.myUid ? ' <span class="text-xs text-emerald-400">(You)</span>' : ""}</td>
+        <td class="py-3 px-3 text-center font-mono text-slate-300">${m.count}</td>
+        <td class="py-3 px-3 text-center font-mono text-slate-200">${m.w}–${m.l}–${m.t}</td>
+        <td class="py-3 px-3 text-right font-mono font-bold ${netCls}">${m.net >= 0 ? "+" : ""}${m.net.toLocaleString()}</td>
+        <td class="py-3 px-3 text-right font-mono text-xs ${netCls}">${avg >= 0 ? "+" : ""}${avg.toLocaleString()}</td>
+      </tr>`;
+  }).join("") || `<tr><td colspan="6" class="py-6 text-center text-xs text-slate-500">No completed trades found in league history.</td></tr>`;
+
+  // Populate Manager filter
+  const fSel = $("filterMgr");
+  fSel.innerHTML = `<option value="ALL">All Managers</option>`;
+  mgrRanked.forEach(m => fSel.add(new Option(m.name, m.uid)));
+
+  fSel.onchange = renderTrades;
+  $("sortTrades").onchange = renderTrades;
+  renderTrades();
+
+  $("main").hidden = false;
+  $("status").textContent = `Graded ${T.trades.length} completed trades across ${chain.length} season${chain.length > 1 ? "s" : ""}.`;
+}
+
+function renderTrades() {
+  const mgr = $("filterMgr").value;
+  const sort = $("sortTrades").value;
+
+  let list = T.trades.filter(t => mgr === "ALL" || t.uidA === mgr || t.uidB === mgr);
+  if (sort === "newest") list.sort((a, b) => b.ts - a.ts);
+  else if (sort === "lopsided") list.sort((a, b) => b.diff - a.diff);
+  else if (sort === "blockbuster") list.sort((a, b) => b.totalVal - a.totalVal);
+
+  $("tradeCount").textContent = `Showing ${list.length} trade${list.length === 1 ? "" : "s"}`;
+
+  $("tradeList").innerHTML = list.map(t => {
+    const gA = gradeFromEdge(t.valA - t.valB, t.totalVal);
+    const gB = gradeFromEdge(t.valB - t.valA, t.totalVal);
+    const dateStr = t.ts ? new Date(t.ts).toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" }) : `${t.season} Season`;
+    const winnerBadge = t.diff < 300
+      ? `<span class="text-[11px] font-bold px-2 py-0.5 rounded bg-slate-800 text-slate-300 border border-slate-700">Even Deal (±${t.diff.toLocaleString()})</span>`
+      : `<span class="text-[11px] font-bold px-2 py-0.5 rounded bg-emerald-500/15 text-emerald-300 border border-emerald-500/30">Winner: ${esc(t.valA > t.valB ? t.nameA : t.nameB)} (+${t.diff.toLocaleString()})</span>`;
+
+    return `
+      <div class="bg-slate-950 border border-slate-800 rounded-xl p-4">
+        <div class="flex flex-wrap items-center justify-between gap-2 pb-3 mb-3 border-b border-slate-800/80">
+          <div class="text-xs text-slate-400 font-medium">${dateStr} · <span class="text-slate-500">${t.season} League Year</span></div>
+          <div>${winnerBadge}</div>
+        </div>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div class="bg-slate-900/80 border border-slate-800 rounded-lg p-3">
+            <div class="flex items-center justify-between mb-2">
+              <span class="font-bold text-sm text-white">${esc(t.nameA)} Receives</span>
+              <div class="flex items-center gap-2">
+                <span class="font-mono text-xs text-slate-400">${t.valA.toLocaleString()}</span>
+                <span class="font-mono text-xs font-extrabold px-2 py-0.5 rounded border ${gA.cls}">${gA.letter}</span>
+              </div>
+            </div>
+            <div class="space-y-1">
+              ${t.sideA.map(x => `<div class="flex justify-between text-xs"><span class="${x.isPick ? "text-amber-300" : "text-slate-200"}">${esc(x.label)}</span><span class="font-mono text-slate-500">${x.v.toLocaleString()}</span></div>`).join("") || `<div class="text-xs text-slate-500">Nothing</div>`}
+            </div>
+          </div>
+
+          <div class="bg-slate-900/80 border border-slate-800 rounded-lg p-3">
+            <div class="flex items-center justify-between mb-2">
+              <span class="font-bold text-sm text-white">${esc(t.nameB)} Receives</span>
+              <div class="flex items-center gap-2">
+                <span class="font-mono text-xs text-slate-400">${t.valB.toLocaleString()}</span>
+                <span class="font-mono text-xs font-extrabold px-2 py-0.5 rounded border ${gB.cls}">${gB.letter}</span>
+              </div>
+            </div>
+            <div class="space-y-1">
+              ${t.sideB.map(x => `<div class="flex justify-between text-xs"><span class="${x.isPick ? "text-amber-300" : "text-slate-200"}">${esc(x.label)}</span><span class="font-mono text-slate-500">${x.v.toLocaleString()}</span></div>`).join("") || `<div class="text-xs text-slate-500">Nothing</div>`}
+            </div>
+          </div>
+        </div>
+      </div>`;
+  }).join("") || `<p class="text-xs text-slate-500">No trades match the selected filter.</p>`;
+}
+
+if ($("user").value) $("go").click();
+</script>
+</body>
+</html>
