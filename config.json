@@ -1,5 +1,5 @@
 {
-  "sleeper": { "username": "YOUR_SLEEPER_USERNAME", "leagueId": "YOUR_LEAGUE_ID" },
+  "sleeper": { "username": "Beef25", "leagueId": "1314646296132329472" },
   "watch": [],
   "formats": [ { "name": "1qb_1ppr_12", "numQbs": 1, "ppr": 1, "teams": 12 } ],
   "feeds": [
