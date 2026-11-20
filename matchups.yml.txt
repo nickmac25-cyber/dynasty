@@ -1,0 +1,40 @@
+name: update-matchups
+on:
+  schedule:
+    - cron: "0 10 * * 2"   # Tuesdays, after Monday night football
+  workflow_dispatch:
+concurrency:
+  group: update-data
+  cancel-in-progress: false
+permissions:
+  contents: write
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Load current data branch
+        run: |
+          if git ls-remote --exit-code --heads origin data >/dev/null 2>&1; then
+            git fetch --depth=1 origin data
+            git worktree add -f data FETCH_HEAD
+          else
+            mkdir data
+          fi
+      - name: Build matchup data
+        id: upd
+        run: python3 scripts/matchups.py
+      - name: Publish as a single squashed commit
+        if: steps.upd.outputs.changed == 'true'
+        run: |
+          tmp=$(mktemp -d)
+          cp -r data/. "$tmp"/
+          cd "$tmp"
+          rm -rf .git
+          git init -q -b data
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -q -m "matchups $(date -u +%FT%TZ)"
+          git push -f "https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git" data

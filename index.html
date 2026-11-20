@@ -1,0 +1,1531 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Dynasty Desk Pro</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script>
+  tailwind.config = {
+    darkMode: 'class',
+    theme: {
+      extend: {
+        colors: {
+          slate: { 850: '#151e2e', 900: '#0f172a', 950: '#090d16' }
+        }
+      }
+    }
+  }
+</script>
+<style>
+  ::-webkit-scrollbar { width: 8px; height: 8px; }
+  ::-webkit-scrollbar-track { background: #0f172a; }
+  ::-webkit-scrollbar-thumb { background: #334155; border-radius: 4px; }
+  ::-webkit-scrollbar-thumb:hover { background: #475569; }
+  .tab-active { border-bottom: 2px solid #10b981; color: #10b981; }
+  input[type="range"] { accent-color: #10b981; }
+  /* Prevent iOS Safari auto-zoom on inputs */
+  input, select, textarea { font-size: 16px !important; }
+  @media (min-width: 768px) {
+    body:not(.force-mobile) input,
+    body:not(.force-mobile) select,
+    body:not(.force-mobile) textarea { font-size: 0.875rem !important; }
+  }
+  /* Forced Mobile Preview / Override */
+  body.force-mobile main { max-width: 440px !important; }
+  body.force-mobile .desktop-only { display: none !important; }
+  body.force-mobile .mobile-only { display: block !important; }
+  body.force-mobile .trade-grid { grid-template-columns: 1fr !important; }
+  body.force-mobile .kpi-grid { grid-template-columns: 1fr 1fr !important; }
+  /* Forced Desktop Override */
+  body.force-desktop .desktop-only { display: block !important; }
+  body.force-desktop .mobile-only { display: none !important; }
+  body.force-desktop .trade-grid { grid-template-columns: 1fr 1fr !important; }
+</style>
+</head>
+<body class="bg-slate-950 text-slate-100 font-sans antialiased min-h-screen flex flex-col">
+
+<!-- Sticky Top Bar -->
+<header class="sticky top-0 z-40 bg-slate-900/95 backdrop-blur-md border-b border-slate-800">
+  <div class="max-w-7xl mx-auto px-4 py-3 flex flex-wrap items-center justify-between gap-3">
+    <div class="flex items-center gap-3">
+      <div class="w-9 h-9 rounded-lg bg-emerald-500/20 border border-emerald-500/40 flex items-center justify-center text-emerald-400 font-bold text-lg">DD</div>
+      <div>
+        <h1 class="font-bold text-lg tracking-tight text-white leading-none">Dynasty Desk <span class="text-xs font-semibold uppercase tracking-wider px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-400 ml-1">Pro</span></h1>
+        <p class="text-xs text-slate-400 mt-0.5">Market + Expert Dynasty Engine</p>
+      </div>
+    </div>
+
+    <!-- Layout View Toggle Pill (Auto / Mobile / Desktop) -->
+    <div class="flex items-center bg-slate-950 border border-slate-800 rounded-xl p-1" role="group" aria-label="View Mode">
+      <button type="button" data-view="auto" class="view-btn px-2.5 py-1 rounded-lg text-xs font-semibold transition cursor-pointer bg-emerald-600 text-white">Auto</button>
+      <button type="button" data-view="mobile" class="view-btn px-2.5 py-1 rounded-lg text-xs font-semibold transition cursor-pointer text-slate-400 hover:text-white flex items-center gap-1">
+        <span>📱</span><span>Mobile</span>
+      </button>
+      <button type="button" data-view="desktop" class="view-btn px-2.5 py-1 rounded-lg text-xs font-semibold transition cursor-pointer text-slate-400 hover:text-white flex items-center gap-1">
+        <span>🖥️</span><span>Desktop</span>
+      </button>
+    </div>
+
+    <div class="flex flex-wrap items-center gap-2 flex-1 max-w-2xl justify-end">
+      <input id="user" placeholder="Sleeper username" aria-label="Sleeper username"
+        class="bg-slate-950 border border-slate-700 rounded-lg px-3 py-1.5 text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500 w-36 sm:w-44">
+      <select id="season" aria-label="Season"
+        class="bg-slate-950 border border-slate-700 rounded-lg px-2.5 py-1.5 text-white focus:outline-none focus:border-emerald-500"></select>
+      <button id="go"
+        class="bg-emerald-600 hover:bg-emerald-500 text-white font-medium text-sm px-4 py-2 rounded-lg transition shadow-lg shadow-emerald-950/50 cursor-pointer">
+        Sync
+      </button>
+      <select id="league" aria-label="League" hidden
+        class="bg-slate-800 border border-slate-600 rounded-lg px-3 py-1.5 text-emerald-300 font-medium focus:outline-none focus:border-emerald-500 max-w-[200px] truncate"></select>
+    </div>
+  </div>
+
+  <!-- Status & Cache Bar -->
+  <div class="bg-slate-950/80 border-t border-slate-800/80 px-4 py-1.5">
+    <div class="max-w-7xl mx-auto flex flex-wrap items-center justify-between text-xs text-slate-400 gap-2">
+      <div id="status" class="truncate">Enter your Sleeper username to load rosters, picks, and live market values.</div>
+      <div class="flex items-center gap-3">
+        <span id="cacheStatus" class="text-slate-500"></span>
+        <button id="clearCache" class="text-slate-400 hover:text-rose-400 underline cursor-pointer hidden">Force Refresh DB</button>
+      </div>
+    </div>
+  </div>
+</header>
+
+<!-- Main Workspace -->
+<main class="max-w-7xl w-full mx-auto px-4 py-6 flex-1 transition-all duration-200">
+
+  <!-- Empty State Welcome -->
+  <div id="welcome" class="text-center py-20 px-4 max-w-xl mx-auto">
+    <div class="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-slate-900 border border-slate-800 text-emerald-400 mb-4 text-2xl">🏈</div>
+    <h2 class="text-2xl font-bold text-white mb-2">Connect Your Sleeper Dynasty League</h2>
+    <p class="text-slate-400 text-sm leading-relaxed mb-6">
+      Blends real trade market data from <b>FantasyCalc</b> with expert consensus values from <b>DynastyProcess</b> &amp; <b>FantasyPros ECR</b>. Automatically adjusts for Superflex, PPR, and your exact traded draft picks.
+    </p>
+  </div>
+
+  <!-- Dashboard Content -->
+  <div id="app" hidden class="space-y-6">
+
+    <!-- Top KPI Row -->
+    <div id="summary" class="kpi-grid grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4"></div>
+
+    <!-- Navigation Tabs -->
+    <div class="border-b border-slate-800 flex items-center gap-1 overflow-x-auto">
+      <button data-tab="tab-trade" class="tab-btn tab-active px-3.5 py-2.5 text-sm font-medium whitespace-nowrap cursor-pointer">Trade &amp; Targets</button>
+      <button data-tab="tab-roster" class="tab-btn text-slate-400 hover:text-slate-200 px-3.5 py-2.5 text-sm font-medium whitespace-nowrap cursor-pointer">Roster &amp; Waivers</button>
+      <button data-tab="tab-startsit" class="tab-btn text-slate-400 hover:text-slate-200 px-3.5 py-2.5 text-sm font-medium whitespace-nowrap cursor-pointer">Start/Sit</button>
+      <button data-tab="tab-draftroom" class="tab-btn text-slate-400 hover:text-slate-200 px-3.5 py-2.5 text-sm font-medium whitespace-nowrap cursor-pointer">Draft Room</button>
+      <button data-tab="tab-managers" class="tab-btn text-slate-400 hover:text-slate-200 px-3.5 py-2.5 text-sm font-medium whitespace-nowrap cursor-pointer">Managers</button>
+      <button data-tab="tab-audit" class="tab-btn text-slate-400 hover:text-slate-200 px-3.5 py-2.5 text-sm font-medium whitespace-nowrap cursor-pointer">Team Audit</button>
+      <button data-tab="tab-finder" class="tab-btn text-slate-400 hover:text-slate-200 px-3.5 py-2.5 text-sm font-medium whitespace-nowrap cursor-pointer">Trade Finder</button>
+      <button data-tab="tab-live" class="tab-btn text-slate-400 hover:text-slate-200 px-3.5 py-2.5 text-sm font-medium whitespace-nowrap cursor-pointer">Alerts &amp; News <span id="alertBadge" hidden class="ml-1 px-1.5 py-0.2 text-xs rounded-full bg-rose-500/20 text-rose-400">0</span></button>
+      <button data-tab="tab-draft" class="tab-btn text-slate-400 hover:text-slate-200 px-3.5 py-2.5 text-sm font-medium whitespace-nowrap cursor-pointer">2027 Rookies</button>
+      <button data-tab="tab-ai" class="tab-btn text-slate-400 hover:text-slate-200 px-3.5 py-2.5 text-sm font-medium whitespace-nowrap cursor-pointer">AI Advisor</button>
+      <button data-tab="tab-weights" class="tab-btn text-slate-400 hover:text-slate-200 px-3.5 py-2.5 text-sm font-medium whitespace-nowrap ml-auto cursor-pointer">⚙ Weights</button>
+    </div>
+
+    <!-- TAB 1: TRADE ANALYZER & TARGETS -->
+    <div id="tab-trade" class="tab-panel space-y-6">
+      <section class="bg-slate-900 border border-slate-800 rounded-xl p-4 sm:p-5 shadow-xl">
+        <div class="flex flex-wrap items-center justify-between gap-3 mb-4">
+          <div>
+            <h2 class="text-lg font-bold text-white">Trade Calculator</h2>
+            <p class="text-xs text-slate-400">Stud-premium consolidation curve judges 2-for-1 deals accurately.</p>
+          </div>
+          <div class="flex flex-wrap items-center gap-2 w-full md:w-auto">
+            <input id="q" list="plist" placeholder="Search player or draft pick..."
+              class="bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500 flex-1 md:w-72">
+            <datalist id="plist"></datalist>
+            <div class="flex gap-2 w-full sm:w-auto">
+              <button data-add="a" class="flex-1 sm:flex-none bg-rose-500/20 hover:bg-rose-500/30 text-rose-300 border border-rose-500/40 text-xs font-semibold px-3.5 py-2.5 rounded-lg transition cursor-pointer">+ I Give</button>
+              <button data-add="b" class="flex-1 sm:flex-none bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 border border-emerald-500/40 text-xs font-semibold px-3.5 py-2.5 rounded-lg transition cursor-pointer">+ I Get</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="trade-grid grid grid-cols-1 md:grid-cols-2 gap-4">
+          <!-- Side A -->
+          <div class="bg-slate-950/70 border border-slate-800 rounded-xl p-4 flex flex-col justify-between min-h-[140px]">
+            <div>
+              <div class="flex items-center justify-between mb-3 pb-2 border-b border-slate-800/80">
+                <span class="text-xs font-bold uppercase tracking-wider text-rose-400">I Give</span>
+                <span id="ta" class="text-xs text-slate-400 font-mono">Raw 0 · Adj 0</span>
+              </div>
+              <div id="sa" class="space-y-2"></div>
+            </div>
+          </div>
+
+          <!-- Side B -->
+          <div class="bg-slate-950/70 border border-slate-800 rounded-xl p-4 flex flex-col justify-between min-h-[140px]">
+            <div>
+              <div class="flex items-center justify-between mb-3 pb-2 border-b border-slate-800/80">
+                <span class="text-xs font-bold uppercase tracking-wider text-emerald-400">I Get</span>
+                <span id="tb" class="text-xs text-slate-400 font-mono">Raw 0 · Adj 0</span>
+              </div>
+              <div id="sb" class="space-y-2"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Sticky-friendly Verdict Bar -->
+        <div class="mt-4 pt-4 border-t border-slate-800 flex flex-wrap items-center justify-between gap-3 sticky bottom-0 bg-slate-900/95 backdrop-blur py-2 -mx-2 px-2 rounded-lg">
+          <div id="verdict" class="text-base font-bold"></div>
+          <div class="flex flex-wrap gap-2">
+            <button id="more" class="bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-medium px-3 py-2 rounded-lg border border-slate-700 transition cursor-pointer">Pros &amp; Cons</button>
+            <button id="copyPitch" class="bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-medium px-3 py-2 rounded-lg border border-slate-700 transition cursor-pointer">Copy Pitch</button>
+            <button id="tchat" class="bg-emerald-600/20 hover:bg-emerald-600/30 text-emerald-300 text-xs font-medium px-3 py-2 rounded-lg border border-emerald-500/40 transition cursor-pointer">Ask AI</button>
+          </div>
+        </div>
+
+        <div id="thoughts" class="mt-4"></div>
+        <div id="dossier" class="mt-4"></div>
+      </section>
+
+      <!-- Suggested Trade Targets -->
+      <section id="targets" class="bg-slate-900 border border-slate-800 rounded-xl p-4 sm:p-5 shadow-xl"></section>
+    </div>
+
+    <!-- TAB 2: ROSTER & WAIVERS -->
+    <div id="tab-roster" class="tab-panel hidden space-y-6">
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <section id="waiver" hidden class="bg-slate-900 border border-emerald-500/30 rounded-xl p-4 sm:p-5 shadow-xl"></section>
+        <section id="fa" class="bg-slate-900 border border-slate-800 rounded-xl p-4 sm:p-5 shadow-xl lg:col-span-2"></section>
+      </div>
+
+      <section id="window" class="bg-slate-900 border border-slate-800 rounded-xl p-4 sm:p-5 shadow-xl"></section>
+
+      <section id="roster" class="bg-slate-900 border border-slate-800 rounded-xl p-4 sm:p-5 shadow-xl">
+        <div class="flex flex-wrap items-center justify-between gap-3 mb-4">
+          <div>
+            <h2 class="text-lg font-bold text-white">Your Roster &amp; Draft Picks</h2>
+            <p class="text-xs text-slate-400">Age cliffs trigger automatic sell-window flags.</p>
+          </div>
+          <div class="flex flex-wrap items-center gap-2">
+            <div class="flex gap-1 text-xs">
+              <button data-posfilter="ALL" class="pos-filter bg-emerald-600 text-white px-2.5 py-1.5 rounded-md font-medium cursor-pointer">All</button>
+              <button data-posfilter="QB" class="pos-filter bg-slate-800 text-slate-300 px-2.5 py-1.5 rounded-md font-medium cursor-pointer">QB</button>
+              <button data-posfilter="RB" class="pos-filter bg-slate-800 text-slate-300 px-2.5 py-1.5 rounded-md font-medium cursor-pointer">RB</button>
+              <button data-posfilter="WR" class="pos-filter bg-slate-800 text-slate-300 px-2.5 py-1.5 rounded-md font-medium cursor-pointer">WR</button>
+              <button data-posfilter="TE" class="pos-filter bg-slate-800 text-slate-300 px-2.5 py-1.5 rounded-md font-medium cursor-pointer">TE</button>
+              <button data-posfilter="PICK" class="pos-filter bg-slate-800 text-slate-300 px-2.5 py-1.5 rounded-md font-medium cursor-pointer">Picks</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Mobile Card View -->
+        <div id="rt-cards" class="mobile-only block md:hidden space-y-2.5"></div>
+
+        <!-- Desktop Table View -->
+        <div class="desktop-only hidden md:block overflow-x-auto">
+          <table id="rt" class="w-full text-left border-collapse text-sm"></table>
+        </div>
+      </section>
+    </div>
+
+    <!-- TAB 3: LIVE UPDATES, ACTIVITY & NEWS -->
+    <div id="tab-startsit" class="tab-panel hidden space-y-6">
+      <section class="bg-slate-900 border border-slate-800 rounded-xl p-4 sm:p-5 shadow-xl">
+        <h2 class="text-lg font-bold text-white">Start/Sit Optimizer</h2>
+        <p class="text-xs text-slate-400 mb-3">Finds your best lineup for this week and explains each change.</p>
+        <div class="flex flex-wrap items-center gap-2 mb-4">
+          <button id="ssRun" class="bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-medium px-4 py-2 rounded-lg cursor-pointer">Optimize lineup</button>
+          <input id="mxRepo" placeholder="data repo for scheme matchups (your-name/dynasty-data)" class="bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-xs text-slate-200 w-72" aria-label="Data repo">
+        </div>
+        <div id="ssOut"></div>
+      </section>
+    </div>
+
+    <div id="tab-draftroom" class="tab-panel hidden space-y-6">
+      <section class="bg-slate-900 border border-slate-800 rounded-xl p-4 sm:p-5 shadow-xl">
+        <h2 class="text-lg font-bold text-white">Draft Room</h2>
+        <p class="text-xs text-slate-400 mb-3">Follows your Sleeper draft live and recommends who to take.</p>
+        <div class="flex flex-wrap items-center gap-3 mb-4">
+          <select id="draftSel" class="bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-sm text-slate-200"></select>
+          <label class="text-xs text-slate-300 flex items-center gap-1.5"><input type="checkbox" id="rookOnly" checked> Rookies only</label>
+          <button id="draftRefresh" class="bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs px-3 py-2 rounded-lg border border-slate-700 cursor-pointer">Refresh</button>
+        </div>
+        <div id="draftOut"></div>
+      </section>
+    </div>
+
+    <div id="tab-managers" class="tab-panel hidden space-y-6">
+      <section class="bg-slate-900 border border-slate-800 rounded-xl p-4 sm:p-5 shadow-xl">
+        <h2 class="text-lg font-bold text-white">Manager Profiles</h2>
+        <p class="text-xs text-slate-400 mb-3">Trade habits, hindsight trade grades, and draft history for every manager in your league.</p>
+        <button id="mgrRun" class="bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-medium px-4 py-2 rounded-lg cursor-pointer mb-4">Load history</button>
+        <div id="mgrOut"></div>
+      </section>
+    </div>
+
+    <div id="tab-audit" class="tab-panel hidden space-y-6">
+      <section id="power" class="bg-slate-900 border border-slate-800 rounded-xl p-4 sm:p-5 shadow-xl"></section>
+      <section id="audit" class="bg-slate-900 border border-slate-800 rounded-xl p-4 sm:p-5 shadow-xl"></section>
+    </div>
+
+    <div id="tab-finder" class="tab-panel hidden space-y-6">
+      <section class="bg-slate-900 border border-slate-800 rounded-xl p-4 sm:p-5 shadow-xl">
+        <h2 class="text-lg font-bold text-white">Trade Finder</h2>
+        <p class="text-xs text-slate-400 mb-3">Scans every roster for trades that improve both starting lineups at similar value.</p>
+        <button id="scan" class="bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-medium px-4 py-2 rounded-lg cursor-pointer mb-4">Scan league</button>
+        <div id="finderOut"></div>
+      </section>
+    </div>
+
+    <div id="tab-live" class="tab-panel hidden space-y-6">
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <section id="live" class="bg-slate-900 border border-slate-800 rounded-xl p-4 sm:p-5 shadow-xl">
+          <div class="flex flex-wrap items-center justify-between gap-2 mb-4">
+            <h2 class="text-lg font-bold text-white">Alerts &amp; Activity</h2>
+            <div class="flex items-center gap-2 text-xs">
+              <span id="stamp" class="text-slate-500"></span>
+              <select id="auto" class="bg-slate-950 border border-slate-700 rounded px-2 py-1 text-slate-300">
+                <option value="0">Auto: Off</option>
+                <option value="2">2m</option>
+                <option value="5" selected>5m</option>
+                <option value="15">15m</option>
+              </select>
+              <button id="now" class="bg-slate-800 hover:bg-slate-700 px-2.5 py-1 rounded border border-slate-700 text-slate-200 cursor-pointer">Refresh</button>
+            </div>
+          </div>
+          <h3 class="text-xs font-bold uppercase tracking-wider text-slate-400 mb-2">Injury &amp; Depth Alerts</h3>
+          <div id="alerts" class="space-y-2 mb-6"></div>
+          <h3 class="text-xs font-bold uppercase tracking-wider text-slate-400 mb-2">Recent League Transactions</h3>
+          <div id="activity" class="space-y-2"></div>
+        </section>
+
+        <section id="news" class="bg-slate-900 border border-slate-800 rounded-xl p-4 sm:p-5 shadow-xl">
+          <h2 class="text-lg font-bold text-white mb-1">Custom News Feed</h2>
+          <p class="text-xs text-slate-400 mb-3">Connect a public GitHub repo containing <code class="text-emerald-400">data/news.json</code>.</p>
+          <div class="flex gap-2 mb-4">
+            <input id="repo" placeholder="username/dynasty-data" aria-label="GitHub data repo"
+              class="bg-slate-950 border border-slate-700 rounded-lg px-3 py-1.5 text-white flex-1 focus:outline-none focus:border-emerald-500">
+            <button id="saveRepo" class="bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-medium px-3 py-1.5 rounded-lg border border-slate-700 cursor-pointer">Save</button>
+          </div>
+          <div id="headlines" class="space-y-2"></div>
+        </section>
+      </div>
+    </div>
+
+    <!-- TAB 4: 2027 DRAFT BOARD -->
+    <div id="tab-draft" class="tab-panel hidden">
+      <section id="draft" class="bg-slate-900 border border-slate-800 rounded-xl p-4 sm:p-5 shadow-xl"></section>
+    </div>
+
+    <!-- TAB 5: AI ADVISOR -->
+    <div id="tab-ai" class="tab-panel hidden">
+      <section id="chat" class="bg-slate-900 border border-slate-800 rounded-xl p-4 sm:p-5 shadow-xl max-w-4xl mx-auto">
+        <div class="flex flex-wrap items-center justify-between gap-4 mb-4 pb-4 border-b border-slate-800">
+          <div>
+            <h2 class="text-lg font-bold text-white">AI Dynasty Advisor</h2>
+            <p class="text-xs text-slate-400">Your roster, format, age curve, and trade targets are automatically included.</p>
+          </div>
+          <input id="key" type="password" placeholder="Anthropic API key (optional)"
+            class="bg-slate-950 border border-slate-700 rounded-lg px-3 py-1.5 text-white w-full sm:w-64 focus:outline-none focus:border-emerald-500">
+        </div>
+        <div id="log" class="space-y-3 max-h-[400px] overflow-y-auto mb-4 pr-1"></div>
+        <textarea id="cq" rows="3" placeholder="Ask about your roster window, who to sell, or a specific trade..."
+          class="w-full bg-slate-950 border border-slate-700 rounded-xl p-3 text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500 mb-3"></textarea>
+        <div class="flex flex-wrap gap-2">
+          <button id="ask" class="bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-medium px-4 py-2.5 rounded-lg transition cursor-pointer">Send to Claude</button>
+          <button id="copy" class="bg-slate-800 hover:bg-slate-700 text-slate-200 text-sm font-medium px-4 py-2.5 rounded-lg border border-slate-700 transition cursor-pointer">Copy Context Prompt (Free)</button>
+        </div>
+      </section>
+    </div>
+
+    <!-- TAB 6: VALUATION WEIGHTS -->
+    <div id="tab-weights" class="tab-panel hidden">
+      <section id="blend" class="bg-slate-900 border border-slate-800 rounded-xl p-4 sm:p-5 shadow-xl max-w-3xl mx-auto space-y-5">
+        <div>
+          <h2 class="text-lg font-bold text-white">Valuation Blend Engine</h2>
+          <p class="text-xs text-slate-400 mt-1">Weights are relative and saved automatically in your browser.</p>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div class="bg-slate-950 border border-slate-800 p-4 rounded-xl">
+            <div class="flex justify-between text-sm font-semibold mb-2">
+              <span class="text-emerald-400">FantasyCalc</span>
+              <span id="v1" class="font-mono text-white">40</span>
+            </div>
+            <input id="w1" type="range" min="0" max="100" value="40" class="w-full cursor-pointer">
+            <p class="text-xs text-slate-500 mt-2">Real completed Sleeper trades. Best gauge of market liquidity.</p>
+          </div>
+          <div class="bg-slate-950 border border-slate-800 p-4 rounded-xl">
+            <div class="flex justify-between text-sm font-semibold mb-2">
+              <span class="text-sky-400">DynastyProcess</span>
+              <span id="v2" class="font-mono text-white">30</span>
+            </div>
+            <input id="w2" type="range" min="0" max="100" value="30" class="w-full cursor-pointer">
+            <p class="text-xs text-slate-500 mt-2">Exponential decay curve applied to expert consensus ranks.</p>
+          </div>
+          <div class="bg-slate-950 border border-slate-800 p-4 rounded-xl">
+            <div class="flex justify-between text-sm font-semibold mb-2">
+              <span class="text-amber-400">FantasyPros ECR</span>
+              <span id="v3" class="font-mono text-white">30</span>
+            </div>
+            <input id="w3" type="range" min="0" max="100" value="30" class="w-full cursor-pointer">
+            <p class="text-xs text-slate-500 mt-2">Analyst consensus mapped onto FantasyCalc value distribution.</p>
+          </div>
+        </div>
+
+        <div class="flex flex-wrap items-center gap-2 pt-2">
+          <span class="text-xs font-semibold uppercase tracking-wider text-slate-400 mr-2">Presets:</span>
+          <button data-pre="60,20,20" class="bg-slate-800 hover:bg-slate-700 text-xs font-medium px-3 py-2 rounded-lg border border-slate-700 cursor-pointer">Trading (60/20/20)</button>
+          <button data-pre="40,30,30" class="bg-slate-800 hover:bg-slate-700 text-xs font-medium px-3 py-2 rounded-lg border border-slate-700 cursor-pointer">Balanced (40/30/30)</button>
+          <button data-pre="20,40,40" class="bg-slate-800 hover:bg-slate-700 text-xs font-medium px-3 py-2 rounded-lg border border-slate-700 cursor-pointer">Long-Term (20/40/40)</button>
+        </div>
+      </section>
+    </div>
+
+  </div>
+</main>
+
+<script>
+const $ = id => document.getElementById(id);
+const SL = "https://api.sleeper.app/v1";
+const FC = "https://api.fantasycalc.com/values/current";
+const DP = "https://raw.githubusercontent.com/dynastyprocess/data/master/files/values.csv";
+let S = {fc: [], dp: [], all: [], mine: [], fmt: {}, sides: {a: [], b: []}, sortCol: "v", sortAsc: false, posFilter: "ALL"};
+
+// View Mode Switcher (Auto / Mobile / Desktop)
+function setViewMode(mode) {
+  document.body.classList.remove("force-mobile", "force-desktop");
+  if (mode === "mobile") document.body.classList.add("force-mobile");
+  if (mode === "desktop") document.body.classList.add("force-desktop");
+
+  document.querySelectorAll(".view-btn").forEach(btn => {
+    const active = btn.dataset.view === mode;
+    btn.className = active
+      ? "view-btn px-2.5 py-1 rounded-lg text-xs font-semibold transition cursor-pointer bg-emerald-600 text-white flex items-center gap-1"
+      : "view-btn px-2.5 py-1 rounded-lg text-xs font-semibold transition cursor-pointer text-slate-400 hover:text-white flex items-center gap-1";
+  });
+  try { localStorage.setItem("dd_view_mode", mode); } catch (e) {}
+  if (S.mine.length) drawDraft();
+}
+
+document.querySelectorAll(".view-btn").forEach(btn => {
+  btn.onclick = () => setViewMode(btn.dataset.view);
+});
+
+try {
+  const savedView = localStorage.getItem("dd_view_mode") || "auto";
+  setViewMode(savedView);
+} catch (e) {}
+
+// Tab Navigation
+document.querySelectorAll(".tab-btn").forEach(btn => {
+  btn.onclick = () => {
+    document.querySelectorAll(".tab-btn").forEach(b => { b.classList.remove("tab-active"); b.classList.add("text-slate-400"); });
+    btn.classList.add("tab-active"); btn.classList.remove("text-slate-400");
+    document.querySelectorAll(".tab-panel").forEach(p => p.classList.add("hidden"));
+    $(btn.dataset.tab).classList.remove("hidden");
+  };
+});
+
+// Position Styling & Avatar Helper
+const POS_BADGE = {
+  QB: "bg-rose-500/20 text-rose-300 border-rose-500/30",
+  RB: "bg-emerald-500/20 text-emerald-300 border-emerald-500/30",
+  WR: "bg-sky-500/20 text-sky-300 border-sky-500/30",
+  TE: "bg-amber-500/20 text-amber-300 border-amber-500/30",
+  PICK: "bg-purple-500/20 text-purple-300 border-purple-500/30"
+};
+const badge = pos => `<span class="inline-block text-[10px] font-bold px-1.5 py-0.5 rounded border ${POS_BADGE[pos] || "bg-slate-800 text-slate-300 border-slate-700"}">${pos}</span>`;
+const avatar = (sid, pos) => {
+  if (!sid || pos === "PICK" || String(sid).startsWith("pk")) return `<div class="w-8 h-8 rounded-full bg-purple-500/20 border border-purple-500/30 flex items-center justify-center text-purple-300 text-xs font-bold shrink-0">PK</div>`;
+  return `<img src="https://sleepercdn.com/content/nfl/players/thumb/${sid}.jpg" onerror="this.style.display='none'" class="w-8 h-8 rounded-full object-cover bg-slate-800 border border-slate-700 shrink-0" alt="">`;
+};
+
+// Init Seasons & Saved Preferences
+const yr = new Date().getFullYear();
+for (let y = yr; y >= yr - 2; y--) $("season").add(new Option(y, y));
+try {
+  if (localStorage.getItem("dd_user")) $("user").value = localStorage.getItem("dd_user");
+  const savedW = JSON.parse(localStorage.getItem("dd_weights") || "null");
+  if (savedW) savedW.forEach((v, i) => { $("w" + (i + 1)).value = v; $("v" + (i + 1)).textContent = v; });
+} catch (e) {}
+
+const norm = n => (n || "").toLowerCase().replace(/[.'’]/g, "").replace(/\b(jr|sr|ii|iii|iv)\b/g, "").replace(/[^a-z ]/g, " ").replace(/\s+/g, " ").trim();
+const status = t => $("status").textContent = t;
+const j = async u => { const r = await fetch(u); if (!r.ok) throw new Error(r.status + " from " + u); return r.json(); };
+
+function csv(t) {
+  const rows = t.trim().split(/\r?\n/).map(l => { const o = []; let c = "", q = false;
+    for (const ch of l) { if (ch === '"') q = !q; else if (ch === "," && !q) { o.push(c); c = ""; } else c += ch; }
+    o.push(c); return o; });
+  const h = rows.shift();
+  return rows.map(r => Object.fromEntries(h.map((k, i) => [k, r[i]])));
+}
+
+// Persistent 24-Hour Cache for Sleeper's Player Payload
+async function getPlayers(force = false) {
+  const CACHE_KEY = "dd_sleeper_players_v2";
+  const TTL = 24 * 60 * 60 * 1000;
+  if (!force && S.pc && Date.now() - S.pc.t < TTL) return S.pc.d;
+  if (!force) {
+    try {
+      const raw = localStorage.getItem(CACHE_KEY);
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (Date.now() - parsed.t < TTL) {
+          S.pc = parsed;
+          $("cacheStatus").textContent = `DB cached (${Math.round((Date.now() - parsed.t) / 36e5)}h ago)`;
+          $("clearCache").classList.remove("hidden");
+          return parsed.d;
+        }
+      }
+    } catch (e) {}
+  }
+  status("Downloading Sleeper NFL player database (cached for 24h)...");
+  const full = await j(`${SL}/players/nfl`);
+  const slim = {};
+  for (const [id, p] of Object.entries(full)) {
+    if (!p || !p.position) continue;
+    slim[id] = {
+      first_name: p.first_name, last_name: p.last_name, position: p.position,
+      team: p.team, age: p.age, injury_status: p.injury_status,
+      injury_body_part: p.injury_body_part, injury_notes: p.injury_notes,
+      depth_chart_order: p.depth_chart_order, depth_chart_position: p.depth_chart_position, years_exp: p.years_exp
+    };
+  }
+  S.pc = {t: Date.now(), d: slim};
+  try {
+    localStorage.setItem(CACHE_KEY, JSON.stringify(S.pc));
+    $("cacheStatus").textContent = "DB cached (just now)";
+    $("clearCache").classList.remove("hidden");
+  } catch (e) {
+    $("cacheStatus").textContent = "Memory cache active";
+  }
+  return slim;
+}
+
+$("clearCache").onclick = async () => {
+  localStorage.removeItem("dd_sleeper_players_v1");
+  S.pc = null;
+  if (S.lg) await loadLeague(S.lg, true);
+};
+
+async function getDP() {
+  if (S.dpc && Date.now() - S.dpc.t < 216e5) return S.dpc.d;
+  const d = await fetch(DP).then(r => r.ok ? r.text() : "").catch(() => "");
+  S.dpc = {t: Date.now(), d};
+  return d;
+}
+
+$("go").onclick = async () => {
+  try {
+    const uname = $("user").value.trim();
+    if (!uname) return status("Enter a Sleeper username first.");
+    try { localStorage.setItem("dd_user", uname); } catch (e) {}
+    status("Looking up Sleeper user…");
+    const u = await j(`${SL}/user/${encodeURIComponent(uname)}`);
+    if (!u) throw new Error("No Sleeper user with that name.");
+    S.uid = u.user_id;
+    const ls = await j(`${SL}/user/${u.user_id}/leagues/nfl/${$("season").value}`);
+    if (!ls.length) throw new Error("No leagues found for that season. Try another season.");
+    S.leagues = ls;
+    const sel = $("league"); sel.innerHTML = ""; sel.hidden = false;
+    ls.forEach((l, i) => sel.add(new Option(`${l.name} (${l.total_rosters}T)`, i)));
+    sel.onchange = () => loadLeague(ls[sel.value]);
+    loadLeague(ls[0]);
+  } catch (e) { status("Error: " + e.message); }
+};
+
+async function loadLeague(lg, forcePlayers = false) {
+  try {
+    const sf = (lg.roster_positions || []).filter(p => p === "SUPER_FLEX").length;
+    const qb = (lg.roster_positions || []).filter(p => p === "QB").length;
+    S.fmt = {numQbs: sf || qb > 1 ? 2 : 1, ppr: lg.scoring_settings?.rec ?? 1, teams: lg.total_rosters, tep: lg.scoring_settings?.bonus_rec_te || 0};
+    status(`Syncing ${lg.name} (${S.fmt.numQbs === 2 ? "Superflex" : "1QB"}, ${S.fmt.ppr} PPR, ${S.fmt.teams}T)…`);
+    const [fc, dpText, players, rosters, traded, users, trending] = await Promise.all([
+      j(`${FC}?isDynasty=true&numQbs=${S.fmt.numQbs}&numTeams=${S.fmt.teams}&ppr=${S.fmt.ppr}`),
+      getDP(),
+      getPlayers(forcePlayers),
+      j(`${SL}/league/${lg.league_id}/rosters`),
+      j(`${SL}/league/${lg.league_id}/traded_picks`),
+      j(`${SL}/league/${lg.league_id}/users`),
+      j(`${SL}/players/nfl/trending/add?lookback_hours=24&limit=50`).catch(() => [])
+    ]);
+    S.fc = fc; S.dp = dpText ? csv(dpText) : [];
+    buildValues(players);
+    ["a", "b"].forEach(k => S.sides[k] = S.sides[k].map(p => (p.sid && S.all.find(x => x.sid === p.sid)) || p));
+    const mine = rosters.find(r => r.owner_id === S.uid);
+    if (!mine) throw new Error("Your user ID was not found on a roster in this league.");
+    S.traded = traded; S.lg = lg; S.rosters = rosters; S.users = users; S.pmap = players; S.trend = trending; S.mineRoster = mine;
+    const ids = new Set([...(mine.players || [])]);
+    S.mine = S.all.filter(p => ids.has(p.sid));
+    S.picks = ownedPicks(lg, rosters, traded, mine.roster_id);
+    S.mine.push(...S.picks);
+    S.fresh = true;
+    $("welcome").hidden = true;
+    $("app").hidden = false;
+    render();
+    loadActivity();
+    setAuto();
+    $("stamp").textContent = "Updated " + new Date().toLocaleTimeString([], {hour: "numeric", minute: "2-digit"});
+    status(`Synced ${lg.name} · FantasyCalc (${S.fc.length}) + DynastyProcess (${S.dp.length || 0}) loaded.`);
+  } catch (e) { status("Error: " + e.message); }
+}
+
+function buildValues(players) {
+  const dpKey = S.fmt.numQbs === 2 ? "value_2qb" : "value_1qb";
+  const dpMap = new Map(S.dp.map(r => [norm(r.player) + "|" + r.pos, +r[dpKey]]).filter(x => x[1] > 0));
+  const ek = S.fmt.numQbs === 2 ? "ecr_2qb" : "ecr_1qb";
+  const ecrMap = new Map(S.dp.map(r => [norm(r.player) + "|" + r.pos, +r[ek]]).filter(x => x[1] > 0));
+  const curve = S.fc.map(e => e.value).sort((a, b) => b - a);
+  S.all = S.fc.map(e => {
+    const p = e.player, isPick = p.position === "PICK";
+    const d = isPick ? null : dpMap.get(norm(p.name) + "|" + p.position);
+    const er = isPick ? null : ecrMap.get(norm(p.name) + "|" + p.position), ecr = er ? (curve[Math.round(er) - 1] ?? 0) : null;
+    return {sid: String(p.sleeperId || ""), name: p.name, pos: p.position, age: p.maybeAge, team: p.maybeTeam || "",
+      fc: e.value, dp: d || null, ecr: ecr || null, pick: isPick, trend: e.trend30Day || 0, rank: e.overallRank};
+  });
+  S.all.forEach(p => p.v = blend(p));
+}
+
+function blend(p) {
+  const W = [+$("w1").value, +$("w2").value, +$("w3").value], V = [p.fc, p.dp, p.ecr];
+  let sum = 0, tot = 0; V.forEach((v, i) => { if (v != null && W[i] > 0) { sum += v * W[i]; tot += W[i]; } });
+  return Math.round(tot ? sum / tot : (p.fc ?? p.dp ?? p.ecr ?? 0));
+}
+
+function ownedPicks(lg, rosters, traded, myRid) {
+  const rounds = lg.settings?.draft_rounds || 4, base = +lg.season, out = [];
+  const owner = {};
+  rosters.forEach(r => { for (let y = base; y <= base + 2; y++) for (let k = 1; k <= rounds; k++) owner[`${y}-${k}-${r.roster_id}`] = r.roster_id; });
+  traded.forEach(t => owner[`${t.season}-${t.round}-${t.roster_id}`] = t.owner_id);
+  for (const key in owner) if (owner[key] === myRid) {
+    const [y, k, origin] = key.split("-"); const val = pickValue(y, +k);
+    if (val) out.push({pick: true, name: `${y} Round ${k}` + (+origin !== myRid ? ` (via Team ${origin})` : ""), pos: "PICK", age: null, v: val, fc: val, dp: null, trend: 0, sid: "pk" + key});
+  }
+  return out.sort((a, b) => b.v - a.v);
+}
+
+function pickValue(y, k) {
+  const sfx = ["", "st", "nd", "rd", "th"][Math.min(k, 4)];
+  const hits = S.all.filter(p => p.pick && p.name.includes(y) && (new RegExp(`\b${k}${sfx}\b|Pick ${k}\.`, "i")).test(p.name));
+  return hits.length ? Math.round(hits.reduce((s, p) => s + p.v, 0) / hits.length) : 0;
+}
+
+const CLIFF = {QB: 34, RB: 26, WR: 29, TE: 30};
+function flag(p) {
+  if (p.pick || !p.age) return ["hold", "—"];
+  const c = CLIFF[p.pos] || 30;
+  if (p.age >= c && p.v > 2500) return ["sell", "Sell: Past age cliff"];
+  if (p.age >= c - 2 && p.v > 4000) return ["sell", "Sell window opening"];
+  if (p.age <= 23 && p.trend > 150) return ["buy", "Rising young asset"];
+  if (p.trend < -400 && p.age < c - 2) return ["buy", "Buy low dip"];
+  return ["hold", "Hold"];
+}
+
+function render() {
+  S.all.forEach(p => p.v = blend(p));
+  S.mine.forEach(p => { if (!p.pick) p.v = blend(p); });
+
+  const pl = S.mine.filter(p => !p.pick), tot = S.mine.reduce((s, p) => s + p.v, 0);
+  const ages = pl.filter(p => p.v > 1500 && p.age);
+  const wavg = ages.reduce((s, p) => s + p.age * p.v, 0) / (ages.reduce((s, p) => s + p.v, 0) || 1);
+  const byPos = {}; pl.forEach(p => byPos[p.pos] = (byPos[p.pos] || 0) + p.v);
+  const winLabel = wavg < 25.5 ? "Rebuilder" : wavg > 27 ? "Contender" : "Balanced";
+  const winColor = wavg < 25.5 ? "text-sky-400" : wavg > 27 ? "text-emerald-400" : "text-amber-400";
+
+  // KPI Cards
+  $("summary").innerHTML = `
+    <div class="bg-slate-900 border border-slate-800 rounded-xl p-3.5 sm:p-4">
+      <div class="text-[11px] font-medium text-slate-400 uppercase tracking-wider">Roster + Pick Value</div>
+      <div class="text-xl sm:text-2xl font-bold text-white mt-1 font-mono">${tot.toLocaleString()}</div>
+      <div class="text-xs text-slate-500 mt-1">${S.mine.length} tracked assets</div>
+    </div>
+    <div class="bg-slate-900 border border-slate-800 rounded-xl p-3.5 sm:p-4">
+      <div class="text-[11px] font-medium text-slate-400 uppercase tracking-wider">Weighted Age</div>
+      <div class="text-xl sm:text-2xl font-bold text-white mt-1 font-mono">${wavg.toFixed(1)} <span class="text-xs font-normal text-slate-400">yrs</span></div>
+      <div class="text-xs text-slate-500 mt-1">Core assets (&gt;1.5k)</div>
+    </div>
+    <div class="bg-slate-900 border border-slate-800 rounded-xl p-3.5 sm:p-4">
+      <div class="text-[11px] font-medium text-slate-400 uppercase tracking-wider">Roster Window</div>
+      <div class="text-xl sm:text-2xl font-bold ${winColor} mt-1">${winLabel}</div>
+      <div class="text-xs text-slate-500 mt-1">${S.fmt.numQbs === 2 ? "SF" : "1QB"} · ${S.fmt.ppr} PPR · ${S.fmt.teams}T</div>
+    </div>
+    <div class="bg-slate-900 border border-slate-800 rounded-xl p-3.5 sm:p-4">
+      <div class="text-[11px] font-medium text-slate-400 uppercase tracking-wider">Positional Value</div>
+      <div class="flex flex-wrap gap-1 mt-2">
+        ${Object.entries(byPos).sort((a, b) => b[1] - a[1]).map(([k, v]) => `<span class="text-[11px] bg-slate-950 border border-slate-800 px-1.5 py-0.5 rounded font-mono">${k} <b class="text-white">${(v/1000).toFixed(1)}k</b></span>`).join("")}
+      </div>
+    </div>`;
+
+  renderRosterViews();
+  $("plist").innerHTML = S.all.concat(S.picks || []).map(p => `<option value="${p.name.replace(/"/g, "")}${p.pos === "PICK" ? "" : " (" + p.pos + ")"}">`).join("");
+  drawTrade();
+  extras(wavg);
+  extrasPro();
+}
+
+function renderRosterViews() {
+  const flagStyle = {buy: "text-emerald-400 font-medium", sell: "text-rose-400 font-medium", hold: "text-slate-500"};
+  const filtered = S.mine.filter(p => S.posFilter === "ALL" || p.pos === S.posFilter);
+  const sorted = [...filtered].sort((a, b) => {
+    let va = a[S.sortCol] ?? -1, vb = b[S.sortCol] ?? -1;
+    if (typeof va === "string") return S.sortAsc ? va.localeCompare(vb) : vb.localeCompare(va);
+    return S.sortAsc ? va - vb : vb - va;
+  });
+
+  // 1. Mobile Card Layout
+  $("rt-cards").innerHTML = sorted.map(p => {
+    const [c, t] = flag(p);
+    return `<div class="bg-slate-950 border border-slate-800 rounded-xl p-3 flex items-center justify-between gap-3">
+      <div class="flex items-center gap-3 min-w-0">
+        ${avatar(p.sid, p.pos)}
+        <div class="min-w-0">
+          <div class="flex items-center gap-1.5">
+            <span class="font-bold text-white text-sm truncate">${esc(p.name)}</span>
+            ${badge(p.pos)}
+          </div>
+          <div class="text-xs text-slate-400 mt-0.5">
+            ${p.age ? `Age ${(+p.age).toFixed(1)} · ` : ""}${p.team || (p.pick ? "Pick" : "FA")}
+            ${t !== "—" && t !== "Hold" ? ` · <span class="${flagStyle[c]}">${t}</span>` : ""}
+          </div>
+          <div class="text-[11px] text-slate-500 font-mono mt-1">
+            FC: ${p.fc ?? "—"} · DP: ${p.dp ?? "—"} · ECR: ${p.ecr ?? "—"}
+          </div>
+        </div>
+      </div>
+      <div class="text-right shrink-0">
+        <div class="font-mono font-bold text-base text-emerald-400">${p.v.toLocaleString()}</div>
+        <div class="text-[10px] uppercase text-slate-500">Blend</div>
+      </div>
+    </div>`;
+  }).join("");
+
+  // 2. Desktop Table Layout
+  const th = (col, label, align = "left") => `<th data-sort="${col}" class="py-2.5 px-3 text-xs font-semibold uppercase tracking-wider text-slate-400 hover:text-white cursor-pointer select-none text-${align}">${label}${S.sortCol === col ? (S.sortAsc ? " ↑" : " ↓") : ""}</th>`;
+
+  const rows = sorted.map(p => {
+    const [c, t] = flag(p);
+    return `<tr class="border-t border-slate-800/80 hover:bg-slate-850/60 transition">
+      <td class="py-2.5 px-3 flex items-center gap-2.5">
+        ${avatar(p.sid, p.pos)}
+        <div>
+          <div class="font-medium text-white">${esc(p.name)}</div>
+          <div class="text-xs text-slate-500">${p.team || (p.pick ? "Draft Capital" : "FA")}</div>
+        </div>
+      </td>
+      <td class="py-2.5 px-3">${badge(p.pos)}</td>
+      <td class="py-2.5 px-3 text-right font-mono text-slate-300">${p.age ? (+p.age).toFixed(1) : "—"}</td>
+      <td class="py-2.5 px-3 text-right font-mono text-slate-400">${p.fc ?? "—"}</td>
+      <td class="py-2.5 px-3 text-right font-mono text-slate-400">${p.dp ?? "—"}</td>
+      <td class="py-2.5 px-3 text-right font-mono text-slate-400">${p.ecr ?? "—"}</td>
+      <td class="py-2.5 px-3 text-right font-mono font-bold text-emerald-400">${p.v.toLocaleString()}</td>
+      <td class="py-2.5 px-3 text-xs ${flagStyle[c]}">${t}</td>
+    </tr>`;
+  }).join("");
+
+  $("rt").innerHTML = `<thead><tr class="bg-slate-950/60">${th("name", "Asset")}${th("pos", "Pos")}${th("age", "Age", "right")}${th("fc", "FantasyCalc", "right")}${th("dp", "DynastyProc", "right")}${th("ecr", "ECR", "right")}${th("v", "Blend", "right")}<th class="py-2.5 px-3 text-xs font-semibold uppercase tracking-wider text-slate-400">Signal</th></tr></thead><tbody>${rows}</tbody>`;
+
+  $("rt").querySelectorAll("[data-sort]").forEach(el => el.onclick = () => {
+    const col = el.dataset.sort;
+    if (S.sortCol === col) S.sortAsc = !S.sortAsc;
+    else { S.sortCol = col; S.sortAsc = col === "name" || col === "pos"; }
+    renderRosterViews();
+  });
+}
+
+document.querySelectorAll(".pos-filter").forEach(btn => btn.onclick = () => {
+  document.querySelectorAll(".pos-filter").forEach(b => { b.className = "pos-filter bg-slate-800 text-slate-300 px-2.5 py-1.5 rounded-md font-medium cursor-pointer"; });
+  btn.className = "pos-filter bg-emerald-600 text-white px-2.5 py-1.5 rounded-md font-medium cursor-pointer";
+  S.posFilter = btn.dataset.posfilter;
+  renderRosterViews();
+});
+
+document.querySelectorAll("[data-pre]").forEach(b => b.onclick = () => {
+  const vals = b.dataset.pre.split(",");
+  vals.forEach((v, i) => { $("w" + (i + 1)).value = v; $("v" + (i + 1)).textContent = v; });
+  try { localStorage.setItem("dd_weights", JSON.stringify(vals)); } catch (e) {}
+  if (S.mine.length) render();
+});
+["w1", "w2", "w3"].forEach((id, i) => $(id).oninput = () => {
+  $("v" + (i + 1)).textContent = $(id).value;
+  try { localStorage.setItem("dd_weights", JSON.stringify([+$("w1").value, +$("w2").value, +$("w3").value])); } catch (e) {}
+  if (S.mine.length) render();
+});
+
+function find(label) {
+  const nm = label.replace(/ \((QB|RB|WR|TE)\)$/, "");
+  return S.all.find(p => p.name === nm) || (S.picks || []).find(p => p.name === nm);
+}
+document.querySelectorAll("[data-add]").forEach(b => b.onclick = () => {
+  const p = find($("q").value); if (!p) return status("Select a valid player or pick from the dropdown list.");
+  S.sides[b.dataset.add].push(p); $("q").value = ""; drawTrade();
+});
+
+const adj = list => list.reduce((s, p) => s + Math.pow(p.v / 100, 1.8), 0);
+
+function drawTrade() {
+  $("thoughts").innerHTML = "";
+  ["a", "b"].forEach(k => {
+    $("s" + k).innerHTML = S.sides[k].map((p, i) => `
+      <div class="flex items-center justify-between bg-slate-900 border border-slate-800 rounded-lg px-3 py-2.5">
+        <div class="flex items-center gap-2.5 min-w-0">
+          ${avatar(p.sid, p.pos)}
+          <div class="min-w-0">
+            <div class="text-sm font-medium text-white truncate">${esc(p.name)} ${badge(p.pos)}</div>
+            <div class="text-xs text-slate-400">${p.age ? `Age ${(+p.age).toFixed(1)}` : "Draft Pick"}</div>
+          </div>
+        </div>
+        <div class="flex items-center gap-2.5 shrink-0">
+          <span class="font-mono text-sm font-bold text-slate-200">${p.v.toLocaleString()}</span>
+          <button data-rm="${k}${i}" aria-label="Remove" class="text-slate-500 hover:text-rose-400 font-bold px-2 py-1 cursor-pointer">✕</button>
+        </div>
+      </div>`).join("") || '<div class="text-xs text-slate-600 italic py-5 text-center">No assets added yet</div>';
+
+    const rawSum = S.sides[k].reduce((s, p) => s + p.v, 0);
+    $("t" + k).textContent = `Raw ${rawSum.toLocaleString()} · Adj ${Math.round(adj(S.sides[k])).toLocaleString()}`;
+  });
+
+  document.querySelectorAll("[data-rm]").forEach(b => b.onclick = () => {
+    S.sides[b.dataset.rm[0]].splice(+b.dataset.rm.slice(1), 1);
+    drawTrade();
+  });
+
+  const a = adj(S.sides.a), b = adj(S.sides.b);
+  if (!a && !b) {
+    $("verdict").innerHTML = '<span class="text-xs sm:text-sm font-normal text-slate-500">Add assets to evaluate</span>';
+  } else if (b >= a) {
+    const pct = Math.round((b - a) / Math.max(a, 1) * 100);
+    $("verdict").innerHTML = `<span class="text-emerald-400">Win +${pct}%</span> <span class="text-xs font-normal text-slate-400">(adj)</span>`;
+  } else {
+    const pct = Math.round((a - b) / Math.max(b, 1) * 100);
+    $("verdict").innerHTML = `<span class="text-rose-400">Lose -${pct}%</span> <span class="text-xs font-normal text-slate-400">(adj)</span>`;
+  }
+}
+
+$("copyPitch").onclick = async () => {
+  const A = S.sides.a, B = S.sides.b;
+  if (!A.length || !B.length) return status("Add assets to both sides first.");
+  const rawA = A.reduce((s, p) => s + p.v, 0), rawB = B.reduce((s, p) => s + p.v, 0);
+  const pitch = `📊 Trade Proposal (${S.lg?.name || "Dynasty"})
+` +
+    `I Send: ${A.map(p => `${p.name} (${p.v.toLocaleString()})`).join(" + ")} [Total: ${rawA.toLocaleString()}]
+` +
+    `I Receive: ${B.map(p => `${p.name} (${p.v.toLocaleString()})`).join(" + ")} [Total: ${rawB.toLocaleString()}]
+` +
+    `Blended Market Valuation via FantasyCalc + DynastyProcess.`;
+  try {
+    await navigator.clipboard.writeText(pitch);
+    status("Trade pitch copied to clipboard — ready to paste into Sleeper chat!");
+  } catch (e) { status("Clipboard blocked by browser."); }
+};
+
+let sidMap = new Map();
+const POS = ["QB", "RB", "WR", "TE"];
+const ghost = id => { const p = S.pmap[id]; return p ? {sid: id, name: `${p.first_name} ${p.last_name}`, pos: p.position, age: p.age, v: 0, fc: null, dp: null, trend: 0, adds: 0} : null; };
+const tname = rid => { const r = S.rosters.find(x => x.roster_id === rid), u = S.users.find(x => x.user_id === r?.owner_id); return u?.metadata?.team_name || u?.display_name || "Team " + rid; };
+
+function extras(wavg) {
+  sidMap = new Map(S.all.map(p => [p.sid, p]));
+  const R = S.mineRoster, st = S.lg.settings || {}, rebuild = (S.wavg = wavg) < 25.5;
+  const taken = new Set(S.rosters.flatMap(r => r.players || []));
+  const tr = new Map((S.trend || []).map(t => [String(t.player_id), t.count]));
+
+  const fas = S.all.filter(p => !p.pick && p.sid && !taken.has(p.sid) && POS.includes(p.pos)).map(p => ({...p, adds: tr.get(p.sid) || 0}));
+  tr.forEach((c, id) => { if (!taken.has(id) && !sidMap.has(id)) { const g = ghost(id); if (g && POS.includes(g.pos)) fas.push({...g, adds: c}); } });
+
+  const safe = new Set([...(R.taxi || []), ...(R.reserve || [])]);
+  const mineP = (R.players || []).map(id => sidMap.get(id) || ghost(id)).filter(p => p && POS.includes(p.pos));
+  const qbs = mineP.filter(p => p.pos === "QB").length, minQb = S.fmt.numQbs === 2 ? 3 : 2;
+  const drops = mineP.filter(p => !safe.has(p.sid) && !(p.pos === "QB" && qbs <= minQb) && !(p.age && p.age <= 22 && p.v > 800)).sort((a, b) => a.v - b.v);
+  let free = (S.lg.roster_positions || []).length - ((R.players || []).length - safe.size);
+
+  const top = fas.sort((a, b) => (b.v + b.adds * 4) - (a.v + a.adds * 4)).slice(0, 12), moves = []; let di = 0;
+  for (const a of top) {
+    if (free > 0) { if (a.v >= 800 || a.adds >= 150) { moves.push({a, d: null, gain: a.v}); free--; } continue; }
+    const d = drops[di]; if (!d) break;
+    const gain = a.v - d.v;
+    if (gain >= 250 || (a.adds >= 200 && gain >= 0)) { moves.push({a, d, gain}); di++; }
+  }
+  const wv = moves.filter(m => m.gain >= 600 || (m.a.adds >= 200 && m.gain >= 100)).slice(0, 3);
+  const faab = st.waiver_type === 2, left = (st.waiver_budget || 100) - (R.settings?.waiver_budget_used || 0);
+  const bid = m => faab ? `Bid ~$${Math.max(1, Math.round(left * Math.min(.3, m.a.v / 15000)))} of $${left}` : "Waiver claim";
+  const card = m => `
+    <div class="flex items-center justify-between bg-slate-950 border border-slate-800 rounded-lg p-3 gap-3">
+      <div class="flex items-center gap-3 min-w-0">
+        ${avatar(m.a.sid, m.a.pos)}
+        <div class="text-xs space-y-0.5 min-w-0">
+          <div class="truncate"><span class="text-emerald-400 font-bold uppercase mr-1">Add</span> <b class="text-white text-sm">${esc(m.a.name)}</b> ${badge(m.a.pos)} <span class="text-slate-400 font-mono">(${m.a.v.toLocaleString()})</span>${m.a.adds ? ` · <span class="text-sky-400">${m.a.adds} adds</span>` : ""}</div>
+          <div class="truncate">${m.d ? `<span class="text-rose-400 font-bold uppercase mr-1">Drop</span> <span class="text-slate-300">${esc(m.d.name)} (${m.d.v.toLocaleString()})</span>` : '<span class="text-emerald-500/80">Open roster spot</span>'}</div>
+        </div>
+      </div>
+      <span class="text-xs font-mono bg-slate-900 border border-slate-700 px-2.5 py-1 rounded text-slate-300 shrink-0">${bid(m)}</span>
+    </div>`;
+
+  $("waiver").hidden = !wv.length;
+  $("waiver").innerHTML = `<h2 class="text-lg font-bold text-emerald-400 mb-1">Priority Waiver Targets</h2><p class="text-xs text-slate-400 mb-3">High-value free agents clearing your drop threshold.</p><div class="space-y-2">${wv.map(card).join("")}</div>`;
+  $("fa").innerHTML = `<h2 class="text-lg font-bold text-white mb-1">Free Agent Recommendations</h2><p class="text-xs text-slate-400 mb-3">Ranked by blended dynasty value + Sleeper 24h trending adds.</p>` +
+    (moves.length ? `<div class="grid grid-cols-1 md:grid-cols-2 gap-3">${moves.map(card).join("")}</div>` : '<p class="text-xs text-slate-500">No available free agents beat your current bench depth.</p>');
+
+  const sells = S.mine.filter(p => flag(p)[0] === "sell"), tg = [];
+  const stand = [...S.rosters].sort((a, b) => (b.settings.wins - a.settings.wins) || (b.settings.fpts - a.settings.fpts));
+  const mood = r => {
+    const s = r.settings, i = stand.indexOf(r), n = stand.length, played = (s.wins || 0) + (s.losses || 0) + (s.ties || 0) >= 3;
+    return {rec: `${s.wins || 0}-${s.losses || 0}${s.ties ? "-" + s.ties : ""}`, seller: played && i >= n * .6, contender: played && i < n * .3, tag: !played ? "early season" : i >= n * .6 ? "likely seller" : i < n * .3 ? "contender" : "middle"};
+  };
+  S.rosters.forEach(r => {
+    if (r.roster_id === R.roster_id) return;
+    (r.players || []).forEach(id => {
+      const p = sidMap.get(id); if (!p || p.v < 1500 || !POS.includes(p.pos)) return;
+      const [f, t] = flag(p), c = CLIFF[p.pos] || 30;
+      const fit = rebuild ? p.age <= 24 && p.v >= 3000 : p.age >= 25 && p.age < c - 1 && p.v >= 4000;
+      const m = mood(r), vet = p.age >= 26, bonus = (vet && m.seller ? 1200 : 0) - (vet && m.contender ? 1500 : 0) + (!vet && m.contender ? 600 : 0);
+      if (f === "buy" || fit) tg.push({p, score: p.v + bonus, rec: m.rec, tag: m.tag, team: tname(r.roster_id), why: f === "buy" ? t : rebuild ? "Young cornerstone for rebuild" : "Prime-age starter for push"});
+    });
+  });
+
+  const T = tg.sort((a, b) => b.score - a.score).slice(0, 8);
+  $("targets").innerHTML = `<div class="mb-4"><h2 class="text-lg font-bold text-white">League Trade Targets</h2><p class="text-xs text-slate-400">Tailored to your <b>${rebuild ? "Rebuilding" : "Contending / Balanced"}</b> window and opponent standings.</p></div>` +
+    (T.length ? `<div class="grid grid-cols-1 md:grid-cols-2 gap-3">${T.map(x => {
+      const o = sells.filter(s => Math.abs(s.v - x.p.v) / x.p.v < .3).sort((a, b) => Math.abs(a.v - x.p.v) - Math.abs(b.v - x.p.v))[0];
+      return `<div class="flex items-center justify-between bg-slate-950 border border-slate-800 rounded-xl p-3 gap-3">
+        <div class="flex items-center gap-3 min-w-0">
+          ${avatar(x.p.sid, x.p.pos)}
+          <div class="min-w-0">
+            <div class="text-sm font-bold text-white truncate">${esc(x.p.name)} ${badge(x.p.pos)} <span class="font-mono text-emerald-400 text-xs ml-1">${x.p.v.toLocaleString()}</span></div>
+            <div class="text-xs text-slate-400 truncate">${esc(x.team)} (${x.rec}, ${x.tag}) · ${x.why}</div>
+            ${o ? `<div class="text-xs text-amber-400/90 mt-0.5 truncate">Offer idea: ${esc(o.name)}</div>` : ""}
+          </div>
+        </div>
+        <button data-tg="${x.p.sid}" class="bg-slate-800 hover:bg-emerald-600 text-slate-200 hover:text-white text-xs font-medium px-3 py-2 rounded-lg border border-slate-700 transition shrink-0 cursor-pointer">Test</button>
+      </div>`;
+    }).join("")}</div>` : '<p class="text-xs text-slate-500">No clear targets identified right now.</p>');
+
+  S.ctx = `League: ${S.lg.name}, ${S.fmt.numQbs === 2 ? "superflex" : "1QB"}, ${S.fmt.ppr} PPR, ${S.fmt.teams} teams. Roster window: ${rebuild ? "rebuilding" : wavg > 27 ? "contending" : "middle"} (value-weighted age ${wavg.toFixed(1)}).
+My roster (position, age, blended value, flag):
+` +
+    S.mine.map(p => `${p.name} ${p.pos} ${p.age ? Math.round(p.age) : ""} ${p.v} ${flag(p)[1]}`).join("\n") +
+    `
+Trade targets: ${T.map(x => `${x.p.name} (${x.team}, ${x.rec}, ${x.tag})`).join(", ") || "none"}
+Suggested free agent moves: ${moves.map(m => `add ${m.a.name}${m.d ? " drop " + m.d.name : ""}`).join("; ") || "none"}`;
+  S.watch = {mine: S.mine.filter(p => !p.pick).map(p => p.name), tg: T.map(x => x.p.name)};
+  drawDraft(); drawLive(); drawNews();
+}
+
+document.addEventListener("click", e => {
+  const b = e.target.closest("[data-tg]"); if (!b) return;
+  S.sides.b.push(sidMap.get(b.dataset.tg));
+  drawTrade();
+  window.scrollTo({top: 0, behavior: "smooth"});
+});
+
+// AI Chat
+const MODEL = "claude-haiku-4-5-20251001";
+const SYS = "You are an expert dynasty fantasy football advisor. Base answers on the league data given. Values are blended trade-market values from FantasyCalc and DynastyProcess. Be concise, sharp, and actionable.";
+try { $("key").value = localStorage.getItem("dd_key") || ""; } catch (e) {}
+const say = (cls, t) => {
+  const d = document.createElement("div");
+  d.className = cls === "me"
+    ? "bg-slate-800 text-slate-200 text-sm p-3 rounded-xl ml-8 sm:ml-12 whitespace-pre-wrap"
+    : "bg-slate-950 border border-slate-800 text-slate-200 text-sm p-3.5 rounded-xl mr-8 sm:mr-12 whitespace-pre-wrap leading-relaxed";
+  d.textContent = t;
+  $("log").append(d);
+  d.scrollIntoView({block: "nearest"});
+};
+$("ask").onclick = async () => {
+  const q = $("cq").value.trim(), k = $("key").value.trim(); if (!q) return;
+  if (!k) return say("", "Add an Anthropic API key above to chat directly here, or click 'Copy Context Prompt (Free)' and paste it into Claude or Gemini.");
+  try { localStorage.setItem("dd_key", k); } catch (e) {}
+  S.chat = S.chat || []; S.chat.push({role: "user", content: q});
+  say("me", q); $("cq").value = ""; $("ask").disabled = true;
+  try {
+    const r = await fetch("https://api.anthropic.com/v1/messages", {method: "POST",
+      headers: {"content-type": "application/json", "x-api-key": k, "anthropic-version": "2023-06-01", "anthropic-dangerous-direct-browser-access": "true"},
+      body: JSON.stringify({model: MODEL, max_tokens: 900, system: SYS + "\n\n" + S.ctx, messages: S.chat})});
+    const d = await r.json(); if (!r.ok) throw new Error(d.error?.message || r.status);
+    const t = d.content.map(c => c.text || "").join(""); S.chat.push({role: "assistant", content: t}); say("", t);
+  } catch (e) { S.chat.pop(); say("", "Error: " + e.message); }
+  $("ask").disabled = false;
+};
+$("copy").onclick = async () => {
+  try {
+    await navigator.clipboard.writeText(SYS + "\n\n" + S.ctx + "\n\nQuestion: " + ($("cq").value || "Analyze my dynasty roster, identify my biggest positional needs, and suggest 2-3 realistic trades."));
+    status("Full league context & roster copied to clipboard!");
+  } catch (e) { status("Copy failed — browser blocked clipboard access."); }
+};
+
+// 2027 Rookie Board
+const DRAFT = `Jeremiah Smith|WR|Ohio State;Dante Moore|QB|Oregon;Arch Manning|QB|Texas;Drew Mestemaker|QB|Oklahoma State;Cam Coleman|WR|Texas;Charlie Becker|WR|Indiana;Jadan Baugh|RB|Florida;Kewan Lacy|RB|Ole Miss;Jamari Johnson|TE|Oregon;Nick Marsh|WR|Indiana;Darian Mensah|QB|Miami;Ahmad Hardy|RB|Missouri;Trey'Dez Green|TE|LSU;Justice Haynes|RB|Georgia Tech;Trinidad Chambliss|QB|Ole Miss;Julian Sayin|QB|Ohio State;LaNorris Sellers|QB|South Carolina;CJ Carr|QB|Notre Dame;Isaac Brown|RB|Louisville;Nate Frazier|RB|Georgia;Ryan Coleman-Williams|WR|Alabama;Deuce Alexander|WR|Ole Miss;Reed Harris|WR|Arizona State;Jackson Harris|WR|LSU;KJ Duff|WR|Rutgers;Duce Robinson|WR|Florida State;Mark Fletcher|RB|Miami;Jayden Maiava|QB|USC;Ryan Wingo|WR|Texas;Jamal Roberts|RB|Missouri;Isaiah Sategna III|WR|Oklahoma;DJ Vonnahme|TE|Iowa;Luke Reynolds|TE|Virginia Tech;Antwan Raymond|RB|Rutgers;Austin Simmons|QB|Missouri;Bryant Wesco|WR|Clemson;LJ Martin|RB|BYU;Raleek Brown|RB|Texas;Terrance Carter|TE|Texas Tech;Dylan Riley|RB|Boise State;Wyatt Young|WR|Oklahoma State;Connor Weigman|QB|Houston;TJ Moore|WR|Clemson;Amare Thomas|WR|Houston;DeSean Bishop|RB|Tennessee;Wayne Knight|RB|UCLA;Braylon Staley|WR|Tennessee;Dorian Thomas|TE|Cal;Dante Dowdell|RB|Georgia;Lawson Luckie|TE|Georgia`.split(";").map(x => x.split("|"));
+const STS = ["Speculative", "Eligibility ends", "Confirmed"], STC = {"Speculative": "text-amber-400", "Eligibility ends": "text-emerald-400", "Confirmed": "text-emerald-400"};
+let DS = {}; try { DS = JSON.parse(localStorage.getItem("dd_draft") || "{}"); } catch (e) {}
+const esc = t => (t || "").replace(/&/g, "&amp;").replace(/"/g, "&quot;").replace(/</g, "&lt;");
+
+function drawDraft() {
+  const mine = (S.picks || []).filter(p => p.name.startsWith("2027")).map(p => p.name.replace("2027 ", "")).join(", ");
+  const isForcedMobile = document.body.classList.contains("force-mobile");
+
+  const cardsHtml = DRAFT.map((d, i) => {
+    const o = DS[d[0]] || {}, st = o.s || "Speculative";
+    return `<div class="bg-slate-950 border border-slate-800 rounded-xl p-3 space-y-2">
+      <div class="flex items-center justify-between gap-2">
+        <div class="flex items-center gap-2 min-w-0">
+          <span class="font-mono text-xs text-slate-500">#${i + 1}</span>
+          <span class="font-bold text-white text-sm truncate">${d[0]}</span>
+          ${badge(d[1])}
+        </div>
+        <span class="text-xs text-slate-400 shrink-0">${d[2]}</span>
+      </div>
+      <div class="flex gap-2">
+        <select data-i="${i}" data-f="s" class="bg-slate-900 border border-slate-700 rounded-lg px-2 py-1.5 text-xs font-medium ${STC[st]}">${STS.map(x => `<option${x === st ? " selected" : ""}>${x}</option>`).join("")}</select>
+        <input data-i="${i}" data-f="n" value="${esc(o.n)}" placeholder="Scouting note..." class="bg-slate-900 border border-slate-800 focus:border-emerald-500 rounded-lg px-2.5 py-1.5 text-xs text-slate-200 flex-1 focus:outline-none">
+      </div>
+    </div>`;
+  }).join("");
+
+  const tableHtml = `<div class="overflow-x-auto">
+    <table class="w-full text-left border-collapse text-sm">
+      <thead><tr class="bg-slate-950/60 border-b border-slate-800 text-xs uppercase text-slate-400">
+        <th class="py-2.5 px-3 text-right w-12">#</th><th class="py-2.5 px-3">Prospect</th><th class="py-2.5 px-3">Pos</th><th class="py-2.5 px-3">School</th><th class="py-2.5 px-3">Status</th><th class="py-2.5 px-3">Scouting Notes</th>
+      </tr></thead>
+      <tbody>` +
+      DRAFT.map((d, i) => {
+        const o = DS[d[0]] || {}, st = o.s || "Speculative";
+        return `<tr class="border-b border-slate-800/60 hover:bg-slate-850/50">
+          <td class="py-2 px-3 text-right font-mono text-slate-500">${i + 1}</td>
+          <td class="py-2 px-3 font-medium text-white">${d[0]}</td>
+          <td class="py-2 px-3">${badge(d[1])}</td>
+          <td class="py-2 px-3 text-slate-400">${d[2]}</td>
+          <td class="py-2 px-3"><select data-i="${i}" data-f="s" class="bg-slate-950 border border-slate-700 rounded px-2 py-1 text-xs font-medium ${STC[st]}">${STS.map(x => `<option${x === st ? " selected" : ""}>${x}</option>`).join("")}</select></td>
+          <td class="py-2 px-3"><input data-i="${i}" data-f="n" value="${esc(o.n)}" placeholder="Add note..." class="bg-slate-950 border border-slate-800 focus:border-emerald-500 rounded px-2.5 py-1 text-xs text-slate-200 w-full min-w-[200px] focus:outline-none"></td>
+        </tr>`;
+      }).join("") + `</tbody></table></div>`;
+
+  $("draft").innerHTML = `
+    <div class="mb-4">
+      <h2 class="text-lg font-bold text-white">2027 Rookie Prospect Board (Top 50)</h2>
+      <p class="text-xs text-slate-400 mt-1">${mine ? `<span class="text-emerald-400 font-semibold">Your 2027 Picks: ${mine}.</span> ` : ""}Track declaration statuses and scouting notes locally.</p>
+    </div>
+    <div class="mobile-only block md:hidden space-y-2.5">${cardsHtml}</div>
+    <div class="desktop-only hidden md:block">${tableHtml}</div>`;
+}
+
+$("draft").addEventListener("input", e => {
+  const t = e.target, i = t.dataset.i; if (i == null) return;
+  const k = DRAFT[i][0]; DS[k] = {...(DS[k] || {}), [t.dataset.f]: t.value};
+  if (t.dataset.f === "s") t.className = `bg-slate-950 border border-slate-700 rounded px-2 py-1 text-xs font-medium ${STC[t.value]}`;
+  try { localStorage.setItem("dd_draft", JSON.stringify(DS)); } catch (err) {}
+});
+
+// Trade Thoughts Breakdown
+function thoughts() {
+  const A = S.sides.a, B = S.sides.b, box = $("thoughts");
+  if (!A.length || !B.length) return box.innerHTML = '<p class="text-xs text-slate-400">Add at least one player or pick to both sides first.</p>';
+  const raw = l => l.reduce((t, p) => t + p.v, 0), nm = l => l.map(p => p.name).join(", ");
+  const ad = adj(A), bd = adj(B), pct = Math.round((bd - ad) / Math.max(ad, 1) * 100);
+  const wage = l => { const x = l.filter(p => !p.pick && p.age), t = raw(x); return t ? x.reduce((s, p) => s + p.age * p.v, 0) / t : null; };
+  const ga = wage(A), gb = wage(B), contender = S.wavg > 27, rebuild = S.wavg < 25.5, win = rebuild ? "rebuilding" : contender ? "contending" : "balanced";
+  const top = {}; S.mine.filter(p => !p.pick).forEach(p => top[p.pos] = Math.max(top[p.pos] || 0, p.v));
+  const pros = [], cons = [];
+
+  if (pct >= 8) pros.push(`You come out ~${pct}% ahead on stud-adjusted value.`);
+  else if (pct <= -8) cons.push(`You give up ~${-pct}% more stud-adjusted value than you receive.`);
+  else pros.push("Adjusted value is within 8% — squarely in the fair-trade zone.");
+
+  if (A.length >= 2 && B.length === 1) {
+    pros.push("Consolidating multiple pieces into the best single asset in the deal.");
+    cons.push("Sacrificing roster depth; higher exposure to a single injury.");
+  }
+  if (B.length >= 2 && A.length === 1) {
+    pros.push("Splitting one asset into multiple pieces increases depth and hit-rate shots.");
+    cons.push("Giving up the highest-ceiling single piece (stud tax applies).");
+  }
+
+  if (ga && gb) {
+    if (gb - ga <= -2) (rebuild || !contender ? pros : cons).push(`Roster gets younger (weighted age ${ga.toFixed(1)} → ${gb.toFixed(1)}), extending your asset shelf life.`);
+    if (gb - ga >= 2) (contender ? pros : cons).push(`Roster gets older (${ga.toFixed(1)} → ${gb.toFixed(1)}), ${contender ? "boosting immediate title odds" : "accelerating depreciation risk"}.`);
+  }
+
+  B.filter(p => !p.pick).forEach(p => {
+    const [f] = flag(p);
+    if (f === "sell") cons.push(`${p.name} carries a sell flag — nearing or past positional age cliff.`);
+    if (f === "buy") pros.push(`${p.name} is flagged as a buy (ascending age curve or value dip).`);
+    if (p.trend > 300) pros.push(`${p.name}'s market value is trending up over the last 30 days.`);
+    if (p.trend < -400) cons.push(`${p.name}'s market value has dropped over the last 30 days.`);
+    if (top[p.pos] != null && p.v > top[p.pos]) pros.push(`${p.name} becomes your new ${p.pos}1.`);
+  });
+
+  A.filter(p => !p.pick).forEach(p => {
+    const [f] = flag(p);
+    if (f === "sell") pros.push(`Cashing out on ${p.name} near peak age/value.`);
+    if (f === "buy") cons.push(`${p.name} is flagged as a buy — risk of selling before peak.`);
+    if (p.v === top[p.pos] && !B.some(b => b.pos === p.pos && b.v >= p.v * .8)) cons.push(`Leaves a hole at ${p.pos}1 without an equivalent replacement.`);
+  });
+
+  const pa = A.filter(p => p.pick).length, pb = B.filter(p => p.pick).length;
+  if (pb > pa) pros.push("Net gain in rookie draft capital.");
+  if (pa > pb) cons.push("Net loss in rookie draft capital.");
+
+  [...A, ...B].filter(p => p.fc != null && p.dp != null && Math.abs(p.fc - p.dp) / Math.max(p.fc, p.dp) > .25)
+    .forEach(p => cons.push(`Source divergence on ${p.name}: FantasyCalc (${p.fc}) vs. DynastyProcess (${p.dp}).`));
+
+  const word = pct >= 15 ? "Strong Win" : pct >= 8 ? "Slight Win" : pct > -8 ? "Fair Deal" : pct > -15 ? "Slight Overpay" : "Heavy Overpay";
+  const call = pct >= 8 || (pct > -8 && pros.length > cons.length) ? "Lean Accept." : pct > -15 ? "Counter for a small sweetener." : "Decline unless filling a desperate playoff need.";
+  const li = l => l.length ? l.map(x => `<li class="flex items-start gap-2"><span class="mt-1">•</span><span>${x}</span></li>`).join("") : "<li class='text-slate-500'>Nothing notable.</li>";
+
+  box.innerHTML = `
+    <div class="bg-slate-950 border border-slate-800 rounded-xl p-4 space-y-3">
+      <div class="text-sm text-slate-200"><b class="text-white">${word} — ${call}</b> Giving ${nm(A)} (raw ${raw(A).toLocaleString()}) for ${nm(B)} (raw ${raw(B).toLocaleString()}) nets <b class="${pct >= 0 ? "text-emerald-400" : "text-rose-400"}">${pct >= 0 ? "+" : ""}${pct}%</b> adjusted value on a ${win} build.</div>
+      <div class="trade-grid grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
+        <div class="bg-emerald-950/20 border border-emerald-500/20 rounded-lg p-3">
+          <div class="font-bold text-emerald-400 uppercase tracking-wider mb-1.5">Pros</div>
+          <ul class="space-y-1 text-slate-300">${li(pros)}</ul>
+        </div>
+        <div class="bg-rose-950/20 border border-rose-500/20 rounded-lg p-3">
+          <div class="font-bold text-rose-400 uppercase tracking-wider mb-1.5">Cons &amp; Risks</div>
+          <ul class="space-y-1 text-slate-300">${li(cons)}</ul>
+        </div>
+      </div>
+    </div>`;
+}
+$("more").onclick = thoughts;
+$("tchat").onclick = () => {
+  if (!S.sides.a.length || !S.sides.b.length) return status("Add assets to both sides first.");
+  $("cq").value = `Evaluate this trade for my team. I give: ${S.sides.a.map(p => p.name).join(", ")}. I get: ${S.sides.b.map(p => p.name).join(", ")}. Should I accept, counter, or decline?`;
+  document.querySelector('[data-tab="tab-ai"]').click();
+};
+
+// Live Alerts & Auto-Refresh
+let timer;
+function setAuto() { clearInterval(timer); const m = +$("auto").value; if (m) timer = setInterval(refresh, m * 6e4); }
+async function refresh() {
+  if (!S.lg || document.hidden) return;
+  const a = document.activeElement; if (a && /INPUT|TEXTAREA|SELECT/.test(a.tagName) && a.id !== "user") return;
+  await loadLeague(S.lg);
+}
+$("auto").onchange = setAuto;
+$("now").onclick = () => S.lg && loadLeague(S.lg);
+document.addEventListener("visibilitychange", () => { if (!document.hidden && S.lg && +$("auto").value && Date.now() - (S.last || 0) > +$("auto").value * 6e4) refresh(); });
+
+function drawLive() {
+  S.last = Date.now();
+  const cur = {}, items = []; const SEV = ["Out", "IR", "PUP", "Sus", "NA", "COV"];
+  (S.mineRoster.players || []).forEach(id => {
+    const q = S.pmap[id]; if (!q) return;
+    const key = (q.injury_status || "") + "|" + (q.depth_chart_order || ""); cur[id] = key;
+    const v = (sidMap.get(id) || {}).v || 0, nm = `${q.first_name} ${q.last_name}`;
+    if (q.injury_status) {
+      const isOut = SEV.includes(q.injury_status);
+      items.push({sev: isOut ? 0 : 1, id, html: `<span class="font-bold ${isOut ? "text-rose-400" : "text-amber-400"}">${esc(q.injury_status)}</span> <b class="text-white">${esc(nm)}</b> <span class="text-slate-400">(${q.position}, ${q.team || "FA"})${q.injury_body_part ? " · " + esc(q.injury_body_part) : ""}</span>${q.injury_notes ? `<div class="text-xs text-slate-500 mt-0.5">${esc(String(q.injury_notes).slice(0, 140))}</div>` : ""}`});
+    } else if (POS.includes(q.position) && v >= 1000 && q.depth_chart_order >= 3) {
+      items.push({sev: 2, id, html: `<span class="font-bold text-amber-400">Depth #${q.depth_chart_order}</span> <b class="text-white">${esc(nm)}</b> <span class="text-slate-400">(${q.position}, ${q.team || "FA"})</span>`});
+    }
+  });
+  if (S.fresh) { S.newIds = S.prevAlerts ? new Set(Object.keys(cur).filter(id => S.prevAlerts[id] !== cur[id])) : new Set(); S.prevAlerts = cur; S.fresh = false; }
+  items.sort((a, b) => a.sev - b.sev);
+  const n = (S.newIds || new Set());
+  const sevCount = items.filter(x => x.sev < 2).length;
+  $("alertBadge").textContent = sevCount;
+  $("alertBadge").hidden = !sevCount;
+
+  $("alerts").innerHTML = items.length ? items.map(x => `<div class="bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-xs flex justify-between items-start gap-2"><div>${x.html}</div>${n.has(x.id) ? '<span class="px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-400 font-bold text-[10px]">NEW</span>' : ""}</div>`).join("") : '<p class="text-xs text-slate-500">No active injury or depth chart flags on your roster.</p>';
+  document.title = (sevCount ? `(${sevCount}) ` : "") + "Dynasty Desk Pro";
+}
+
+async function loadActivity() {
+  try {
+    const st = await j(`${SL}/state/nfl`), wk = Math.max(1, +st.week || 1), weeks = wk > 1 ? [wk, wk - 1] : [wk];
+    const all = (await Promise.all(weeks.map(w => j(`${SL}/league/${S.lg.league_id}/transactions/${w}`).catch(() => [])))).flat()
+      .filter(t => t.status === "complete").sort((a, b) => b.created - a.created).slice(0, 12);
+    const pn = id => { const q = S.pmap[id]; return q ? `${q.first_name} ${q.last_name}` : id; };
+    const tm = rid => esc(tname(rid));
+    $("activity").innerHTML = all.length ? all.map(t => {
+      const when = new Date(t.created).toLocaleString([], {month: "short", day: "numeric", hour: "numeric", minute: "2-digit"});
+      const mineIn = (t.roster_ids || []).includes(S.mineRoster.roster_id);
+      let txt;
+      if (t.type === "trade") txt = "<b class='text-emerald-400'>Trade:</b> " + (t.roster_ids || []).map(rid => {
+        const got = [...Object.keys(t.adds || {}).filter(id => t.adds[id] === rid).map(pn), ...(t.draft_picks || []).filter(d => d.owner_id === rid).map(d => `${d.season} Rd ${d.round}`)];
+        return `${tm(rid)} gets ${got.join(", ") || "nothing"}`; }).join("; ");
+      else {
+        const rid = t.roster_ids[0], add = Object.keys(t.adds || {}).map(pn), drop = Object.keys(t.drops || {}).map(pn), bid = t.settings && t.settings.waiver_bid;
+        txt = `<b class="text-sky-400">${t.type === "waiver" ? "Waiver" : "FA"}:</b> ${tm(rid)} +${add.join(", ") || "none"}${drop.length ? " / -" + drop.join(", ") : ""}${bid != null ? ` ($${bid})` : ""}`;
+      }
+      return `<div class="bg-slate-950 border ${mineIn ? "border-emerald-500/40" : "border-slate-800"} rounded-lg p-2.5 text-xs flex justify-between gap-2"><span class="text-slate-300">${txt}</span><span class="text-slate-500 shrink-0">${when}</span></div>`;
+    }).join("") : '<p class="text-xs text-slate-500">No completed trades or waivers in the past 2 weeks.</p>';
+  } catch (e) { $("activity").innerHTML = '<p class="text-xs text-slate-500">Could not load league transactions.</p>'; }
+}
+
+// Custom GitHub News Feed
+const ago = d => { const m = Math.max(0, Math.round((Date.now() - Date.parse(d)) / 6e4)); return m < 60 ? m + "m ago" : m < 1440 ? Math.round(m / 60) + "h ago" : Math.round(m / 1440) + "d ago"; };
+$("saveRepo").onclick = () => { try { localStorage.setItem("dd_repo", $("repo").value.trim()); } catch (e) {} S.nc = null; drawNews(); };
+try { $("repo").value = localStorage.getItem("dd_repo") || ""; } catch (e) {}
+async function drawNews() {
+  const repo = $("repo").value.trim(), box = $("headlines");
+  if (!repo) return box.innerHTML = '<p class="text-xs text-slate-500 italic">No GitHub data repo configured.</p>';
+  try {
+    if (!S.nc || S.nc.repo !== repo || Date.now() - S.nc.t > 3e5) S.nc = {repo, t: Date.now(), d: await j(`https://raw.githubusercontent.com/${repo}/data/news.json`)};
+    const items = S.nc.d.items || [], mine = S.watch.mine.map(norm).filter(n => n.length > 4), tg = S.watch.tg.map(norm).filter(n => n.length > 4);
+    const rows = items.map(it => { const t = norm(it.t + " " + (it.x || "")); return {it, h: mine.some(n => t.includes(n)) ? "My Player" : tg.some(n => t.includes(n)) ? "Trade Target" : ""}; });
+    const show = [...rows.filter(r => r.h).slice(0, 12), ...rows.filter(r => !r.h).slice(0, 8)];
+    box.innerHTML = show.length ? show.map(({it, h}) => `<div class="bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-xs">${h ? `<span class="px-1.5 py-0.5 rounded font-bold mr-1.5 ${h === "My Player" ? "bg-emerald-500/20 text-emerald-400" : "bg-amber-500/20 text-amber-400"}">${h}</span>` : ""}<a href="${esc(it.l)}" target="_blank" rel="noopener" class="text-slate-200 hover:text-emerald-400 font-medium">${esc(it.t)}</a><div class="text-slate-500 mt-1">${esc(it.s)} · ${ago(it.d)}</div></div>`).join("") : '<p class="text-xs text-slate-500">No headlines found in news.json.</p>';
+  } catch (e) { box.innerHTML = '<p class="text-xs text-rose-400">Could not read news.json from that repository.</p>'; }
+}
+
+// ================= Pro features: power rankings, audit, window, finder, dossier =================
+const SLOT_ELIG = {QB: ["QB"], RB: ["RB"], WR: ["WR"], TE: ["TE"], FLEX: ["RB", "WR", "TE"], SUPER_FLEX: ["QB", "RB", "WR", "TE"], REC_FLEX: ["WR", "TE"], WRRB_FLEX: ["WR", "RB"]};
+const slotList = () => (S.lg.roster_positions || []).filter(x => SLOT_ELIG[x]);
+function lineup(list, val = p => p.v) {
+  const pool = list.filter(p => POS.includes(p.pos)).sort((a, b) => val(b) - val(a)), used = new Set(), out = [];
+  for (const s of slotList().sort((a, b) => SLOT_ELIG[a].length - SLOT_ELIG[b].length)) {
+    const p = pool.find(x => !used.has(x) && SLOT_ELIG[s].includes(x.pos)); if (p) { used.add(p); out.push({slot: s, p}); }
+  }
+  return {total: out.reduce((t, x) => t + val(x.p), 0), starters: out, bench: pool.filter(x => !used.has(x))};
+}
+const teamPlayers = r => (r.players || []).map(id => sidMap.get(id)).filter(p => p && !p.pick);
+const TIERS = [["Elite", "text-emerald-400"], ["Strong", "text-lime-400"], ["Average", "text-slate-300"], ["Weak", "text-orange-400"], ["Rebuilding", "text-rose-400"]];
+const tierOf = (i, n) => { const q = n > 1 ? i / (n - 1) : 0; return q <= .15 ? 0 : q <= .35 ? 1 : q <= .65 ? 2 : q <= .85 ? 3 : 4; };
+const AGE_F = {QB: a => a <= 33 ? 1 : a <= 36 ? .88 : .72, RB: a => a <= 23 ? 1.04 : a <= 25 ? 1 : a === 26 ? .9 : a === 27 ? .8 : .68,
+  WR: a => a <= 24 ? 1.03 : a <= 28 ? 1 : a === 29 ? .9 : a === 30 ? .82 : .7, TE: a => a <= 25 ? 1.03 : a <= 30 ? 1 : a === 31 ? .9 : .75};
+function projV(p, y) { let v = p.v, a = Math.floor(p.age || 26); for (let i = 0; i < y; i++) v *= (AGE_F[p.pos] || (() => 1))(a + i); return Math.round(v); }
+const pickParts = p => { const [y, k, o] = p.sid.slice(2).split("-"); return {y, k: +k, o: +o}; };
+function tierValue(y, k, tier) {
+  const sfx = ["", "st", "nd", "rd", "th"][Math.min(k, 4)], re = new RegExp(`\\b${k}${sfx}\\b|Pick ${k}\\.`, "i"), tr = new RegExp(tier, "i");
+  const hits = S.all.filter(p => p.pick && p.name.includes(y) && re.test(p.name) && tr.test(p.name));
+  return hits.length ? Math.round(hits.reduce((s, p) => s + p.v, 0) / hits.length) : pickValue(y, k);
+}
+const isStud = p => p.v >= 4500 && (p.age || 26) <= (CLIFF[p.pos] || 30) - 2;
+
+function leagueModel() {
+  const taken = new Set(S.rosters.flatMap(r => r.players || [])), rep = {};
+  S.all.forEach(p => { if (!p.pick && p.sid && !taken.has(p.sid) && POS.includes(p.pos)) rep[p.pos] = Math.max(rep[p.pos] || 0, p.v); });
+  const stand = [...S.rosters].sort((a, b) => (b.settings.wins - a.settings.wins) || (b.settings.fpts - a.settings.fpts));
+  const teams = S.rosters.map(r => {
+    const pl = teamPlayers(r), L = lineup(pl), pos = {}, s = r.settings;
+    POS.forEach(k => pos[k] = L.starters.filter(x => x.p.pos === k).reduce((t, x) => t + Math.max(0, x.p.v - (rep[k] || 0)), 0));
+    return {id: r.roster_id, r, name: tname(r.roster_id), pl, L, pos, tier: {}, rec: `${s.wins || 0}-${s.losses || 0}`, starter: L.total,
+      roster: pl.reduce((t, p) => t + p.v, 0), bench: L.bench.slice(0, 6).reduce((t, p) => t + p.v, 0), standIdx: stand.indexOf(r),
+      cap: ownedPicks(S.lg, S.rosters, S.traded || [], r.roster_id).reduce((t, p) => t + p.v, 0)};
+  });
+  const mx = k => Math.max(1, ...teams.map(t => t[k]));
+  teams.forEach(t => t.score = Math.round(40 * t.starter / mx("starter") + 25 * t.roster / mx("roster") + 15 * t.bench / mx("bench") + 20 * t.cap / mx("cap")));
+  POS.forEach(k => [...teams].sort((a, b) => b.pos[k] - a.pos[k]).forEach((t, i) => t.tier[k] = tierOf(i, teams.length)));
+  teams.sort((a, b) => b.score - a.score);
+  return {teams, stand, rep};
+}
+
+function extrasPro() {
+  try {
+    S.M = leagueModel(); drawAudit(S.M); drawWindow(S.M); ensureLeagueTabs();
+    $("finderOut").innerHTML = S.fin ? $("finderOut").innerHTML : '<p class="text-xs text-slate-500">Press “Scan league” to look for trades that make both teams better.</p>';
+  } catch (e) { console.error(e); status("Audit error: " + e.message); }
+}
+const H = (t, sub) => `<h2 class="text-lg font-bold text-white">${t}</h2><p class="text-xs text-slate-400 mb-3">${sub || ""}</p>`;
+
+function drawAudit(M) {
+  const me = M.teams.find(t => t.id === S.mineRoster.roster_id), n = M.teams.length;
+  const rows = M.teams.map((t, i) => `<tr class="border-t border-slate-800 ${t.id === me.id ? "bg-emerald-500/10" : ""}"><td class="py-2">${i + 1}</td><td class="font-medium text-white">${esc(t.name)}${t.id === me.id ? " (you)" : ""}</td><td class="text-center text-slate-400">${t.rec}</td>${POS.map(k => `<td class="text-center text-xs ${TIERS[t.tier[k]][1]}">${TIERS[t.tier[k]][0]}</td>`).join("")}<td class="text-right font-mono">${t.starter.toLocaleString()}</td><td class="text-right font-mono">${t.cap.toLocaleString()}</td><td class="text-right font-mono font-bold text-white">${t.score}</td></tr>`).join("");
+  $("power").innerHTML = H("League Power Rankings", "Score = 40% starting lineup value, 25% total roster value, 15% bench depth, 20% draft capital. Position tiers compare starters above the best free agent. Values use your current blend.") +
+    `<div class="overflow-x-auto"><table class="w-full text-sm min-w-[680px]"><thead><tr class="text-xs text-slate-400 uppercase"><th class="text-left py-2">#</th><th class="text-left">Team</th><th>Record</th><th>QB</th><th>RB</th><th>WR</th><th>TE</th><th class="text-right">Starters</th><th class="text-right">Picks</th><th class="text-right">Score</th></tr></thead><tbody>${rows}</tbody></table></div>`;
+
+  const start = new Set(me.L.starters.map(x => x.p)), c = {stud: [], trade: [], hold: [], cut: []};
+  me.pl.forEach(p => { const age = p.age || 26, cl = CLIFF[p.pos] || 30;
+    if (isStud(p)) c.stud.push(p);
+    else if (p.v >= 1500 && (flag(p)[0] === "sell" || age >= cl - 2 || !start.has(p))) c.trade.push(p);
+    else if (p.v < 350 && age > 22) c.cut.push(p);
+    else c.hold.push(p); });
+  const sum = l => l.reduce((t, p) => t + p.v, 0), picks = S.picks || [];
+  const tradeable = sum(c.trade) + sum(c.hold.filter(p => p.v >= 1000)) + sum(picks.filter(p => p.v >= 500)), locked = sum(c.stud);
+  const liq = Math.max(0, Math.min(100, Math.round(100 * tradeable / (tradeable + locked || 1)) - Math.min(30, c.cut.length * 3)));
+  const col = (title, cls, why, l) => `<div class="bg-slate-950 border border-slate-800 rounded-lg p-3"><div class="font-semibold ${cls}">${title} <span class="text-slate-500 font-normal">(${l.length})</span></div><div class="text-[11px] text-slate-500 mb-2">${why}</div>${l.sort((a, b) => b.v - a.v).map(p => `<div class="flex justify-between text-xs py-0.5"><span>${esc(p.name)} <span class="text-slate-500">${p.pos}${p.age ? ", " + Math.round(p.age) : ""}</span></span><span class="font-mono">${p.v.toLocaleString()}</span></div>`).join("") || '<div class="text-xs text-slate-600">None</div>'}</div>`;
+  $("audit").innerHTML = H("Your Team Audit", `Asset liquidity <b class="text-white">${liq}/100</b>: ${Math.round(tradeable).toLocaleString()} in tradeable value (including picks) against ${Math.round(locked).toLocaleString()} locked in untouchables, minus a small penalty for ${c.cut.length} cut candidate${c.cut.length === 1 ? "" : "s"}.`) +
+    `<div class="grid grid-cols-1 md:grid-cols-2 gap-3">${col("Untouchable Studs", "text-emerald-400", "Value 4,500+ and well before the age cliff", c.stud)}${col("Prime Trade Assets", "text-amber-400", "Valuable and aging, flagged sell, or sitting on your bench", c.trade)}${col("Hold / Bargains", "text-sky-400", "Useful starters, young upside, or cheap depth", c.hold)}${col("Roster Cloggers / Cut Candidates", "text-rose-400", "Under 350 value and not a young prospect", c.cut)}</div>`;
+}
+
+function drawWindow(M) {
+  const me = M.teams.find(t => t.id === S.mineRoster.roster_id), yr = new Date().getFullYear();
+  const Y = [0, 1, 2].map(y => ({y, L: lineup(me.pl, p => projV(p, y))})), b = Y[0].L.total || 1;
+  const verdict = Y[2].L.total >= b * 1.05 ? "Window is opening: your lineup should improve with age on your side." : Y[1].L.total < b * .93 && Y[2].L.total < b * .85 ? "Window is closing: projected lineup value falls fast, so consider selling aging starters." : "Window is steady: no sharp rise or drop projected.";
+  const labels = ["This season", `Next season (${yr + 1})`, `Two seasons out (${yr + 2})`];
+  const rows = Y.map(({y, L}) => `<div class="bg-slate-950 border border-slate-800 rounded-lg p-3"><div class="font-semibold text-white">${labels[y]}</div><div class="font-mono text-lg">${L.total.toLocaleString()} <span class="text-xs ${L.total >= b ? "text-emerald-400" : "text-rose-400"}">${y ? Math.round(100 * (L.total / b - 1)) + "%" : "base"}</span></div>${L.starters.map(x => `<div class="flex justify-between text-xs py-0.5"><span><span class="text-slate-500">${x.slot.replace("_", " ")}</span> ${esc(x.p.name)}</span><span class="font-mono">${projV(x.p, y).toLocaleString()}</span></div>`).join("")}</div>`).join("");
+
+  const played = (me.r.settings.wins || 0) + (me.r.settings.losses || 0) >= 3, picks = S.picks || [], n = M.teams.length;
+  const next = Math.min(...picks.map(p => +pickParts(p).y));
+  const pr = picks.map(p => { const {y, k, o} = pickParts(p), oi = (M.teams.find(t => t.id === o) || {}).standIdx ?? 0, q = n > 1 ? oi / (n - 1) : .5;
+    const tier = played && +y === next ? (q >= .67 ? "Early" : q <= .33 ? "Late" : "Mid") : "Mid";
+    return {p, y, k, o, tier, val: tierValue(y, k, tier)}; });
+  const total = pr.reduce((t, x) => t + x.val, 0), rank = [...M.teams].sort((a, b) => b.cap - a.cap).findIndex(t => t.id === me.id) + 1, q = rank / n;
+  const grade = q <= .2 ? "A" : q <= .45 ? "B" : q <= .7 ? "C" : "D", firsts = t => pr.filter(x => x.k === 1 && x.tier === t).length;
+  const tc = {Early: "text-emerald-400", Mid: "text-slate-300", Late: "text-orange-400"};
+  $("window").innerHTML = H("Championship Window & Draft Capital", "Lineups are projected with standard position age curves applied to current values. These are value projections, not points projections.") +
+    `<div class="grid grid-cols-1 md:grid-cols-3 gap-3">${rows}</div><p class="text-sm mt-3 text-slate-200">${verdict}</p>` +
+    `<div class="mt-5"><h3 class="font-semibold text-white">Future draft capital net worth: <span class="font-mono">${total.toLocaleString()}</span> <span class="text-emerald-400">Grade ${grade}</span> <span class="text-xs text-slate-400">(#${rank} of ${n})</span></h3><p class="text-xs text-slate-400 mb-2">Projected 1sts: ${firsts("Early")} early, ${firsts("Mid")} mid, ${firsts("Late")} late. ${played ? `Picks in the ${next} draft are tiered by the original owner’s current standing; later years default to mid.` : "Too few games played to project standings, so picks default to mid."}</p>` +
+    `<div class="flex flex-wrap gap-2">${pr.map(x => `<span class="text-xs bg-slate-950 border border-slate-800 rounded px-2 py-1">${x.y} R${x.k}${x.o !== S.mineRoster.roster_id ? " via " + esc(tname(x.o)) : ""} <b class="${tc[x.tier]}">${x.tier}</b> <span class="font-mono">${x.val.toLocaleString()}</span></span>`).join("")}</div></div>`;
+}
+
+// ---- Trade Finder ----
+const combos = (a, max) => { const o = a.map(x => [x]); if (max > 1) for (let i = 0; i < a.length; i++) for (let j = i + 1; j < a.length; j++) o.push([a[i], a[j]]); return o; };
+function findTrades() {
+  const M = S.M || leagueModel(), me = M.teams.find(t => t.id === S.mineRoster.roster_id), found = [];
+  const pool = t => t.pl.filter(p => p.v >= 600 && !isStud(p)).sort((a, b) => b.v - a.v).slice(0, 8);
+  for (const t of M.teams) { if (t.id === me.id) continue;
+    let best = null;
+    for (const g of combos(pool(me), 2)) for (const h of combos(pool(t), 2)) {
+      const A = adj(g), B = adj(h); if (Math.abs(A - B) / Math.max(A, B) > .15) continue;
+      const mine = lineup([...me.pl.filter(p => !g.includes(p)), ...h]).total - me.L.total, theirs = lineup([...t.pl.filter(p => !h.includes(p)), ...g]).total - t.L.total;
+      if (mine < 150 || theirs < 150) continue;
+      const score = Math.min(mine, theirs) - 50 * (g.length + h.length - 2);
+      if (!best || score > best.score) best = {t, g, h, mine, theirs, score};
+    }
+    if (best) found.push(best);
+  }
+  S.props = found.sort((a, b) => b.score - a.score).slice(0, 3); S.fin = true;
+  const list = l => l.map(p => `${esc(p.name)} <span class="text-slate-500">(${p.pos}${p.age ? ", " + Math.round(p.age) : ""}, ${p.v.toLocaleString()})</span>`).join(" + ");
+  $("finderOut").innerHTML = S.props.length ? S.props.map((x, i) => `<div class="bg-slate-950 border border-slate-800 rounded-lg p-3 mb-3"><div class="text-xs text-slate-400">${esc(x.t.name)} (${x.t.rec}) · ${x.g.length}-for-${x.h.length}</div><div class="text-sm mt-1"><b class="text-rose-300">You give:</b> ${list(x.g)}</div><div class="text-sm"><b class="text-emerald-300">You get:</b> ${list(x.h)}</div><div class="text-xs text-slate-400 mt-1">Starting lineup value: you <b class="text-emerald-400">+${Math.round(x.mine)}</b>, them <b class="text-emerald-400">+${Math.round(x.theirs)}</b></div><button data-prop="${i}" class="mt-2 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs px-3 py-1.5 rounded-lg border border-slate-700 cursor-pointer">Load in calculator</button></div>`).join("") +
+    '<p class="text-xs text-slate-500">Lineup gains use blended values and your league’s starting slots. The other manager may value things differently, so treat these as conversation starters.</p>'
+    : '<p class="text-sm text-slate-400">No trade found that improves both starting lineups within a 15% value gap.</p>';
+}
+$("scan").onclick = () => { if (S.lg) { S.M = leagueModel(); findTrades(); } };
+document.addEventListener("click", e => { const b = e.target.closest("[data-prop]"); if (!b) return;
+  const x = S.props[+b.dataset.prop]; S.sides.a = [...x.g]; S.sides.b = [...x.h]; drawTrade(); document.querySelector('[data-tab="tab-trade"]').click(); });
+
+// ---- Deep-Dive Trade Dossier ----
+async function snapData() {
+  if (S.snaps) return S.snaps;
+  try {
+    const st = await j(`${SL}/state/nfl`), wk = +st.week || 1, season = st.season || S.lg.season;
+    const weeks = [wk - 4, wk - 3, wk - 2, wk - 1].filter(w => w >= 1);
+    const data = await Promise.all(weeks.map(w => j(`${SL}/stats/nfl/regular/${season}/${w}`).catch(() => null)));
+    S.snaps = weeks.map((w, i) => ({w, d: data[i]})).filter(x => x.d);
+  } catch (e) { S.snaps = []; }
+  return S.snaps;
+}
+function snapHtml(p, sn) {
+  const rows = sn.map(x => { const s = x.d[p.sid]; return s ? {w: x.w, share: s.tm_off_snp ? Math.round(100 * (s.off_snp || 0) / s.tm_off_snp) : null, tgt: s.rec_tgt || 0, att: s.rush_att || 0} : null; }).filter(Boolean);
+  if (!rows.length) return "No recent snap data found (the stats feed may be unavailable, or he didn’t play).";
+  const sh = rows.map(r => r.share).filter(x => x != null), d = sh.length > 1 ? sh.at(-1) - sh[0] : 0;
+  return `Snap share, weeks ${rows[0].w} to ${rows.at(-1).w}: <b class="text-white">${sh.map(x => x + "%").join(" → ") || "n/a"}</b> ${d >= 10 ? '<span class="text-emerald-400">rising</span>' : d <= -10 ? '<span class="text-rose-400">falling</span>' : ""}<br>Targets by week: ${rows.map(r => r.tgt).join(", ")}<br>Rush attempts: ${rows.map(r => r.att).join(", ")}`;
+}
+function depthNotes(p) {
+  const q = S.pmap[p.sid] || {}, n = [];
+  if (q.injury_status) n.push(`<span class="text-rose-400">${esc(q.injury_status)}</span>${q.injury_body_part ? " (" + esc(q.injury_body_part) + ")" : ""}`);
+  if (q.depth_chart_order) n.push(`Listed #${q.depth_chart_order} at ${esc(q.depth_chart_position || p.pos)}`);
+  const mates = S.all.filter(x => !x.pick && x.team && x.team === p.team && x.pos === p.pos && x.sid !== p.sid);
+  mates.filter(x => x.age && x.age <= 23 && x.age < (p.age || 99) && x.v >= p.v * .4).forEach(x => n.push(`Rookie/young pressure: ${esc(x.name)} (age ${Math.round(x.age)}, value ${x.v.toLocaleString()})`));
+  mates.filter(x => ["Out", "IR", "Doubtful", "PUP"].includes((S.pmap[x.sid] || {}).injury_status) && x.v >= p.v * .6).forEach(x => n.push(`May benefit from ${esc(x.name)}’s ${esc(S.pmap[x.sid].injury_status)} status`));
+  return n.length ? n.join("<br>") : "No notable depth chart flags.";
+}
+async function drawDossier() {
+  const box = $("dossier"), tok = S.dtok = (S.dtok || 0) + 1;
+  const ps = [...S.sides.a.map(p => ({p, side: "Give"})), ...S.sides.b.map(p => ({p, side: "Get"}))].filter(x => !x.p.pick && x.p.sid);
+  if (!ps.length) return box.innerHTML = "";
+  const card = ({p, side}) => { const proj = [0, 1, 2, 3].map(y => projV(p, y)), mx = Math.max(...proj, 1), q = S.pmap[p.sid] || {};
+    const news = ((S.nc && S.nc.d && S.nc.d.items) || []).filter(i => norm(i.t).includes(norm(p.name))).slice(0, 2);
+    return `<details ${ps.length <= 4 ? "open" : ""} class="bg-slate-950 border border-slate-800 rounded-lg p-3 mb-2"><summary class="cursor-pointer text-sm font-semibold text-white"><span class="${side === "Give" ? "text-rose-300" : "text-emerald-300"}">${side}</span> ${esc(p.name)} <span class="text-slate-500 font-normal">${p.pos}${p.age ? ", " + Math.round(p.age) : ""}, ${p.team || ""}</span></summary>
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-3 text-xs text-slate-300">
+        <div><div class="text-slate-400 uppercase tracking-wider mb-1">Usage trend</div><div id="snap-${p.sid}">Loading snap data…</div><div class="text-slate-600 mt-1">Route participation isn’t in Sleeper’s free data, so targets are shown instead.</div></div>
+        <div><div class="text-slate-400 uppercase tracking-wider mb-1">Depth chart context</div>${depthNotes(p)}</div>
+        <div><div class="text-slate-400 uppercase tracking-wider mb-1">3-year value outlook (age curve)</div>${proj.map((v, y) => `<div class="flex items-center gap-2 py-0.5"><span class="w-10 text-slate-500">${y ? "+" + y + " yr" : "Now"}</span><div class="flex-1"><div class="h-2 rounded bg-emerald-500/70" style="width:${Math.max(4, Math.round(100 * v / mx))}%"></div></div><span class="font-mono w-12 text-right">${v.toLocaleString()}</span></div>`).join("")}</div>
+        <div><div class="text-slate-400 uppercase tracking-wider mb-1">News</div>${q.injury_notes ? `<div>${esc(String(q.injury_notes).slice(0, 160))}</div>` : ""}${news.map(i => `<div><a class="text-emerald-400 underline" target="_blank" rel="noopener" href="${esc(i.l)}">${esc(i.t)}</a></div>`).join("") || (q.injury_notes ? "" : "No recent news found.")}</div>
+      </div></details>`; };
+  box.innerHTML = `<h3 class="text-base font-bold text-white mb-2">Deep-Dive Trade Dossier</h3>` + ps.map(card).join("");
+  const sn = await snapData(); if (tok !== S.dtok) return;
+  ps.forEach(({p}) => { const el = document.getElementById("snap-" + p.sid); if (el) el.innerHTML = snapHtml(p, sn); });
+}
+const _drawTrade = drawTrade; drawTrade = function () { _drawTrade(); drawDossier(); };
+
+// ================= Start/Sit optimizer, Draft Room, Manager profiles =================
+const ptsKey = () => { const r = S.lg.scoring_settings?.rec ?? 1; return r >= 1 ? "pts_ppr" : r > 0 ? "pts_half_ppr" : "pts_std"; };
+const OUT_ST = ["Out", "IR", "PUP", "Sus", "NA", "COV"];
+const rosterPlayers = r => (r.players || []).map(id => sidMap.get(id) || ghost(id)).filter(p => p && POS.includes(p.pos));
+const wkInfo = async () => { const st = S.st ||= await j(`${SL}/state/nfl`); return {wk: +st.week || 1, season: st.season || S.lg.season}; };
+const card2 = "bg-slate-950 border border-slate-800 rounded-lg p-3";
+const f1 = x => (Math.round(x * 10) / 10).toFixed(1);
+
+async function projData(wk, season) {
+  if (S.proj && S.proj.wk === wk) return S.proj;
+  const q = POS.map(p => "position[]=" + p).join("&"), map = {}; let ok = false;
+  for (const host of ["https://api.sleeper.com", "https://api.sleeper.app"]) {
+    try { const arr = await j(`${host}/projections/nfl/${season}/${wk}?season_type=regular&${q}`); if (Array.isArray(arr) && arr.length) { arr.forEach(x => map[String(x.player_id)] = x); ok = true; break; } } catch (e) {}
+  }
+  return S.proj = {wk, map, ok};
+}
+
+async function runStartSit() {
+  const box = $("ssOut"); box.innerHTML = '<p class="text-sm text-slate-400">Loading projections, recent games and your lineup…</p>';
+  try {
+    const {wk, season} = await wkInfo(), key = ptsKey();
+    const [pj, sn, mus, mx] = await Promise.all([projData(wk, season), snapData(), j(`${SL}/league/${S.lg.league_id}/matchups/${wk}`).catch(() => []), mxData()]);
+    const info = p => {
+      const q = S.pmap[p.sid] || {}, pr = pj.map[p.sid], proj = pr && pr.stats && pr.stats[key] != null ? +pr.stats[key] : null;
+      const gm = sn.slice(-3).map(x => x.d[p.sid]).filter(s => s && (s.off_snp > 0 || +s[key] > 0));
+      const avg = gm.length ? gm.reduce((t, s) => t + (+s[key] || 0), 0) / gm.length : null;
+      const sh = sn.map(x => { const s = x.d[p.sid]; return s && s.tm_off_snp ? Math.round(100 * (s.off_snp || 0) / s.tm_off_snp) : null; }).filter(x => x != null);
+      let base = proj != null && avg != null ? .65 * proj + .35 * avg : proj ?? avg ?? 0, mult = 1; const notes = [];
+      if (OUT_ST.includes(q.injury_status)) { mult = 0; notes.push(`${q.injury_status}${q.injury_body_part ? " (" + q.injury_body_part + ")" : ""}`); }
+      else if (pj.ok && proj == null) { base = 0; notes.push("no projection this week (bye or inactive)"); }
+      else if (q.injury_status === "Doubtful") { mult = .25; notes.push("Doubtful"); }
+      else if (q.injury_status === "Questionable") { mult = .9; notes.push("Questionable"); }
+      if (sh.length > 1 && sh.at(-1) - sh[0] >= 10) notes.push(`snap share rising (${sh[0]}% to ${sh.at(-1)}%)`);
+      if (sh.length > 1 && sh.at(-1) - sh[0] <= -10) notes.push(`snap share falling (${sh[0]}% to ${sh.at(-1)}%)`);
+      const mf = mx ? matchupFactor(p, pr && pr.opponent, mx) : null; if (mf) { base *= mf.f; notes.push(...mf.notes); }
+    return {pos: p.pos, name: p.name, sid: p.sid, score: Math.round(base * mult * 10) / 10, proj, avg, notes, opp: pr && pr.opponent};
+    };
+    const pool = rosterPlayers(S.mineRoster).map(info), byId = new Map(pool.map(e => [e.sid, e]));
+    const opt = lineup(pool, e => e.score), me = mus.find(m => m.roster_id === S.mineRoster.roster_id);
+    const cur = me ? (me.starters || []).map(id => byId.get(id)).filter(Boolean) : null, optSet = new Set(opt.starters.map(x => x.p));
+    const curTotal = cur ? cur.reduce((t, e) => t + e.score, 0) : null;
+    const starts = opt.starters.map(x => x.p).filter(e => cur && !cur.includes(e)).sort((a, b) => b.score - a.score);
+    const sits = cur ? cur.filter(e => !optSet.has(e)).sort((a, b) => a.score - b.score) : [];
+    const why = (a, b) => {
+      const s = [`${a.name} projects ${f1(a.score)} against ${f1(b.score)} for ${b.name} (+${f1(a.score - b.score)})`];
+      if (b.notes.length) s.push(`${b.name}: ${b.notes.join(", ")}`);
+      if (a.notes.length) s.push(`${a.name}: ${a.notes.join(", ")}`);
+      if (a.avg != null && b.avg != null) s.push(`last 3 games averaged ${f1(a.avg)} against ${f1(b.avg)}`);
+      if (a.opp) s.push(`${a.name} faces ${a.opp}`);
+      return s.join(". ") + ".";
+    };
+    const swaps = starts.map((a, i) => sits[i] ? {a, b: sits[i]} : null).filter(Boolean);
+    const lowStart = opt.starters.map(x => x.p).sort((a, b) => a.score - b.score)[0], topBench = opt.bench[0];
+    const toss = lowStart && topBench && lowStart.score - topBench.score < 1.5 && topBench.score > 0 ? `Toss-up: ${lowStart.name} (${f1(lowStart.score)}) and ${topBench.name} (${f1(topBench.score)}) are within 1.5 points, so go with the better matchup or later kickoff.` : "";
+    const opp = me && mus.find(m => m.matchup_id != null && m.matchup_id === me.matchup_id && m.roster_id !== me.roster_id);
+    const oppTot = opp ? (opp.starters || []).map(id => S.pmap[id] && POS.includes(S.pmap[id].position) ? info({sid: id, name: "", pos: S.pmap[id].position}).score : 0).reduce((t, x) => t + x, 0) : null;
+    const total = opt.total;
+    const summary = `Week ${wk}: your best lineup projects <b class="text-white">${f1(total)}</b>${curTotal != null ? `, against ${f1(curTotal)} as currently set. ${swaps.length ? `That's ${swaps.length} change${swaps.length > 1 ? "s" : ""} worth <b class="text-emerald-400">+${f1(total - curTotal)}</b>.` : "No changes needed."}` : ". I couldn't read your set lineup, so this is the best lineup from scratch."}${oppTot ? ` Your opponent (${esc(tname(opp.roster_id))}) projects about ${f1(oppTot)}, so you're ${total >= oppTot ? "ahead by " + f1(total - oppTot) : "behind by " + f1(oppTot - total)}.` : ""}${pj.ok ? "" : ' <span class="text-amber-400">Projections were unavailable, so this uses recent games only.</span>'}${mx ? "" : ' <span class="text-slate-500">Add your data repo above to include scheme matchups.</span>'}`;
+    const row = x => `<tr class="border-t border-slate-800"><td class="py-1.5 text-slate-500">${x.slot.replace("_", " ")}</td><td class="text-white">${esc(x.p.name)} <span class="text-slate-500 text-xs">${x.p.pos}</span></td><td class="text-right font-mono">${f1(x.p.score)}</td><td class="text-right font-mono text-slate-400">${x.p.proj != null ? f1(x.p.proj) : "-"}</td><td class="text-right font-mono text-slate-400">${x.p.avg != null ? f1(x.p.avg) : "-"}</td><td class="text-xs text-slate-400 pl-3">${esc(x.p.notes.join("; "))}</td></tr>`;
+    box.innerHTML = `<p class="text-sm text-slate-200 mb-4">${summary}</p>` +
+      (swaps.length ? `<div class="space-y-2 mb-4">${swaps.map(s => `<div class="${card2}"><div class="text-sm"><b class="text-emerald-300">Start ${esc(s.a.name)}</b> <span class="text-slate-500">over</span> <b class="text-rose-300">${esc(s.b.name)}</b></div><div class="text-xs text-slate-400 mt-1">${esc(why(s.a, s.b))}</div></div>`).join("")}</div>` : "") +
+      (toss ? `<p class="text-xs text-amber-300 mb-3">${esc(toss)}</p>` : "") +
+      `<div class="overflow-x-auto"><table class="w-full text-sm min-w-[560px]"><thead><tr class="text-xs text-slate-400 uppercase"><th class="text-left py-1.5">Slot</th><th class="text-left">Player</th><th class="text-right">Score</th><th class="text-right">Proj</th><th class="text-right">L3 avg</th><th class="text-left pl-3">Notes</th></tr></thead><tbody>${opt.starters.map(row).join("")}</tbody></table></div>` +
+      `<p class="text-xs text-slate-500 mt-3">Bench: ${opt.bench.map(e => `${esc(e.name)} ${f1(e.score)}`).join(", ") || "none"}.</p>` +
+      `<p class="text-xs text-slate-600 mt-2">Score blends Sleeper’s projection (65%) with your last 3 games (35%), then discounts injuries. Scheme matchups (when your data repo is added) nudge a score by up to about 15%. It can’t tell whether a cornerback shadows a receiver, because that tracking data isn’t free, and it ignores weather and kickoff times. Kickers and defenses aren’t optimized.</p>`;
+  } catch (e) { box.innerHTML = `<p class="text-sm text-rose-400">Couldn’t build the lineup: ${esc(e.message)}</p>`; }
+}
+$("ssRun").onclick = () => S.lg && runStartSit();
+
+// ---- Draft Room ----
+const ordinal = n => n;
+async function loadDraftList() {
+  try {
+    const ds = (await j(`${SL}/league/${S.lg.league_id}/drafts`)).sort((a, b) => ["drafting", "pre_draft", "complete"].indexOf(a.status) - ["drafting", "pre_draft", "complete"].indexOf(b.status));
+    $("draftSel").innerHTML = ds.length ? ds.map(d => `<option value="${d.draft_id}">${d.season} ${d.type} (${d.status})</option>`).join("") : "<option value=''>No drafts yet</option>";
+    ds.length ? drawDraftRoom() : $("draftOut").innerHTML = '<p class="text-sm text-slate-400">This league has no draft yet. When your rookie draft is created in Sleeper it will appear here.</p>';
+  } catch (e) { $("draftOut").innerHTML = '<p class="text-sm text-slate-400">Couldn’t load drafts.</p>'; }
+}
+async function drawDraftRoom() {
+  const id = $("draftSel").value; if (!id) return;
+  clearInterval(S.dtimer);
+  try {
+    const [meta, picks, traded] = await Promise.all([j(`${SL}/draft/${id}`), j(`${SL}/draft/${id}/picks`), j(`${SL}/draft/${id}/traded_picks`).catch(() => [])]);
+    const teams = meta.settings?.teams, rounds = meta.settings?.rounds, myId = S.mineRoster.roster_id;
+    if (meta.type === "auction") return $("draftOut").innerHTML = '<p class="text-sm text-slate-400">Auction drafts aren’t supported yet.</p>';
+    if (!meta.slot_to_roster_id) return $("draftOut").innerHTML = '<p class="text-sm text-slate-400">The draft order isn’t set yet.</p>';
+    const rev = meta.settings?.reversal_round || 0, owner = no => {
+      const rd = Math.ceil(no / teams), pos = (no - 1) % teams + 1; let flip = meta.type === "snake" && rd % 2 === 0; if (meta.type === "snake" && rev > 0 && rd >= rev) flip = !flip;
+      const base = meta.slot_to_roster_id[flip ? teams - pos + 1 : pos], t = traded.find(x => x.round === rd && x.roster_id === base);
+      return {rd, pos, roster: t ? t.owner_id : base};
+    };
+    const done = picks.length, total = teams * rounds, taken = new Set(picks.map(p => p.player_id)), future = [];
+    for (let n = done + 1; n <= total; n++) future.push({n, ...owner(n)});
+    const mine = future.filter(x => x.roster === myId), untilMine = mine.length ? mine[0].n - done - 1 : null, nxt = future[0];
+    const m = S.M && S.M.teams.find(t => t.id === myId), rookOnly = $("rookOnly").checked;
+    const isRook = p => { const q = S.pmap[p.sid] || {}; return q.years_exp != null ? q.years_exp === 0 : (p.age && p.age <= 22.5); };
+    const pool = S.all.filter(p => !p.pick && p.sid && !taken.has(p.sid) && POS.includes(p.pos) && (!rookOnly || isRook(p))).sort((a, b) => b.v - a.v);
+    const rec = pool.slice(0, 40).map(p => { const t = m ? m.tier[p.pos] : 2; return {p, adj: p.v * (t >= 3 ? 1.15 : t === 0 ? .9 : 1), t}; }).sort((a, b) => b.adj - a.adj).slice(0, 8);
+    const label = x => `${x.rd}.${String(x.pos).padStart(2, "0")} (#${x.n})`;
+    const reasons = (r, i) => { const nxtP = pool[pool.indexOf(r.p) + 1], s = [i === 0 ? "Top pick for you" : "Strong option"]; s.push(r.t >= 3 ? `fills a ${TIERS[r.t][0].toLowerCase()} ${r.p.pos} spot` : "best-value fit"); if (nxtP && (r.p.v - nxtP.v) / r.p.v >= .15) s.push(`value drops ${Math.round(100 * (r.p.v - nxtP.v) / r.p.v)}% after him`); return s.join(", "); };
+    const likely = untilMine > 0 ? pool.slice(0, untilMine) : [], atPick = untilMine != null ? pool.slice(untilMine, untilMine + 5) : [];
+    const recent = picks.slice(-6).reverse().map(p => `${p.round}.${String((p.pick_no - 1) % teams + 1).padStart(2, "0")} ${esc(tname(p.roster_id))}: ${esc(((p.metadata?.first_name || "") + " " + (p.metadata?.last_name || "")).trim())} <span class="text-slate-500">${p.metadata?.position || ""}</span>`);
+    $("draftOut").innerHTML =
+      `<div class="${card2} mb-3"><div class="text-sm">${meta.status === "complete" ? "Draft complete." : nxt ? (nxt.roster === myId ? '<b class="text-emerald-400">You’re on the clock</b>' : `On the clock: <b class="text-white">${esc(tname(nxt.roster))}</b>`) + ` at ${label(nxt)}.` : ""} ${mine.length ? `Your next pick: <b class="text-white">${label(mine[0])}</b>${untilMine > 0 ? `, ${untilMine} picks away` : ""}. Remaining: ${mine.slice(0, 6).map(label).join(", ")}${mine.length > 6 ? "…" : ""}.` : (meta.status === "complete" ? "" : "You have no picks left.")}</div></div>` +
+      (rec.length && meta.status !== "complete" ? `<h3 class="font-semibold text-white mb-2">Best available for you</h3><div class="space-y-1.5 mb-4">${rec.map((r, i) => `<div class="${card2} flex justify-between gap-3"><div><div class="text-sm text-white">${i + 1}. ${esc(r.p.name)} <span class="text-slate-500 text-xs">${r.p.pos}${r.p.age ? ", " + Math.round(r.p.age) : ""}${r.p.team ? ", " + esc(r.p.team) : ""}</span></div><div class="text-xs text-slate-400">${esc(reasons(r, i))}</div></div><div class="font-mono text-sm">${r.p.v.toLocaleString()}</div></div>`).join("")}</div>` : "") +
+      (untilMine > 0 ? `<div class="${card2} mb-4 text-xs text-slate-300"><b class="text-white">Planning ahead:</b> by value, about ${untilMine} players will go before you, led by ${likely.slice(0, 4).map(p => esc(p.name)).join(", ")}. Realistic targets at your pick: ${atPick.map(p => esc(p.name) + " (" + p.v.toLocaleString() + ")").join(", ") || "none left"}.</div>` : "") +
+      (recent.length ? `<h3 class="font-semibold text-white mb-1">Latest picks</h3><div class="text-xs text-slate-300 space-y-0.5">${recent.map(r => `<div>${r}</div>`).join("")}</div>` : "") +
+      `<p class="text-xs text-slate-600 mt-3">Ranked by blended value with a boost for your weak positions. ${rookOnly ? "Showing rookies only (uncheck for a startup draft). " : ""}${meta.status === "drafting" ? "Refreshes every 15 seconds while this tab is open." : ""}</p>`;
+    if (meta.status === "drafting") S.dtimer = setInterval(() => { if (!document.hidden && !$("tab-draftroom").classList.contains("hidden")) drawDraftRoom(); }, 15000);
+  } catch (e) { $("draftOut").innerHTML = `<p class="text-sm text-rose-400">Couldn’t load the draft: ${esc(e.message)}</p>`; }
+}
+$("draftSel").onchange = drawDraftRoom; $("rookOnly").onchange = drawDraftRoom; $("draftRefresh").onclick = drawDraftRoom;
+
+// ---- Manager profiles, trade history, draft history ----
+async function loadHistory() {
+  const box = $("mgrOut"); box.innerHTML = '<p class="text-sm text-slate-400">Loading this season and last season’s trades and drafts (about 40 requests)…</p>';
+  try {
+    const cur = S.lg, {wk} = await wkInfo(), seasons = [{lg: cur, weeks: Math.min(18, wk)}];
+    if (cur.previous_league_id && cur.previous_league_id !== "0") { try { seasons.push({lg: await j(`${SL}/league/${cur.previous_league_id}`), weeks: 18, prev: true}); } catch (e) {} }
+    const tx = [], drafts = [];
+    for (const s of seasons) {
+      const lid = s.lg.league_id; let map = null;
+      if (s.prev) { map = {}; (await j(`${SL}/league/${lid}/rosters`).catch(() => [])).forEach(r => { const c = S.rosters.find(x => x.owner_id === r.owner_id); if (c) map[r.roster_id] = c.roster_id; }); }
+      const rid = x => map ? map[x] : x;
+      (await Promise.all(Array.from({length: s.weeks}, (_, i) => j(`${SL}/league/${lid}/transactions/${i + 1}`).catch(() => [])))).flat().filter(t => t.status === "complete").forEach(t => tx.push({...t, rid}));
+      for (const d of await j(`${SL}/league/${lid}/drafts`).catch(() => [])) { const pk = await j(`${SL}/draft/${d.draft_id}/picks`).catch(() => []); if (pk.length) drafts.push({d, pk, rid}); }
+    }
+    const P = {}; S.rosters.forEach(r => P[r.roster_id] = {id: r.roster_id, name: tname(r.roster_id), trades: 0, W: 0, L: 0, E: 0, net: 0, partners: {}, recv: {}, ageIn: [], ageOut: [], pIn: 0, pOut: 0, adds: 0, picks: []});
+    const val = id => (sidMap.get(id) || {v: 0}).v, pv = k => pickValue(String(k.season), +k.round) || 0, log = [];
+    tx.forEach(t => {
+      if (t.type !== "trade") { const r = t.rid(t.roster_ids[0]); if (P[r]) P[r].adds += Object.keys(t.adds || {}).length; return; }
+      const sides = t.roster_ids.map(o => { const r = t.rid(o); if (!P[r]) return null;
+        const inP = Object.keys(t.adds || {}).filter(id => t.adds[id] === o), outP = Object.keys(t.drops || {}).filter(id => t.drops[id] === o), inK = (t.draft_picks || []).filter(d => d.owner_id === o), outK = (t.draft_picks || []).filter(d => d.previous_owner_id === o);
+        return {r, inP, outP, inK, outK, vin: inP.reduce((s, id) => s + val(id), 0) + inK.reduce((s, k) => s + pv(k), 0), vout: outP.reduce((s, id) => s + val(id), 0) + outK.reduce((s, k) => s + pv(k), 0)}; }).filter(Boolean);
+      sides.forEach(s => { const p = P[s.r], d = (s.vin - s.vout) / Math.max(s.vin, s.vout, 1);
+        p.trades++; p.net += s.vin - s.vout; d > .1 ? p.W++ : d < -.1 ? p.L++ : p.E++;
+        sides.forEach(o => { if (o.r !== s.r) p.partners[o.r] = (p.partners[o.r] || 0) + 1; });
+        s.inP.forEach(id => { const q = S.pmap[id]; if (q) { p.recv[q.position] = (p.recv[q.position] || 0) + 1; if (q.age) p.ageIn.push(q.age); } });
+        s.outP.forEach(id => { const q = S.pmap[id]; if (q && q.age) p.ageOut.push(q.age); });
+        p.pIn += s.inK.length; p.pOut += s.outK.length; });
+      log.push({t, sides});
+    });
+    drafts.forEach(({d, pk, rid}) => { const rk = new Map([...pk].map(x => ({x, v: val(x.player_id)})).sort((a, b) => b.v - a.v).map((o, i) => [o.x.pick_no, i + 1]));
+      pk.forEach(x => { const r = rid(x.roster_id); if (P[r]) P[r].picks.push({season: d.season, no: x.pick_no, round: x.round, name: ((x.metadata?.first_name || "") + " " + (x.metadata?.last_name || "")).trim() || x.player_id, v: val(x.player_id), delta: x.pick_no - rk.get(x.pick_no)}); }); });
+    const mean = a => a.length ? a.reduce((s, x) => s + x, 0) / a.length : null;
+    const tags = p => { const t = [], ai = mean(p.ageIn), ao = mean(p.ageOut);
+      if (ai != null && ao != null) { if (ai <= ao - 1.5) t.push("Buys youth"); else if (ai >= ao + 1.5) t.push("Buys veterans"); }
+      if (p.pIn - p.pOut >= 2) t.push("Pick hoarder"); if (p.pOut - p.pIn >= 2) t.push("Pick seller");
+      const top = Object.entries(p.recv).sort((a, b) => b[1] - a[1])[0]; if (top && top[1] >= 3) t.push("Targets " + top[0]);
+      t.push(p.trades >= 6 ? "Very active trader" : p.trades === 0 ? "Rarely trades" : "Occasional trader");
+      if (p.trades >= 3 && p.W / p.trades >= .6) t.push("Wins trades (hindsight)"); if (p.trades >= 3 && p.L / p.trades >= .6) t.push("Loses trades (hindsight)"); return t; };
+    const tip = (p, tg) => tg.includes("Buys veterans") ? "Likely to pay for aging starters, so shop your sell-window vets here." : tg.includes("Buys youth") ? "Pays for upside, so offer young players or picks." : tg.includes("Pick seller") ? "Has sold picks before. Try an aging starter for a first." : tg.includes("Pick hoarder") ? "Collects picks and is hard to pry them from. Offer players instead." : tg.includes("Rarely trades") ? "Rarely trades, so send a simple, clearly favorable offer." : "No strong pattern. Treat as a standard trade partner.";
+    const mgr = Object.values(P).sort((a, b) => b.trades - a.trades);
+    const dr = p => { const n = p.picks.length; if (!n) return "No draft history found."; const hit = Math.round(100 * p.picks.filter(x => x.delta >= 0).length / n), best = [...p.picks].sort((a, b) => b.delta - a.delta)[0], bust = [...p.picks].sort((a, b) => a.delta - b.delta)[0];
+      return `${n} picks, ${hit}% landed at or above their slot by current value. Best: ${esc(best.name)} (#${best.no}, ${best.season}). Biggest miss: ${esc(bust.name)} (#${bust.no}, ${bust.season}).`; };
+    box.innerHTML = `<div class="space-y-2">${mgr.map(p => { const tg = tags(p), top = Object.entries(p.partners).sort((a, b) => b[1] - a[1])[0];
+      return `<details class="${card2}" ${p.id === S.mineRoster.roster_id ? "open" : ""}><summary class="cursor-pointer text-sm text-white font-semibold">${esc(p.name)}${p.id === S.mineRoster.roster_id ? " (you)" : ""} <span class="text-slate-500 font-normal">${p.trades} trades, ${p.W}-${p.L}-${p.E} by today’s values, net ${p.net >= 0 ? "+" : ""}${Math.round(p.net).toLocaleString()}</span></summary>
+        <div class="text-xs text-slate-300 mt-2 space-y-1"><div>${tg.map(x => `<span class="inline-block bg-slate-800 rounded px-2 py-0.5 mr-1 mb-1">${esc(x)}</span>`).join("")}</div><div><b class="text-white">Approach:</b> ${esc(tip(p, tg))}</div><div>${top ? `Most frequent partner: ${esc(tname(+top[0]))} (${top[1]}). ` : ""}${p.adds} waiver and free agent adds.</div><div><b class="text-white">Draft history:</b> ${dr(p)}</div></div></details>`; }).join("")}</div>` +
+      `<h3 class="font-semibold text-white mt-5 mb-2">Recent league trades</h3><div class="space-y-2">${log.sort((a, b) => b.t.created - a.t.created).slice(0, 12).map(({t, sides}) => `<div class="${card2} text-xs"><div class="text-slate-500 mb-1">${new Date(t.created).toLocaleDateString([], {month: "short", day: "numeric", year: "numeric"})}</div>${sides.map(s => { const d = (s.vin - s.vout) / Math.max(s.vin, s.vout, 1);
+        return `<div><b class="text-white">${esc(P[s.r].name)}</b> gets ${[...s.inP.map(id => (S.pmap[id] ? S.pmap[id].first_name + " " + S.pmap[id].last_name : id)), ...s.inK.map(k => k.season + " round " + k.round)].map(esc).join(", ") || "nothing"} <span class="${d > .1 ? "text-emerald-400" : d < -.1 ? "text-rose-400" : "text-slate-400"}">${d > .1 ? "wins" : d < -.1 ? "loses" : "even"} (${s.vin - s.vout >= 0 ? "+" : ""}${Math.round(s.vin - s.vout).toLocaleString()})</span></div>`; }).join("")}</div>`).join("") || '<p class="text-xs text-slate-500">No trades found.</p>'}</div>` +
+      `<p class="text-xs text-slate-600 mt-3">Trade grades use today’s blended values, not values at the time, so they reward whoever held the players that rose. Draft hits compare each pick’s slot with that player’s current value rank within the same draft.</p>`;
+  } catch (e) { box.innerHTML = `<p class="text-sm text-rose-400">Couldn’t load history: ${esc(e.message)}</p>`; }
+}
+$("mgrRun").onclick = () => S.lg && loadHistory();
+function ensureLeagueTabs() {
+  if (S.dlLeague === S.lg.league_id) return;
+  S.dlLeague = S.lg.league_id; S.proj = null; $("ssOut").innerHTML = '<p class="text-xs text-slate-500">Press “Optimize lineup” to see this week’s best lineup and why.</p>';
+  $("mgrOut").innerHTML = '<p class="text-xs text-slate-500">Press “Load history” to build manager profiles from your league’s trades and drafts.</p>'; loadDraftList();
+}
+
+// ---- Scheme matchups: man/zone tendencies, receiver splits, points allowed by role ----
+const TEAM_ALIAS = {LAR: "LA", OAK: "LV", STL: "LA", SD: "LAC"};
+try { $("mxRepo").value = localStorage.getItem("dd_repo") || ""; } catch (e) {}
+$("mxRepo").onchange = () => { try { localStorage.setItem("dd_repo", $("mxRepo").value.trim()); } catch (e) {} S.mx = null; };
+async function mxData() {
+  const repo = ($("mxRepo").value || "").trim(); if (!repo) return null;
+  if (S.mx && S.mx.repo === repo && Date.now() - S.mx.t < 36e5) return S.mx.d;
+  try { const d = await j(`https://raw.githubusercontent.com/${repo}/data/matchups.json`); S.mx = {repo, t: Date.now(), d}; return d; } catch (e) { return null; }
+}
+const nth = n => n + (["th", "st", "nd", "rd"][(n % 100 > 10 && n % 100 < 14) ? 0 : Math.min(n % 10, 4) % 4] || "th");
+function matchupFactor(p, oppRaw, mx) {
+  if (!oppRaw || !["WR", "TE", "RB"].includes(p.pos)) return null;
+  const opp = TEAM_ALIAS[oppRaw] || oppRaw, d = mx.def && mx.def[opp], r = mx.rec && mx.rec[p.sid], notes = []; let f = 1;
+  if (d && r && d.n >= 200) {
+    const yz = r.tz >= 15 ? r.yz / r.tz : null, ym = r.tm >= 10 ? r.ym / r.tm : null, all = (r.yz + r.ym) / Math.max(1, r.tz + r.tm);
+    if (yz != null && ym != null && all > 0) {
+      const ratio = (d.zone * yz + d.man * ym) / all; f *= Math.max(.9, Math.min(1.1, ratio));
+      if (Math.abs(ratio - 1) >= .04) notes.push(`scheme ${ratio > 1 ? "favors" : "hurts"} him: ${oppRaw} plays ${Math.round(d.zone * 100)}% zone (${mx.cov_season}) and he gets ${yz.toFixed(1)} yards per target against zone but ${ym.toFixed(1)} against man`);
+    }
+  }
+  const dv = mx.dvp && mx.dvp[opp], role = r && r.role;
+  if (dv && role && dv[role] != null) {
+    const all = Object.values(mx.dvp).map(x => x[role]).filter(x => x != null), rank = 1 + all.filter(x => x > dv[role]).length, n = all.length;
+    if (rank <= 8) { f *= 1.05; notes.push(`${oppRaw} allows ${dv[role].toFixed(1)} PPR points per game to ${role}s (${nth(rank)} most of ${n})`); }
+    else if (rank > n - 8) { f *= .95; notes.push(`${oppRaw} allows just ${dv[role].toFixed(1)} PPR points per game to ${role}s (${nth(rank)} most of ${n})`); }
+  }
+  return notes.length || f !== 1 ? {f, notes} : null;
+}
+</script>
+</body>
+</html>

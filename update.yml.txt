@@ -1,0 +1,44 @@
+name: update-data
+on:
+  schedule:
+    - cron: "*/15 * * * *"   # use "*/30" if the repo is private (see README)
+  workflow_dispatch:
+concurrency:
+  group: update-data
+  cancel-in-progress: false
+permissions:
+  contents: write
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 20 }
+      - name: Load current data branch
+        run: |
+          if git ls-remote --exit-code --heads origin data >/dev/null 2>&1; then
+            git fetch --depth=1 origin data
+            git worktree add -f data FETCH_HEAD
+          else
+            mkdir data
+          fi
+      - name: Update news and history
+        id: upd
+        env:
+          DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK }}
+        run: node scripts/update.mjs
+      - name: Publish as a single squashed commit
+        if: steps.upd.outputs.changed == 'true'
+        run: |
+          tmp=$(mktemp -d)
+          cp -r data/. "$tmp"/
+          cd "$tmp"
+          rm -rf .git
+          git init -q -b data
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -q -m "data $(date -u +%FT%TZ)"
+          git push -f "https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git" data
