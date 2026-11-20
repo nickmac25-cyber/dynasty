@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Schedule Luck · Dynasty Suite</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script>tailwind.config = { darkMode: 'class', theme: { extend: { colors: { slate: { 850: '#151e2e', 900: '#0f172a', 950: '#090d16' } } } } }</script>
+</head>
+<body class="bg-slate-950 text-slate-100 font-sans antialiased min-h-screen flex flex-col">
+<script src="dynasty-nav.js"></script>
+
+<header class="bg-slate-900 border-b border-slate-800 px-4 py-3">
+  <div class="max-w-7xl mx-auto flex flex-wrap items-center justify-between gap-3">
+    <div>
+      <h1 class="font-bold text-lg text-white">Schedule Luck &amp; All-Play Standings</h1>
+      <p class="text-xs text-slate-400">Separates true juggernauts from schedule-lucky paper tigers.</p>
+    </div>
+    <div class="flex flex-wrap items-center gap-2">
+      <input id="user" placeholder="Sleeper username" class="bg-slate-950 border border-slate-700 rounded-lg px-3 py-1.5 text-sm text-white w-40">
+      <select id="season" class="bg-slate-950 border border-slate-700 rounded-lg px-2.5 py-1.5 text-sm text-white"></select>
+      <button id="go" class="bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-medium px-4 py-1.5 rounded-lg cursor-pointer">Sync</button>
+      <select id="league" hidden class="bg-slate-800 border border-slate-600 rounded-lg px-3 py-1.5 text-sm text-emerald-300 max-w-[200px] truncate"></select>
+    </div>
+  </div>
+  <div id="status" class="max-w-7xl mx-auto text-xs text-slate-400 mt-2">Ready.</div>
+</header>
+
+<main class="max-w-7xl w-full mx-auto px-4 py-6 flex-1">
+  <section id="sec" hidden class="bg-slate-900 border border-slate-800 rounded-xl p-5 shadow-xl">
+    <h2 class="text-lg font-bold text-white mb-1">True Power vs. Actual Record</h2>
+    <p class="text-xs text-slate-400 mb-4"><b>All-Play Record</b> simulates playing every team in the league every week. <b>Luck Delta</b> shows actual wins minus expected wins.</p>
+    <div class="overflow-x-auto">
+      <table id="tbl" class="w-full text-left border-collapse text-sm min-w-[680px]"></table>
+    </div>
+  </section>
+</main>
+
+<script>
+const $ = id => document.getElementById(id);
+const SL = "https://api.sleeper.app/v1";
+const yr = new Date().getFullYear();
+for (let y = yr; y >= yr - 2; y--) $("season").add(new Option(y, y));
+try { if (localStorage.getItem("dd_user")) $("user").value = localStorage.getItem("dd_user"); } catch (e) {}
+
+const j = async u => { const r = await fetch(u); if (!r.ok) throw new Error(r.status); return r.json(); };
+const esc = t => (t || "").replace(/&/g, "&amp;").replace(/</g, "&lt;");
+
+$("go").onclick = async () => {
+  try {
+    const uname = $("user").value.trim();
+    if (!uname) return $("status").textContent = "Enter a Sleeper username.";
+    localStorage.setItem("dd_user", uname);
+    $("status").textContent = "Fetching user & leagues...";
+    const u = await j(`${SL}/user/${encodeURIComponent(uname)}`);
+    const ls = await j(`${SL}/user/${u.user_id}/leagues/nfl/${$("season").value}`);
+    const sel = $("league"); sel.innerHTML = ""; sel.hidden = false;
+    ls.forEach((l, i) => sel.add(new Option(l.name, i)));
+    sel.onchange = () => run(ls[sel.value], u.user_id);
+    run(ls[0], u.user_id);
+  } catch (e) { $("status").textContent = "Error: " + e.message; }
+};
+
+async function run(lg, uid) {
+  $("status").textContent = "Simulating weekly all-play matchups...";
+  const [rosters, users, state] = await Promise.all([
+    j(`${SL}/league/${lg.league_id}/rosters`),
+    j(`${SL}/league/${lg.league_id}/users`),
+    j(`${SL}/state/nfl`)
+  ]);
+
+  const maxWk = lg.season === state.season ? Math.min(17, Math.max(1, (+state.week || 1) - 1)) : 14;
+  const weeks = Array.from({ length: maxWk }, (_, i) => i + 1);
+  const allMatchups = await Promise.all(weeks.map(w => j(`${SL}/league/${lg.league_id}/matchups/${w}`).catch(() => [])));
+
+  const stats = {};
+  rosters.forEach(r => {
+    const u = users.find(x => x.user_id === r.owner_id);
+    stats[r.roster_id] = {
+      rid: r.roster_id, owner: r.owner_id,
+      name: u?.metadata?.team_name || u?.display_name || "Team " + r.roster_id,
+      w: r.settings?.wins || 0, l: r.settings?.losses || 0,
+      apW: 0, apL: 0, pf: 0, pa: 0, games: 0
+    };
+  });
+
+  allMatchups.forEach(wkList => {
+    const valid = wkList.filter(m => (m.points || 0) > 0);
+    if (valid.length < 2) return;
+    valid.forEach(m => {
+      const s = stats[m.roster_id];
+      if (!s) return;
+      const opp = valid.find(x => x.matchup_id === m.matchup_id && x.roster_id !== m.roster_id);
+      s.pf += m.points;
+      if (opp) s.pa += opp.points;
+      s.games++;
+      valid.forEach(other => {
+        if (other.roster_id === m.roster_id) return;
+        if (m.points > other.points) s.apW++;
+        else if (m.points < other.points) s.apL++;
+      });
+    });
+  });
+
+  const list = Object.values(stats).map(s => {
+    const apPct = s.apW / Math.max(1, s.apW + s.apL);
+    const expWins = apPct * s.games;
+    const luck = s.w - expWins;
+    return { ...s, apPct, expWins, luck };
+  }).sort((a, b) => b.apPct - a.apPct);
+
+  $("tbl").innerHTML = `<thead><tr class="border-b border-slate-800 text-xs uppercase text-slate-400">
+    <th class="py-2.5 px-3">True Rank</th><th class="py-2.5 px-3">Team</th><th class="py-2.5 px-3 text-center">Actual</th>
+    <th class="py-2.5 px-3 text-center">All-Play</th><th class="py-2.5 px-3 text-right">Points For</th><th class="py-2.5 px-3 text-right">Points Against</th>
+    <th class="py-2.5 px-3 text-right">Luck Delta</th><th class="py-2.5 px-3">Dynasty Takeaway</th>
+  </tr></thead><tbody>` + list.map((t, i) => {
+    const luckStr = `${t.luck >= 0 ? "+" : ""}${t.luck.toFixed(1)} W`;
+    const luckCls = t.luck >= 1.5 ? "text-amber-400 font-bold" : t.luck <= -1.5 ? "text-sky-400 font-bold" : "text-slate-400";
+    let tag = `<span class="text-slate-500">Fair record</span>`;
+    if (t.luck >= 1.5) tag = `<span class="text-amber-400 font-semibold">Paper Tiger (Sell vets to them)</span>`;
+    else if (t.luck <= -1.5) tag = `<span class="text-sky-400 font-semibold">Unlucky (Pick is worse than record)</span>`;
+    else if (i < 3) tag = `<span class="text-emerald-400 font-semibold">True Juggernaut</span>`;
+
+    return `<tr class="border-b border-slate-800/60 ${t.owner === uid ? "bg-emerald-500/10" : ""}">
+      <td class="py-2.5 px-3 font-mono text-slate-400">#${i + 1}</td>
+      <td class="py-2.5 px-3 font-medium text-white">${esc(t.name)}${t.owner === uid ? " (You)" : ""}</td>
+      <td class="py-2.5 px-3 text-center font-mono">${t.w}-${t.l}</td>
+      <td class="py-2.5 px-3 text-center font-mono text-emerald-400 font-bold">${t.apW}-${t.apL} (${Math.round(t.apPct * 100)}%)</td>
+      <td class="py-2.5 px-3 text-right font-mono">${t.pf.toFixed(1)}</td>
+      <td class="py-2.5 px-3 text-right font-mono text-slate-400">${t.pa.toFixed(1)}</td>
+      <td class="py-2.5 px-3 text-right font-mono ${luckCls}">${luckStr}</td>
+      <td class="py-2.5 px-3 text-xs">${tag}</td>
+    </tr>`;
+  }).join("") + `</tbody>`;
+
+  $("sec").hidden = false;
+  $("status").textContent = `Simulated ${list[0]?.games || 0} weeks in ${lg.name}.`;
+}
+if ($("user").value) $("go").click();
+</script>
+</body>
+</html>
