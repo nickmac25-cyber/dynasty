@@ -1,0 +1,509 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Dynasty Draft Capital Matrix</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            slate: {
+              850: '#151e2e',
+              900: '#0f172a',
+              950: '#090d16'
+            }
+          }
+        }
+      }
+    };
+  </script>
+  <style>
+    body { background-color: #090d16; color: #e2e8f0; }
+    .scrollbar-thin::-webkit-scrollbar { height: 6px; width: 6px; }
+    .scrollbar-thin::-webkit-scrollbar-track { background: #0f172a; }
+    .scrollbar-thin::-webkit-scrollbar-thumb { background: #334155; border-radius: 3px; }
+  </style>
+</head>
+<body class="min-h-screen antialiased selection:bg-emerald-500/30 selection:text-emerald-200">
+
+  <!-- Top Navigation Bar -->
+  <nav class="sticky top-0 z-30 border-b border-slate-800 bg-slate-950/90 backdrop-blur">
+    <div class="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-3 px-4 py-3">
+      <div class="flex items-center gap-3">
+        <a href="index.html" class="rounded-lg border border-slate-700 bg-slate-800/80 px-3 py-1.5 text-xs font-semibold text-slate-300 transition hover:border-slate-500 hover:text-white">
+          ← Trade Analyzer
+        </a>
+        <div class="h-4 w-px bg-slate-800"></div>
+        <div class="flex items-center gap-2 text-xs font-medium">
+          <a href="draft-capital.html" class="rounded-md bg-emerald-500/15 px-2.5 py-1 text-emerald-400 ring-1 ring-emerald-500/40">1. Draft Capital</a>
+          <a href="league-matrix.html" class="rounded-md px-2.5 py-1 text-slate-400 transition hover:bg-slate-800 hover:text-slate-200">2. Power Matrix</a>
+          <a href="waiver-stashes.html" class="rounded-md px-2.5 py-1 text-slate-400 transition hover:bg-slate-800 hover:text-slate-200">3. Waiver Stashes</a>
+        </div>
+      </div>
+
+      <!-- League Connection Controls -->
+      <div class="flex flex-wrap items-center gap-2">
+        <input
+          id="leagueInput"
+          type="text"
+          placeholder="Sleeper League ID or Username"
+          class="w-52 rounded-lg border border-slate-700 bg-slate-900 px-3 py-1.5 text-xs text-white placeholder-slate-500 focus:border-emerald-500 focus:outline-none"
+        />
+        <select id="leagueSelect" class="hidden rounded-lg border border-slate-700 bg-slate-900 px-2.5 py-1.5 text-xs text-white focus:border-emerald-500 focus:outline-none"></select>
+        <button
+          id="syncBtn"
+          onclick="handleSync()"
+          class="rounded-lg bg-emerald-600 px-3.5 py-1.5 text-xs font-semibold text-white transition hover:bg-emerald-500 active:scale-95"
+        >
+          Sync Sleeper
+        </button>
+      </div>
+    </div>
+  </nav>
+
+  <!-- Main Container -->
+  <main class="mx-auto max-w-7xl px-4 py-6">
+    <!-- Header & Summary Cards -->
+    <div class="mb-6 flex flex-col justify-between gap-4 md:flex-row md:items-end">
+      <div>
+        <div class="flex items-center gap-2">
+          <h1 class="text-2xl font-bold tracking-tight text-white">Future Draft Pick Capital</h1>
+          <span id="leagueNameBadge" class="hidden rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2.5 py-0.5 text-xs font-medium text-emerald-400"></span>
+        </div>
+        <p class="mt-1 text-sm text-slate-400">
+          Live Sleeper pick ownership across 2027–2029, tiered into <span class="text-emerald-400 font-medium">Early</span>, <span class="text-sky-400 font-medium">Mid</span>, and <span class="text-amber-400 font-medium">Late</span> projections via Max PF & standings.
+        </p>
+      </div>
+
+      <!-- Filter Pills -->
+      <div class="flex flex-wrap items-center gap-2">
+        <button onclick="setRoundFilter('all')" id="filter-all" class="round-filter rounded-lg bg-slate-800 px-3 py-1.5 text-xs font-semibold text-white ring-1 ring-slate-600">All Rounds</button>
+        <button onclick="setRoundFilter(1)" id="filter-1" class="round-filter rounded-lg bg-slate-900 px-3 py-1.5 text-xs font-medium text-slate-400 hover:bg-slate-800">1st Rounders Only</button>
+        <button onclick="setRoundFilter(2)" id="filter-2" class="round-filter rounded-lg bg-slate-900 px-3 py-1.5 text-xs font-medium text-slate-400 hover:bg-slate-800">1sts & 2nds</button>
+      </div>
+    </div>
+
+    <!-- Status / Error Banner -->
+    <div id="statusBanner" class="mb-6 hidden rounded-xl border border-slate-800 bg-slate-900/90 p-4 text-sm text-slate-300"></div>
+
+    <!-- Top KPI Strip -->
+    <div id="kpiGrid" class="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4 hidden">
+      <div class="rounded-xl border border-slate-800 bg-slate-900/70 p-4">
+        <div class="text-xs font-medium uppercase tracking-wider text-slate-400">Most 1st Round Picks</div>
+        <div id="kpiTop1sts" class="mt-1 text-xl font-bold text-emerald-400">—</div>
+        <div id="kpiTop1stsSub" class="mt-0.5 text-xs text-slate-500">—</div>
+      </div>
+      <div class="rounded-xl border border-slate-800 bg-slate-900/70 p-4">
+        <div class="text-xs font-medium uppercase tracking-wider text-slate-400">Highest Pick Capital Score</div>
+        <div id="kpiTopScore" class="mt-1 text-xl font-bold text-sky-400">—</div>
+        <div id="kpiTopScoreSub" class="mt-0.5 text-xs text-slate-500">—</div>
+      </div>
+      <div class="rounded-xl border border-slate-800 bg-slate-900/70 p-4">
+        <div class="text-xs font-medium uppercase tracking-wider text-slate-400">Projected 1.01 Owner</div>
+        <div id="kpi101Owner" class="mt-1 text-xl font-bold text-amber-400">—</div>
+        <div id="kpi101Sub" class="mt-0.5 text-xs text-slate-500">—</div>
+      </div>
+      <div class="rounded-xl border border-slate-800 bg-slate-900/70 p-4">
+        <div class="text-xs font-medium uppercase tracking-wider text-slate-400">Total Traded Future Picks</div>
+        <div id="kpiTradedCount" class="mt-1 text-xl font-bold text-purple-400">—</div>
+        <div class="mt-0.5 text-xs text-slate-500">Across 2027 – 2029 drafts</div>
+      </div>
+    </div>
+
+    <!-- Main Pick Matrix Table -->
+    <div id="matrixContainer" class="hidden overflow-hidden rounded-xl border border-slate-800 bg-slate-900/60 shadow-xl">
+      <div class="overflow-x-auto scrollbar-thin">
+        <table class="w-full border-collapse text-left text-sm">
+          <thead>
+            <tr class="border-b border-slate-800 bg-slate-950/80 text-xs font-semibold uppercase tracking-wider text-slate-400">
+              <th class="sticky left-0 z-10 bg-slate-950 px-4 py-3.5">Manager / Team</th>
+              <th class="px-3 py-3.5 text-center">Proj. Slot</th>
+              <th class="px-3 py-3.5 text-center">Capital Score</th>
+              <th class="px-4 py-3.5">2027 Draft Picks</th>
+              <th class="px-4 py-3.5">2028 Draft Picks</th>
+              <th class="px-4 py-3.5">2029 Draft Picks</th>
+            </tr>
+          </thead>
+          <tbody id="matrixBody" class="divide-y divide-slate-800/70"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Legend & Valuation Key -->
+    <div id="legendBox" class="mt-4 hidden flex flex-wrap items-center justify-between gap-4 rounded-xl border border-slate-800/80 bg-slate-900/40 px-4 py-3 text-xs text-slate-400">
+      <div class="flex flex-wrap items-center gap-4">
+        <span class="font-semibold text-slate-300">Pick Tier Key:</span>
+        <span class="flex items-center gap-1.5"><span class="h-2.5 w-2.5 rounded-full bg-emerald-400"></span> Early (1.01–1.04)</span>
+        <span class="flex items-center gap-1.5"><span class="h-2.5 w-2.5 rounded-full bg-sky-400"></span> Mid (1.05–1.08)</span>
+        <span class="flex items-center gap-1.5"><span class="h-2.5 w-2.5 rounded-full bg-amber-400"></span> Late (1.09–1.12)</span>
+        <span class="flex items-center gap-1.5"><span class="rounded border border-dashed border-slate-600 px-1.5 py-0.5 text-[10px]">via Team</span> Acquired via trade</span>
+      </div>
+      <div>Capital Score weights Early 1sts (~65) &gt; Mid 1sts (~48) &gt; Late 1sts (~36) &gt; 2nds (~18) &gt; 3rds (~8).</div>
+    </div>
+  </main>
+
+  <script>
+    const YEARS = ['2027', '2028', '2029'];
+    let currentRoundFilter = 'all';
+    let globalTeamData = [];
+
+    // Attempt to auto-detect existing League ID from localStorage (shared with index.html)
+    function detectSavedLeagueId() {
+      const commonKeys = ['sleeper_league_id', 'leagueId', 'dynasty_league_id', 'sleeperLeagueId', 'selectedLeagueId'];
+      for (const k of commonKeys) {
+        const val = localStorage.getItem(k);
+        if (val && /^\d{10,22}$/.test(val.trim())) return val.trim();
+      }
+      // Scan all localStorage values for a 15-20 digit Sleeper league ID
+      for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i);
+        const val = localStorage.getItem(key) || '';
+        const match = val.match(/\b\d{16,20}\b/);
+        if (match) return match[0];
+      }
+      return '';
+    }
+
+    function showStatus(msg, isError = false) {
+      const el = document.getElementById('statusBanner');
+      el.classList.remove('hidden', 'border-red-500/40', 'bg-red-950/30', 'text-red-200', 'border-slate-800', 'bg-slate-900/90', 'text-slate-300');
+      if (isError) {
+        el.classList.add('border-red-500/40', 'bg-red-950/30', 'text-red-200');
+      } else {
+        el.classList.add('border-slate-800', 'bg-slate-900/90', 'text-slate-300');
+      }
+      el.innerHTML = msg;
+    }
+
+    function hideStatus() {
+      document.getElementById('statusBanner').classList.add('hidden');
+    }
+
+    async function handleSync() {
+      const raw = document.getElementById('leagueInput').value.trim();
+      if (!raw) {
+        showStatus('Enter your Sleeper League ID or Sleeper Username above to load your draft capital.', true);
+        return;
+      }
+
+      // If numeric, treat directly as League ID
+      if (/^\d{10,22}$/.test(raw)) {
+        localStorage.setItem('sleeper_league_id', raw);
+        await loadLeagueDraftCapital(raw);
+      } else {
+        // Treat as username -> resolve user_id -> fetch 2026 NFL leagues
+        showStatus(`Looking up Sleeper user <strong>${raw}</strong>...`);
+        try {
+          const userRes = await fetch(`https://api.sleeper.app/v1/user/${encodeURIComponent(raw)}`);
+          if (!userRes.ok) throw new Error('Sleeper username not found.');
+          const user = await userRes.json();
+          if (!user || !user.user_id) throw new Error('Sleeper username not found.');
+
+          const leaguesRes = await fetch(`https://api.sleeper.app/v1/user/${user.user_id}/leagues/nfl/2026`);
+          const leagues = await leaguesRes.json();
+          if (!leagues || leagues.length === 0) {
+            throw new Error('No 2026 NFL leagues found for this username.');
+          }
+
+          const selectEl = document.getElementById('leagueSelect');
+          selectEl.innerHTML = leagues.map(l => `<option value="${l.league_id}">${l.name} (${l.total_rosters}-Team)</option>`).join('');
+          selectEl.classList.remove('hidden');
+          selectEl.onchange = () => {
+            localStorage.setItem('sleeper_league_id', selectEl.value);
+            loadLeagueDraftCapital(selectEl.value);
+          };
+
+          localStorage.setItem('sleeper_league_id', leagues[0].league_id);
+          await loadLeagueDraftCapital(leagues[0].league_id);
+        } catch (err) {
+          showStatus(err.message, true);
+        }
+      }
+    }
+
+    async function loadLeagueDraftCapital(leagueId) {
+      showStatus('Fetching rosters, Max PF standings, and traded picks from Sleeper...');
+      try {
+        const [leagueRes, rostersRes, usersRes, tradedRes] = await Promise.all([
+          fetch(`https://api.sleeper.app/v1/league/${leagueId}`),
+          fetch(`https://api.sleeper.app/v1/league/${leagueId}/rosters`),
+          fetch(`https://api.sleeper.app/v1/league/${leagueId}/users`),
+          fetch(`https://api.sleeper.app/v1/league/${leagueId}/traded_picks`)
+        ]);
+
+        if (!leagueRes.ok) throw new Error('Could not fetch league data. Double-check your League ID.');
+
+        const [league, rosters, users, tradedPicks] = await Promise.all([
+          leagueRes.json(),
+          rostersRes.json(),
+          usersRes.json(),
+          tradedRes.json()
+        ]);
+
+        const badge = document.getElementById('leagueNameBadge');
+        badge.textContent = league.name;
+        badge.classList.remove('hidden');
+
+        const userMap = {};
+        users.forEach(u => {
+          userMap[u.user_id] = {
+            name: u.metadata?.team_name || u.display_name || 'Unknown Manager',
+            owner: u.display_name || 'Manager'
+          };
+        });
+
+        const totalTeams = rosters.length;
+        const draftRounds = league.settings?.draft_rounds || 3;
+
+        // Sort rosters from worst to best (lowest wins, then lowest Max PF = earlier draft pick)
+        const sortedForDraft = [...rosters].sort((a, b) => {
+          const winsA = a.settings?.wins || 0;
+          const winsB = b.settings?.wins || 0;
+          if (winsA !== winsB) return winsA - winsB;
+          const maxPfA = (a.settings?.ppts || 0) + ((a.settings?.ppts_decimal || 0) / 100);
+          const maxPfB = (b.settings?.ppts || 0) + ((b.settings?.ppts_decimal || 0) / 100);
+          if (maxPfA !== maxPfB) return maxPfA - maxPfB;
+          const fptsA = (a.settings?.fpts || 0) + ((a.settings?.fpts_decimal || 0) / 100);
+          const fptsB = (b.settings?.fpts || 0) + ((b.settings?.fpts_decimal || 0) / 100);
+          return fptsA - fptsB;
+        });
+
+        // Map roster_id -> projected draft slot (1 to N) & Tier
+        const rosterMeta = {};
+        sortedForDraft.forEach((r, idx) => {
+          const slot = idx + 1;
+          const third = Math.ceil(totalTeams / 3);
+          let tier = 'Mid';
+          if (slot <= third) tier = 'Early';
+          else if (slot > totalTeams - third) tier = 'Late';
+
+          const uInfo = userMap[r.owner_id] || { name: `Roster ${r.roster_id}`, owner: `Team ${r.roster_id}` };
+          const maxPf = ((r.settings?.ppts || 0) + ((r.settings?.ppts_decimal || 0) / 100)).toFixed(1);
+
+          rosterMeta[r.roster_id] = {
+            rosterId: r.roster_id,
+            teamName: uInfo.name,
+            ownerName: uInfo.owner,
+            wins: r.settings?.wins || 0,
+            losses: r.settings?.losses || 0,
+            maxPf: Number(maxPf),
+            projSlot: slot,
+            tier
+          };
+        });
+
+        // Build baseline pick inventory: every roster starts with its own picks for 2027-2029
+        const ownershipMap = {}; // currentOwnerRosterId -> { '2027': [], '2028': [], '2029': [] }
+        rosters.forEach(r => {
+          ownershipMap[r.roster_id] = { '2027': [], '2028': [], '2029': [] };
+        });
+
+        let tradedFutureCount = 0;
+
+        YEARS.forEach(season => {
+          for (let round = 1; round <= draftRounds; round++) {
+            rosters.forEach(origRoster => {
+              const origId = origRoster.roster_id;
+              // Check if traded_picks overrides ownership for (season, round, roster_id = origId)
+              const tradeRecord = tradedPicks.find(
+                tp => String(tp.season) === season && Number(tp.round) === round && Number(tp.roster_id) === Number(origId)
+              );
+              const currentOwnerId = tradeRecord ? Number(tradeRecord.owner_id) : Number(origId);
+              if (currentOwnerId !== Number(origId)) tradedFutureCount++;
+
+              if (ownershipMap[currentOwnerId]) {
+                ownershipMap[currentOwnerId][season].push({
+                  season,
+                  round,
+                  origRosterId: Number(origId),
+                  origOwner: rosterMeta[origId]?.ownerName || `Team ${origId}`,
+                  origTeam: rosterMeta[origId]?.teamName || `Team ${origId}`,
+                  isOwn: currentOwnerId === Number(origId),
+                  tier: rosterMeta[origId]?.tier || 'Mid',
+                  projSlot: rosterMeta[origId]?.projSlot || 6
+                });
+              }
+            });
+          }
+        });
+
+        // Score picks & compile rows
+        globalTeamData = Object.values(rosterMeta).map(meta => {
+          const picksByYear = ownershipMap[meta.rosterId];
+          let capitalScore = 0;
+          let firstRoundCount = 0;
+
+          YEARS.forEach(yr => {
+            picksByYear[yr].sort((a, b) => a.round - b.round || a.projSlot - b.projSlot);
+            picksByYear[yr].forEach(p => {
+              if (p.round === 1) {
+                firstRoundCount++;
+                capitalScore += p.tier === 'Early' ? 65 : p.tier === 'Mid' ? 48 : 36;
+              } else if (p.round === 2) {
+                capitalScore += p.tier === 'Early' ? 24 : p.tier === 'Mid' ? 18 : 14;
+              } else if (p.round === 3) {
+                capitalScore += 8;
+              } else {
+                capitalScore += 3;
+              }
+            });
+          });
+
+          return {
+            ...meta,
+            picksByYear,
+            capitalScore,
+            firstRoundCount
+          };
+        });
+
+        // Sort table by Capital Score descending
+        globalTeamData.sort((a, b) => b.capitalScore - a.capitalScore);
+
+        updateKPIs(tradedFutureCount);
+        renderMatrix();
+        hideStatus();
+
+        document.getElementById('kpiGrid').classList.remove('hidden');
+        document.getElementById('matrixContainer').classList.remove('hidden');
+        document.getElementById('legendBox').classList.remove('hidden');
+      } catch (err) {
+        showStatus(`Error: ${err.message}`, true);
+      }
+    }
+
+    function updateKPIs(tradedFutureCount) {
+      if (!globalTeamData.length) return;
+
+      const by1sts = [...globalTeamData].sort((a, b) => b.firstRoundCount - a.firstRoundCount || b.capitalScore - a.capitalScore)[0];
+      document.getElementById('kpiTop1sts').textContent = `${by1sts.ownerName} (${by1sts.firstRoundCount})`;
+      document.getElementById('kpiTop1stsSub').textContent = `${by1sts.teamName} • 2027–2029 1sts`;
+
+      const topScoreTeam = globalTeamData[0];
+      document.getElementById('kpiTopScore').textContent = `${topScoreTeam.ownerName} (${topScoreTeam.capitalScore} pts)`;
+      document.getElementById('kpiTopScoreSub').textContent = `Projected 2027 Slot: 1.${String(topScoreTeam.projSlot).padStart(2, '0')}`;
+
+      // Find who currently owns the 2027 1st belonging to projSlot === 1
+      let ownerOf101 = '—';
+      let orig101Name = '—';
+      globalTeamData.forEach(team => {
+        const found = team.picksByYear['2027'].find(p => p.round === 1 && p.projSlot === 1);
+        if (found) {
+          ownerOf101 = team.ownerName;
+          orig101Name = found.isOwn ? 'Own Pick (Lowest Max PF)' : `Acquired via ${found.origOwner}`;
+        }
+      });
+      document.getElementById('kpi101Owner').textContent = ownerOf101;
+      document.getElementById('kpi101Sub').textContent = orig101Name;
+
+      document.getElementById('kpiTradedCount').textContent = `${tradedFutureCount} Picks`;
+    }
+
+    function setRoundFilter(filterVal) {
+      currentRoundFilter = filterVal;
+      document.querySelectorAll('.round-filter').forEach(btn => {
+        btn.className = 'round-filter rounded-lg bg-slate-900 px-3 py-1.5 text-xs font-medium text-slate-400 hover:bg-slate-800';
+      });
+      const activeBtn = document.getElementById(`filter-${filterVal}`);
+      if (activeBtn) {
+        activeBtn.className = 'round-filter rounded-lg bg-slate-800 px-3 py-1.5 text-xs font-semibold text-white ring-1 ring-slate-600';
+      }
+      renderMatrix();
+    }
+
+    function getPickBadgeHTML(pick) {
+      const roundLabel = pick.round === 1 ? '1st' : pick.round === 2 ? '2nd' : pick.round === 3 ? '3rd' : `${pick.round}th`;
+      let colorClasses = 'border-slate-700 bg-slate-800/80 text-slate-300';
+
+      if (pick.round === 1) {
+        if (pick.tier === 'Early') colorClasses = 'border-emerald-500/40 bg-emerald-500/15 text-emerald-300';
+        else if (pick.tier === 'Mid') colorClasses = 'border-sky-500/40 bg-sky-500/15 text-sky-300';
+        else colorClasses = 'border-amber-500/40 bg-amber-500/15 text-amber-300';
+      } else if (pick.round === 2) {
+        colorClasses = 'border-indigo-500/30 bg-indigo-500/10 text-indigo-300';
+      }
+
+      const viaTag = pick.isOwn
+        ? `<span class="opacity-60">Own</span>`
+        : `<span class="font-medium underline decoration-dotted">via ${pick.origOwner}</span>`;
+
+      const tierTag = pick.round <= 2 ? `<span class="text-[10px] uppercase opacity-75">(${pick.tier})</span>` : '';
+
+      return `
+        <div class="inline-flex items-center gap-1.5 rounded-md border px-2 py-1 text-xs ${colorClasses}" title="Original Owner: ${pick.origTeam} (Proj. ${pick.round}.${String(pick.projSlot).padStart(2, '0')})">
+          <span class="font-bold">${roundLabel}</span>
+          ${tierTag}
+          ${viaTag}
+        </div>
+      `;
+    }
+
+    function renderMatrix() {
+      const tbody = document.getElementById('matrixBody');
+      tbody.innerHTML = globalTeamData.map(team => {
+        const slotFormatted = `1.${String(team.projSlot).padStart(2, '0')}`;
+        const tierBadge = team.tier === 'Early'
+          ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30'
+          : team.tier === 'Mid'
+          ? 'bg-sky-500/10 text-sky-400 border-sky-500/30'
+          : 'bg-amber-500/10 text-amber-400 border-amber-500/30';
+
+        const yearCells = YEARS.map(yr => {
+          const filtered = team.picksByYear[yr].filter(p => {
+            if (currentRoundFilter === 1) return p.round === 1;
+            if (currentRoundFilter === 2) return p.round <= 2;
+            return true;
+          });
+
+          if (filtered.length === 0) {
+            return `<td class="px-4 py-3.5 align-top text-xs italic text-slate-600">No picks</td>`;
+          }
+
+          return `
+            <td class="px-4 py-3.5 align-top">
+              <div class="flex flex-wrap gap-1.5">
+                ${filtered.map(getPickBadgeHTML).join('')}
+              </div>
+            </td>
+          `;
+        }).join('');
+
+        return `
+          <tr class="transition hover:bg-slate-800/40">
+            <td class="sticky left-0 z-10 bg-slate-900/95 px-4 py-3.5 align-top backdrop-blur">
+              <div class="font-semibold text-white">${team.ownerName}</div>
+              <div class="text-xs text-slate-400">${team.teamName}</div>
+              <div class="mt-1 text-[11px] text-slate-500">${team.wins}-${team.losses} • Max PF: ${team.maxPf}</div>
+            </td>
+            <td class="px-3 py-3.5 text-center align-top">
+              <span class="inline-block rounded-md border px-2 py-0.5 text-xs font-bold ${tierBadge}">
+                ${slotFormatted} (${team.tier})
+              </span>
+            </td>
+            <td class="px-3 py-3.5 text-center align-top">
+              <span class="text-base font-bold text-white">${team.capitalScore}</span>
+              <div class="text-[11px] text-slate-500">${team.firstRoundCount} 1sts</div>
+            </td>
+            ${yearCells}
+          </tr>
+        `;
+      }).join('');
+    }
+
+    // Auto-run on page load if League ID is found in localStorage
+    window.addEventListener('DOMContentLoaded', () => {
+      const savedId = detectSavedLeagueId();
+      if (savedId) {
+        document.getElementById('leagueInput').value = savedId;
+        loadLeagueDraftCapital(savedId);
+      } else {
+        showStatus('Enter your Sleeper League ID or Username in the top right and click <strong>Sync Sleeper</strong>.');
+      }
+    });
+  </script>
+</body>
+</html>
