@@ -14,7 +14,7 @@
   <div class="max-w-7xl mx-auto flex flex-wrap items-center justify-between gap-3">
     <div>
       <h1 class="font-bold text-lg text-white">League-Aware Rookie Mock Draft Simulator</h1>
-      <p class="text-xs text-slate-400">Uses your league's exact traded picks &amp; standings order; AI drafts by team need + value.</p>
+      <p class="text-xs text-slate-400">Uses your league's exact traded picks &amp; standings order + 2027 incoming rookie prospect board.</p>
     </div>
     <div class="flex flex-wrap items-center gap-2">
       <input id="user" placeholder="Sleeper username" class="bg-slate-950 border border-slate-700 rounded-lg px-3 py-1.5 text-sm text-white w-40">
@@ -31,7 +31,7 @@
   <section class="lg:col-span-2 bg-slate-900 border border-slate-800 rounded-xl p-5 shadow-xl">
     <div class="flex flex-wrap items-center justify-between gap-2 mb-4">
       <div>
-        <h2 class="text-lg font-bold text-white">Draft Board (3 Rounds)</h2>
+        <h2 class="text-lg font-bold text-white">2027 Rookie Draft Board (3 Rounds)</h2>
         <p id="clockInfo" class="text-xs text-emerald-400 font-semibold"></p>
       </div>
       <div class="flex gap-2">
@@ -43,10 +43,13 @@
     <div id="board" class="space-y-1.5 max-h-[620px] overflow-y-auto pr-1"></div>
   </section>
 
-  <!-- Right: Available Prospects -->
+  <!-- Right: Available Rookies -->
   <section class="bg-slate-900 border border-slate-800 rounded-xl p-5 shadow-xl">
-    <h2 class="text-lg font-bold text-white mb-1">Available Prospects</h2>
-    <p class="text-xs text-slate-400 mb-3">Click any player to draft them at the current pick.</p>
+    <div class="flex items-center justify-between mb-1">
+      <h2 class="text-lg font-bold text-white">2027 Rookie Prospects</h2>
+      <span id="poolTag" class="text-[10px] bg-emerald-500/15 text-emerald-300 border border-emerald-500/30 px-2 py-0.5 rounded font-semibold"></span>
+    </div>
+    <p class="text-xs text-slate-400 mb-3">Click any prospect to draft them at the current pick.</p>
     <div id="pool" class="space-y-2 max-h-[620px] overflow-y-auto pr-1"></div>
   </section>
 </main>
@@ -61,6 +64,46 @@ try { if (localStorage.getItem("dd_user")) $("user").value = localStorage.getIte
 
 const j = async u => { const r = await fetch(u); if (!r.ok) throw new Error(r.status); return r.json(); };
 const esc = t => (t || "").replace(/&/g, "&amp;").replace(/</g, "&lt;");
+
+// Built-in 2027 Incoming Rookie Prospect Board (1QB base values; QB values automatically boost in Superflex/2QB)
+const ROOKIES_2027 = [
+  { name: "Jeremiah Smith", pos: "WR", college: "Ohio State", v1qb: 7800, vsf: 7400 },
+  { name: "Ryan Williams", pos: "WR", college: "Alabama", v1qb: 7100, vsf: 6700 },
+  { name: "Arch Manning", pos: "QB", college: "Texas", v1qb: 4600, vsf: 7600 },
+  { name: "Nico Iamaleava", pos: "QB", college: "Tennessee", v1qb: 4100, vsf: 6800 },
+  { name: "Cam Coleman", pos: "WR", college: "Auburn", v1qb: 6200, vsf: 5900 },
+  { name: "DJ Lagway", pos: "QB", college: "Florida", v1qb: 3900, vsf: 6500 },
+  { name: "Dylan Raiola", pos: "QB", college: "Nebraska", v1qb: 3700, vsf: 6200 },
+  { name: "Nate Frazier", pos: "RB", college: "Georgia", v1qb: 5600, vsf: 5300 },
+  { name: "Isaac Brown", pos: "RB", college: "Louisville", v1qb: 5400, vsf: 5100 },
+  { name: "TJ Moore", pos: "WR", college: "Clemson", v1qb: 5200, vsf: 4900 },
+  { name: "LaNorris Sellers", pos: "QB", college: "South Carolina", v1qb: 3500, vsf: 5800 },
+  { name: "Bryant Wesco Jr.", pos: "WR", college: "Clemson", v1qb: 4900, vsf: 4650 },
+  { name: "Ahmad Hardy", pos: "RB", college: "ULM / Transfer", v1qb: 4700, vsf: 4450 },
+  { name: "Nick Marsh", pos: "WR", college: "Michigan State", v1qb: 4550, vsf: 4300 },
+  { name: "Jadan Baugh", pos: "RB", college: "Florida", v1qb: 4400, vsf: 4150 },
+  { name: "Micah Hudson", pos: "WR", college: "Texas A&M", v1qb: 4250, vsf: 4000 },
+  { name: "Julian Sayin", pos: "QB", college: "Ohio State", v1qb: 3100, vsf: 5100 },
+  { name: "Kewan Lacy", pos: "RB", college: "Ole Miss", v1qb: 4100, vsf: 3900 },
+  { name: "Taylor Tatum", pos: "RB", college: "Oklahoma", v1qb: 3950, vsf: 3750 },
+  { name: "Ryan Wingo", pos: "WR", college: "Texas", v1qb: 3850, vsf: 3650 },
+  { name: "Caden Durham", pos: "RB", college: "LSU", v1qb: 3750, vsf: 3550 },
+  { name: "Aidan Chiles", pos: "QB", college: "Michigan State", v1qb: 2700, vsf: 4400 },
+  { name: "Duane Thomas Jr.", pos: "WR", college: "UCF", v1qb: 3600, vsf: 3400 },
+  { name: "Jordan Marshall", pos: "RB", college: "Michigan", v1qb: 3500, vsf: 3300 },
+  { name: "Trey'Dez Green", pos: "TE", college: "LSU", v1qb: 3400, vsf: 3250 },
+  { name: "Emmett Mosley V", pos: "WR", college: "Stanford", v1qb: 3250, vsf: 3100 },
+  { name: "Sam Leavitt", pos: "QB", college: "Arizona State", v1qb: 2400, vsf: 3900 },
+  { name: "Fluff Bothwell", pos: "RB", college: "South Alabama", v1qb: 3150, vsf: 3000 },
+  { name: "Mylan Graham", pos: "WR", college: "Ohio State", v1qb: 3050, vsf: 2900 },
+  { name: "Dakorien Moore", pos: "WR", college: "Oregon", v1qb: 2950, vsf: 2800 },
+  { name: "Bryce Underwood", pos: "QB", college: "Michigan", v1qb: 2200, vsf: 3650 },
+  { name: "Jerrick Gibson", pos: "RB", college: "Texas", v1qb: 2850, vsf: 2700 },
+  { name: "Elijah Brown", pos: "QB", college: "Stanford", v1qb: 2050, vsf: 3350 },
+  { name: "Davon Mitchell", pos: "TE", college: "Oklahoma", v1qb: 2750, vsf: 2600 },
+  { name: "Perry Thompson", pos: "WR", college: "Auburn", v1qb: 2650, vsf: 2500 },
+  { name: "Aneyas Williams", pos: "RB", college: "Notre Dame", v1qb: 2550, vsf: 2400 }
+];
 
 let M = { slots: [], pool: [], basePool: [], idx: 0, myRid: null, teamNeeds: {} };
 
@@ -80,10 +123,11 @@ $("go").onclick = async () => {
 };
 
 async function initMock(lg, uid) {
-  $("status").textContent = "Building league draft order & prospect board...";
+  $("status").textContent = "Building league draft order & 2027 rookie prospect board...";
   const sf = (lg.roster_positions || []).filter(p => p === "SUPER_FLEX").length;
   const qb = (lg.roster_positions || []).filter(p => p === "QB").length;
-  const numQbs = sf || qb > 1 ? 2 : 1, ppr = lg.scoring_settings?.rec ?? 1;
+  const isSF = sf > 0 || qb > 1;
+  const numQbs = isSF ? 2 : 1, ppr = lg.scoring_settings?.rec ?? 1;
 
   const [fc, rosters, traded, users] = await Promise.all([
     j(`${FC}?isDynasty=true&numQbs=${numQbs}&numTeams=${lg.total_rosters}&ppr=${ppr}`),
@@ -124,8 +168,7 @@ async function initMock(lg, uid) {
     });
   }
 
-  const taken = new Set(rosters.flatMap(r => r.players || []));
-
+  // Analyze each team's weakest position for AI drafting logic
   M.teamNeeds = {};
   rosters.forEach(r => {
     const posTotals = { QB: 0, RB: 0, WR: 0, TE: 0 };
@@ -137,14 +180,21 @@ async function initMock(lg, uid) {
     M.teamNeeds[r.roster_id] = weakest;
   });
 
-  M.basePool = fc
-    .filter(e => POS.includes(e.player.position) && !taken.has(String(e.player.sleeperId)) && (!e.player.maybeAge || e.player.maybeAge <= 23.5))
-    .slice(0, 60)
-    .map(e => ({ id: String(e.player.sleeperId || e.player.name), name: e.player.name, pos: e.player.position, v: e.value }));
+  // Load 2027 Incoming Rookie Board scaled to league format (Superflex vs 1QB)
+  M.basePool = ROOKIES_2027
+    .map((p, idx) => ({
+      id: "2027_" + idx,
+      name: p.name,
+      pos: p.pos,
+      meta: `${p.college} · 2027 Class`,
+      v: isSF ? p.vsf : p.v1qb
+    }))
+    .sort((a, b) => b.v - a.v);
 
+  $("poolTag").textContent = isSF ? "Superflex / 2QB Board" : "1QB Board";
   resetMock();
   $("main").hidden = false;
-  $("status").textContent = `Loaded ${targetSeason} Mock Draft for ${lg.name}.`;
+  $("status").textContent = `Loaded ${targetSeason} Rookie Mock Draft (${M.basePool.length} incoming prospects) for ${lg.name}.`;
 }
 
 function resetMock() {
@@ -167,9 +217,9 @@ function aiPick() {
   if (M.idx >= M.slots.length || !M.pool.length) return;
   const slot = M.slots[M.idx];
   const need = M.teamNeeds[slot.ownerRid];
-  const top5 = M.pool.slice(0, 5);
+  const top4 = M.pool.slice(0, 4);
   let bestIdx = 0, bestScore = -1;
-  top5.forEach((p, i) => {
+  top4.forEach((p, i) => {
     const score = p.v * (p.pos === need ? 1.15 : 1);
     if (score > bestScore) { bestScore = score; bestIdx = i; }
   });
@@ -186,7 +236,7 @@ function renderMock() {
   const cur = M.slots[M.idx];
   $("clockInfo").textContent = cur
     ? `On the Clock: ${cur.pickLabel} — ${cur.ownerName}${cur.ownerRid === M.myRid ? " (YOUR PICK!)" : ""}`
-    : "Mock Draft Complete!";
+    : "2027 Rookie Mock Draft Complete!";
 
   $("board").innerHTML = M.slots.map((s, i) => {
     const isMine = s.ownerRid === M.myRid;
@@ -212,6 +262,7 @@ function renderMock() {
     <button onclick="makePick(${i})" class="w-full text-left bg-slate-950 hover:bg-slate-800 border border-slate-800 rounded-lg px-3 py-2 flex justify-between items-center transition cursor-pointer">
       <div>
         <div class="text-sm font-bold text-white">${i + 1}. ${esc(p.name)} <span class="text-xs text-emerald-400 font-semibold">${p.pos}</span></div>
+        <div class="text-[11px] text-slate-500">${esc(p.meta)}</div>
       </div>
       <span class="font-mono text-xs text-slate-400">${p.v.toLocaleString()}</span>
     </button>
