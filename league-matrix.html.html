@@ -1,0 +1,558 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Dynasty League Power Matrix</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            slate: {
+              850: '#151e2e',
+              900: '#0f172a',
+              950: '#090d16'
+            }
+          }
+        }
+      }
+    };
+  </script>
+  <style>
+    body { background-color: #090d16; color: #e2e8f0; }
+    .scrollbar-thin::-webkit-scrollbar { height: 6px; width: 6px; }
+    .scrollbar-thin::-webkit-scrollbar-track { background: #0f172a; }
+    .scrollbar-thin::-webkit-scrollbar-thumb { background: #334155; border-radius: 3px; }
+  </style>
+</head>
+<body class="min-h-screen antialiased selection:bg-emerald-500/30 selection:text-emerald-200">
+
+  <!-- Top Navigation Bar -->
+  <nav class="sticky top-0 z-30 border-b border-slate-800 bg-slate-950/90 backdrop-blur">
+    <div class="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-3 px-4 py-3">
+      <div class="flex items-center gap-3">
+        <a href="index.html" class="rounded-lg border border-slate-700 bg-slate-800/80 px-3 py-1.5 text-xs font-semibold text-slate-300 transition hover:border-slate-500 hover:text-white">
+          ← Trade Analyzer
+        </a>
+        <div class="h-4 w-px bg-slate-800"></div>
+        <div class="flex items-center gap-2 text-xs font-medium">
+          <a href="draft-capital.html" class="rounded-md px-2.5 py-1 text-slate-400 transition hover:bg-slate-800 hover:text-slate-200">1. Draft Capital</a>
+          <a href="league-matrix.html" class="rounded-md bg-emerald-500/15 px-2.5 py-1 text-emerald-400 ring-1 ring-emerald-500/40">2. Power Matrix</a>
+          <a href="waiver-stashes.html" class="rounded-md px-2.5 py-1 text-slate-400 transition hover:bg-slate-800 hover:text-slate-200">3. Waiver Stashes</a>
+        </div>
+      </div>
+
+      <!-- League Connection Controls -->
+      <div class="flex flex-wrap items-center gap-2">
+        <input
+          id="leagueInput"
+          type="text"
+          placeholder="Sleeper League ID or Username"
+          class="w-52 rounded-lg border border-slate-700 bg-slate-900 px-3 py-1.5 text-xs text-white placeholder-slate-500 focus:border-emerald-500 focus:outline-none"
+        />
+        <select id="leagueSelect" class="hidden rounded-lg border border-slate-700 bg-slate-900 px-2.5 py-1.5 text-xs text-white focus:border-emerald-500 focus:outline-none"></select>
+        <button
+          id="syncBtn"
+          onclick="handleSync()"
+          class="rounded-lg bg-emerald-600 px-3.5 py-1.5 text-xs font-semibold text-white transition hover:bg-emerald-500 active:scale-95"
+        >
+          Sync Sleeper
+        </button>
+      </div>
+    </div>
+  </nav>
+
+  <!-- Main Container -->
+  <main class="mx-auto max-w-7xl px-4 py-6">
+    <div class="mb-6 flex flex-col justify-between gap-4 md:flex-row md:items-end">
+      <div>
+        <div class="flex items-center gap-2">
+          <h1 class="text-2xl font-bold tracking-tight text-white">Contender vs. Rebuilder Matrix</h1>
+          <span id="leagueNameBadge" class="hidden rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2.5 py-0.5 text-xs font-medium text-emerald-400"></span>
+        </div>
+        <p class="mt-1 text-sm text-slate-400">
+          Cross-references <span class="font-medium text-slate-200">Starter Age</span> against <span class="font-medium text-slate-200">Max PF & Standings</span> to spot aging <span class="font-medium text-amber-400">Pretenders</span> (prime trade buyers) and fellow rebuilders.
+        </p>
+      </div>
+
+      <!-- Archetype Filter Pills -->
+      <div class="flex flex-wrap items-center gap-2">
+        <button onclick="setArchetypeFilter('all')" id="arch-all" class="arch-filter rounded-lg bg-slate-800 px-3 py-1.5 text-xs font-semibold text-white ring-1 ring-slate-600">All Teams</button>
+        <button onclick="setArchetypeFilter('Pretender')" id="arch-Pretender" class="arch-filter rounded-lg bg-slate-900 px-3 py-1.5 text-xs font-medium text-amber-400 hover:bg-slate-800">Pretenders (Target Buyers)</button>
+        <button onclick="setArchetypeFilter('Contender')" id="arch-Contender" class="arch-filter rounded-lg bg-slate-900 px-3 py-1.5 text-xs font-medium text-emerald-400 hover:bg-slate-800">Contenders</button>
+        <button onclick="setArchetypeFilter('Rebuilder')" id="arch-Rebuilder" class="arch-filter rounded-lg bg-slate-900 px-3 py-1.5 text-xs font-medium text-sky-400 hover:bg-slate-800">Rebuilders</button>
+      </div>
+    </div>
+
+    <!-- Status Banner -->
+    <div id="statusBanner" class="mb-6 hidden rounded-xl border border-slate-800 bg-slate-900/90 p-4 text-sm text-slate-300"></div>
+
+    <!-- KPI Strip -->
+    <div id="kpiGrid" class="mb-6 hidden grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <div class="rounded-xl border border-slate-800 bg-slate-900/70 p-4">
+        <div class="text-xs font-medium uppercase tracking-wider text-slate-400">Youngest Core (Starters)</div>
+        <div id="kpiYoungest" class="mt-1 text-xl font-bold text-emerald-400">—</div>
+        <div id="kpiYoungestSub" class="mt-0.5 text-xs text-slate-500">—</div>
+      </div>
+      <div class="rounded-xl border border-slate-800 bg-slate-900/70 p-4">
+        <div class="text-xs font-medium uppercase tracking-wider text-slate-400">Oldest Win-Now Roster</div>
+        <div id="kpiOldest" class="mt-1 text-xl font-bold text-amber-400">—</div>
+        <div id="kpiOldestSub" class="mt-0.5 text-xs text-slate-500">—</div>
+      </div>
+      <div class="rounded-xl border border-slate-800 bg-slate-900/70 p-4">
+        <div class="text-xs font-medium uppercase tracking-wider text-slate-400">Highest Max PF</div>
+        <div id="kpiMaxPf" class="mt-1 text-xl font-bold text-sky-400">—</div>
+        <div id="kpiMaxPfSub" class="mt-0.5 text-xs text-slate-500">—</div>
+      </div>
+      <div class="rounded-xl border border-slate-800 bg-slate-900/70 p-4">
+        <div class="text-xs font-medium uppercase tracking-wider text-slate-400">Prime Trade Targets</div>
+        <div id="kpiPretenders" class="mt-1 text-xl font-bold text-purple-400">—</div>
+        <div class="mt-0.5 text-xs text-slate-500">Aging contenders/pretenders</div>
+      </div>
+    </div>
+
+    <!-- Main Matrix Table -->
+    <div id="matrixContainer" class="hidden overflow-hidden rounded-xl border border-slate-800 bg-slate-900/60 shadow-xl">
+      <div class="overflow-x-auto scrollbar-thin">
+        <table class="w-full border-collapse text-left text-sm">
+          <thead>
+            <tr class="border-b border-slate-800 bg-slate-950/80 text-xs font-semibold uppercase tracking-wider text-slate-400">
+              <th class="sticky left-0 z-10 bg-slate-950 px-4 py-3.5">Manager / Team</th>
+              <th class="px-3 py-3.5 text-center">Archetype</th>
+              <th class="px-3 py-3.5 text-center">Record / Max PF</th>
+              <th class="px-3 py-3.5 text-center">Starter Age</th>
+              <th class="px-3 py-3.5 text-center">Skill Age (RB/WR)</th>
+              <th class="px-4 py-3.5">Aging Vets on Roster (Sell Targets / Fragile Assets)</th>
+              <th class="px-3 py-3.5 text-right">Details</th>
+            </tr>
+          </thead>
+          <tbody id="matrixBody" class="divide-y divide-slate-800/70"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Archetype Guide -->
+    <div id="legendBox" class="mt-4 hidden grid-cols-1 gap-3 rounded-xl border border-slate-800/80 bg-slate-900/40 p-4 text-xs text-slate-400 md:grid-cols-3">
+      <div>
+        <span class="font-bold text-emerald-400">Contender:</span> Top-half Max PF + sustainable starter age (&lt; 26.8 yrs). Built to win now and later.
+      </div>
+      <div>
+        <span class="font-bold text-amber-400">Pretender / Aging Buyer:</span> Winning record or top-6 standings, but heavy reliance on aging starters (26.8+ yrs). Prime buyers for your vets.
+      </div>
+      <div>
+        <span class="font-bold text-sky-400">Rebuilder / Retooling:</span> Bottom-half Max PF. Either hoarding youth (&lt; 25.5 yrs) or needing to liquidate older assets.
+      </div>
+    </div>
+  </main>
+
+  <script>
+    let allTeams = [];
+    let currentFilter = 'all';
+    let expandedRosterIds = new Set();
+
+    function detectSavedLeagueId() {
+      const commonKeys = ['sleeper_league_id', 'leagueId', 'dynasty_league_id', 'sleeperLeagueId', 'selectedLeagueId'];
+      for (const k of commonKeys) {
+        const val = localStorage.getItem(k);
+        if (val && /^\d{10,22}$/.test(val.trim())) return val.trim();
+      }
+      for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i);
+        const val = localStorage.getItem(key) || '';
+        const match = val.match(/\b\d{16,20}\b/);
+        if (match) return match[0];
+      }
+      return '';
+    }
+
+    function showStatus(msg, isError = false) {
+      const el = document.getElementById('statusBanner');
+      el.classList.remove('hidden', 'border-red-500/40', 'bg-red-950/30', 'text-red-200', 'border-slate-800', 'bg-slate-900/90', 'text-slate-300');
+      if (isError) {
+        el.classList.add('border-red-500/40', 'bg-red-950/30', 'text-red-200');
+      } else {
+        el.classList.add('border-slate-800', 'bg-slate-900/90', 'text-slate-300');
+      }
+      el.innerHTML = msg;
+    }
+
+    function hideStatus() {
+      document.getElementById('statusBanner').classList.add('hidden');
+    }
+
+    // Cache Sleeper NFL players DB in localStorage (24h TTL) to avoid slow repeated 5MB downloads
+    async function getNflPlayersMap() {
+      const CACHE_KEY = 'sleeper_nfl_players_slim_v1';
+      const CACHE_TS_KEY = 'sleeper_nfl_players_slim_ts';
+      const now = Date.now();
+      const cachedTs = Number(localStorage.getItem(CACHE_TS_KEY) || 0);
+
+      if (cachedTs && (now - cachedTs) < 24 * 60 * 60 * 1000) {
+        const raw = localStorage.getItem(CACHE_KEY);
+        if (raw) {
+          try {
+            return JSON.parse(raw);
+          } catch (e) { /* fall through to refetch */ }
+        }
+      }
+
+      showStatus('Downloading NFL player ages & positions from Sleeper (cached for 24 hrs)...');
+      const res = await fetch('https://api.sleeper.app/v1/players/nfl');
+      if (!res.ok) throw new Error('Failed to load Sleeper NFL player database.');
+      const fullDb = await res.json();
+
+      // Slim down to active offensive fantasy positions so it fits comfortably in localStorage
+      const slimDb = {};
+      const validPos = new Set(['QB', 'RB', 'WR', 'TE']);
+      Object.keys(fullDb).forEach(pid => {
+        const p = fullDb[pid];
+        if (p && validPos.has(p.position)) {
+          slimDb[pid] = {
+            n: p.full_name || `${p.first_name || ''} ${p.last_name || ''}`.trim(),
+            p: p.position,
+            t: p.team || 'FA',
+            a: p.age || null,
+            y: p.years_exp ?? null
+          };
+        }
+      });
+
+      try {
+        localStorage.setItem(CACHE_KEY, JSON.stringify(slimDb));
+        localStorage.setItem(CACHE_TS_KEY, String(now));
+      } catch (e) {
+        console.warn('localStorage quota reached; using in-memory player DB for this session.');
+      }
+      return slimDb;
+    }
+
+    async function handleSync() {
+      const raw = document.getElementById('leagueInput').value.trim();
+      if (!raw) {
+        showStatus('Enter your Sleeper League ID or Username above to analyze your league.', true);
+        return;
+      }
+
+      if (/^\d{10,22}$/.test(raw)) {
+        localStorage.setItem('sleeper_league_id', raw);
+        await loadLeagueMatrix(raw);
+      } else {
+        showStatus(`Looking up Sleeper user <strong>${raw}</strong>...`);
+        try {
+          const userRes = await fetch(`https://api.sleeper.app/v1/user/${encodeURIComponent(raw)}`);
+          if (!userRes.ok) throw new Error('Sleeper username not found.');
+          const user = await userRes.json();
+          if (!user || !user.user_id) throw new Error('Sleeper username not found.');
+
+          const leaguesRes = await fetch(`https://api.sleeper.app/v1/user/${user.user_id}/leagues/nfl/2026`);
+          const leagues = await leaguesRes.json();
+          if (!leagues || leagues.length === 0) throw new Error('No 2026 NFL leagues found.');
+
+          const selectEl = document.getElementById('leagueSelect');
+          selectEl.innerHTML = leagues.map(l => `<option value="${l.league_id}">${l.name} (${l.total_rosters}-Team)</option>`).join('');
+          selectEl.classList.remove('hidden');
+          selectEl.onchange = () => {
+            localStorage.setItem('sleeper_league_id', selectEl.value);
+            loadLeagueMatrix(selectEl.value);
+          };
+
+          localStorage.setItem('sleeper_league_id', leagues[0].league_id);
+          await loadLeagueMatrix(leagues[0].league_id);
+        } catch (err) {
+          showStatus(err.message, true);
+        }
+      }
+    }
+
+    async function loadLeagueMatrix(leagueId) {
+      try {
+        const playersDb = await getNflPlayersMap();
+        showStatus('Analyzing league rosters, starter age curves, and Max PF...');
+
+        const [leagueRes, rostersRes, usersRes] = await Promise.all([
+          fetch(`https://api.sleeper.app/v1/league/${leagueId}`),
+          fetch(`https://api.sleeper.app/v1/league/${leagueId}/rosters`),
+          fetch(`https://api.sleeper.app/v1/league/${leagueId}/users`)
+        ]);
+
+        if (!leagueRes.ok) throw new Error('Could not load league data. Check your League ID.');
+        const [league, rosters, users] = await Promise.all([
+          leagueRes.json(),
+          rostersRes.json(),
+          usersRes.json()
+        ]);
+
+        const badge = document.getElementById('leagueNameBadge');
+        badge.textContent = league.name;
+        badge.classList.remove('hidden');
+
+        const userMap = {};
+        users.forEach(u => {
+          userMap[u.user_id] = {
+            teamName: u.metadata?.team_name || u.display_name || 'Unknown Team',
+            ownerName: u.display_name || 'Manager'
+          };
+        });
+
+        // Rank rosters by Max PF descending to find top-half vs bottom-half firepower
+        const maxPfSorted = [...rosters].sort((a, b) => {
+          const pfA = (a.settings?.ppts || 0) + ((a.settings?.ppts_decimal || 0) / 100);
+          const pfB = (b.settings?.ppts || 0) + ((b.settings?.ppts_decimal || 0) / 100);
+          return pfB - pfA;
+        });
+        const maxPfRankMap = {};
+        maxPfSorted.forEach((r, i) => { maxPfRankMap[r.roster_id] = i + 1; });
+
+        const halfPoint = Math.ceil(rosters.length / 2);
+
+        allTeams = rosters.map(r => {
+          const uInfo = userMap[r.owner_id] || { teamName: `Team ${r.roster_id}`, ownerName: `Manager ${r.roster_id}` };
+          const wins = r.settings?.wins || 0;
+          const losses = r.settings?.losses || 0;
+          const maxPf = Number(((r.settings?.ppts || 0) + ((r.settings?.ppts_decimal || 0) / 100)).toFixed(1));
+          const maxPfRank = maxPfRankMap[r.roster_id];
+
+          const starterIds = (r.starters || []).filter(id => id && id !== '0' && playersDb[id]);
+          const allRosterIds = (r.players || []).filter(id => id && playersDb[id]);
+
+          // Calculate Starter Average Age & Skill Position Age
+          let starterAges = [];
+          let skillAges = [];
+          const starterList = [];
+
+          starterIds.forEach(pid => {
+            const p = playersDb[pid];
+            if (p && p.a) {
+              starterAges.push(p.a);
+              if (p.p === 'RB' || p.p === 'WR') skillAges.push(p.a);
+            }
+            if (p) starterList.push(p);
+          });
+
+          // If offseason/empty starters, fallback to top 9 youngest/core players on roster
+          if (starterAges.length === 0) {
+            allRosterIds.slice(0, 9).forEach(pid => {
+              const p = playersDb[pid];
+              if (p && p.a) {
+                starterAges.push(p.a);
+                if (p.p === 'RB' || p.p === 'WR') skillAges.push(p.a);
+              }
+            });
+          }
+
+          const avgStarterAge = starterAges.length
+            ? Number((starterAges.reduce((s, a) => s + a, 0) / starterAges.length).toFixed(1))
+            : 25.5;
+
+          const avgSkillAge = skillAges.length
+            ? Number((skillAges.reduce((s, a) => s + a, 0) / skillAges.length).toFixed(1))
+            : avgStarterAge;
+
+          // Flag aging vets across entire roster (RB >= 26, WR >= 28, TE >= 29, QB >= 32)
+          const agingVets = [];
+          const fullRosterObjs = [];
+
+          allRosterIds.forEach(pid => {
+            const p = playersDb[pid];
+            if (!p) return;
+            fullRosterObjs.push(p);
+            if (!p.a) return;
+            const isAging =
+              (p.p === 'RB' && p.a >= 26) ||
+              (p.p === 'WR' && p.a >= 28) ||
+              (p.p === 'TE' && p.a >= 29) ||
+              (p.p === 'QB' && p.a >= 32);
+            if (isAging) agingVets.push(p);
+          });
+
+          agingVets.sort((a, b) => b.a - a.a);
+          fullRosterObjs.sort((a, b) => (a.p > b.p ? 1 : -1) || (b.a || 0) - (a.a || 0));
+
+          // Determine Archetype
+          const isTopHalfPf = maxPfRank <= halfPoint;
+          const isWinning = wins > losses;
+          let archetype = 'Rebuilder';
+
+          if (isTopHalfPf && avgStarterAge < 26.8) {
+            archetype = 'Contender';
+          } else if ((isTopHalfPf || isWinning) && avgStarterAge >= 26.8) {
+            archetype = 'Pretender';
+          } else if (!isTopHalfPf && avgStarterAge >= 26.8) {
+            archetype = 'Pretender'; // Aging roster without elite output -> prime tear-down candidate
+          } else {
+            archetype = 'Rebuilder';
+          }
+
+          return {
+            rosterId: r.roster_id,
+            ownerName: uInfo.ownerName,
+            teamName: uInfo.teamName,
+            wins,
+            losses,
+            maxPf,
+            maxPfRank,
+            avgStarterAge,
+            avgSkillAge,
+            archetype,
+            agingVets,
+            starterList,
+            fullRosterObjs
+          };
+        });
+
+        // Sort by Max PF descending by default
+        allTeams.sort((a, b) => b.maxPf - a.maxPf);
+
+        updateKPIs();
+        renderTable();
+        hideStatus();
+
+        document.getElementById('kpiGrid').classList.remove('hidden');
+        document.getElementById('kpiGrid').classList.add('grid');
+        document.getElementById('matrixContainer').classList.remove('hidden');
+        document.getElementById('legendBox').classList.remove('hidden');
+        document.getElementById('legendBox').classList.add('grid');
+      } catch (err) {
+        showStatus(`Error: ${err.message}`, true);
+      }
+    }
+
+    function updateKPIs() {
+      if (!allTeams.length) return;
+
+      const youngest = [...allTeams].sort((a, b) => a.avgStarterAge - b.avgStarterAge)[0];
+      document.getElementById('kpiYoungest').textContent = `${youngest.ownerName} (${youngest.avgStarterAge} yrs)`;
+      document.getElementById('kpiYoungestSub').textContent = `${youngest.teamName} • Max PF #${youngest.maxPfRank}`;
+
+      const oldest = [...allTeams].sort((a, b) => b.avgStarterAge - a.avgStarterAge)[0];
+      document.getElementById('kpiOldest').textContent = `${oldest.ownerName} (${oldest.avgStarterAge} yrs)`;
+      document.getElementById('kpiOldestSub').textContent = `${oldest.agingVets.length} aging vets on roster`;
+
+      const topPf = allTeams[0];
+      document.getElementById('kpiMaxPf').textContent = `${topPf.ownerName} (${topPf.maxPf})`;
+      document.getElementById('kpiMaxPfSub').textContent = `Record: ${topPf.wins}-${topPf.losses} • ${topPf.archetype}`;
+
+      const pretenderCount = allTeams.filter(t => t.archetype === 'Pretender').length;
+      document.getElementById('kpiPretenders').textContent = `${pretenderCount} Teams`;
+    }
+
+    function setArchetypeFilter(arch) {
+      currentFilter = arch;
+      document.querySelectorAll('.arch-filter').forEach(btn => {
+        btn.classList.remove('bg-slate-800', 'ring-1', 'ring-slate-600', 'font-semibold');
+        btn.classList.add('bg-slate-900', 'font-medium');
+      });
+      const active = document.getElementById(`arch-${arch}`);
+      if (active) {
+        active.classList.remove('bg-slate-900', 'font-medium');
+        active.classList.add('bg-slate-800', 'ring-1', 'ring-slate-600', 'font-semibold');
+      }
+      renderTable();
+    }
+
+    function toggleDetails(rosterId) {
+      if (expandedRosterIds.has(rosterId)) {
+        expandedRosterIds.delete(rosterId);
+      } else {
+        expandedRosterIds.add(rosterId);
+      }
+      renderTable();
+    }
+
+    function renderTable() {
+      const tbody = document.getElementById('matrixBody');
+      const filtered = allTeams.filter(t => currentFilter === 'all' || t.archetype === currentFilter);
+
+      tbody.innerHTML = filtered.map(team => {
+        const archBadge = team.archetype === 'Contender'
+          ? 'border-emerald-500/40 bg-emerald-500/15 text-emerald-300'
+          : team.archetype === 'Pretender'
+          ? 'border-amber-500/40 bg-amber-500/15 text-amber-300'
+          : 'border-sky-500/40 bg-sky-500/15 text-sky-300';
+
+        const ageColor = team.avgStarterAge >= 27.0
+          ? 'text-amber-400 font-bold'
+          : team.avgStarterAge <= 25.2
+          ? 'text-emerald-400 font-bold'
+          : 'text-slate-200 font-semibold';
+
+        const vetPills = team.agingVets.length
+          ? team.agingVets.slice(0, 5).map(v => `
+              <span class="inline-flex items-center gap-1 rounded border border-slate-700 bg-slate-800/90 px-2 py-0.5 text-xs text-slate-300">
+                <span class="font-bold text-amber-400">${v.p}</span> ${v.n} <span class="text-slate-500">(${v.a})</span>
+              </span>
+            `).join('') + (team.agingVets.length > 5 ? `<span class="text-xs text-slate-500">+${team.agingVets.length - 5} more</span>` : '')
+          : `<span class="text-xs italic text-slate-500">Youth-heavy roster (0 aging vets)</span>`;
+
+        const isExpanded = expandedRosterIds.has(team.rosterId);
+        const detailRow = isExpanded ? `
+          <tr class="bg-slate-950/70">
+            <td colspan="7" class="px-6 py-4">
+              <div class="text-xs font-semibold uppercase tracking-wider text-slate-400 mb-2">Full Offensive Roster Breakdown (${team.ownerName})</div>
+              <div class="grid grid-cols-1 gap-2 sm:grid-cols-2 md:grid-cols-4">
+                ${['QB', 'RB', 'WR', 'TE'].map(pos => {
+                  const posPlayers = team.fullRosterObjs.filter(p => p.p === pos);
+                  return `
+                    <div class="rounded-lg border border-slate-800 bg-slate-900/90 p-3">
+                      <div class="mb-1.5 text-xs font-bold text-emerald-400">${pos} Room (${posPlayers.length})</div>
+                      <ul class="space-y-1 text-xs text-slate-300">
+                        ${posPlayers.map(p => `<li class="flex justify-between"><span>${p.n} <span class="text-slate-500">(${p.t})</span></span><span class="font-mono text-slate-400">${p.a ? p.a + 'y' : '—'}</span></li>`).join('') || '<li class="text-slate-600">None</li>'}
+                      </ul>
+                    </div>
+                  `;
+                }).join('')}
+              </div>
+            </td>
+          </tr>
+        ` : '';
+
+        return `
+          <tr class="transition hover:bg-slate-800/40">
+            <td class="sticky left-0 z-10 bg-slate-900/95 px-4 py-3.5 align-top backdrop-blur">
+              <div class="font-semibold text-white">${team.ownerName}</div>
+              <div class="text-xs text-slate-400">${team.teamName}</div>
+            </td>
+            <td class="px-3 py-3.5 text-center align-top">
+              <span class="inline-block rounded-md border px-2.5 py-0.5 text-xs font-bold ${archBadge}">
+                ${team.archetype}
+              </span>
+            </td>
+            <td class="px-3 py-3.5 text-center align-top">
+              <div class="font-semibold text-white">${team.wins}-${team.losses}</div>
+              <div class="text-xs text-slate-400">Max PF: ${team.maxPf} (#${team.maxPfRank})</div>
+            </td>
+            <td class="px-3 py-3.5 text-center align-top">
+              <span class="text-sm ${ageColor}">${team.avgStarterAge} yrs</span>
+            </td>
+            <td class="px-3 py-3.5 text-center align-top">
+              <span class="text-sm text-slate-300">${team.avgSkillAge} yrs</span>
+            </td>
+            <td class="px-4 py-3.5 align-top">
+              <div class="flex flex-wrap gap-1.5">${vetPills}</div>
+            </td>
+            <td class="px-3 py-3.5 text-right align-top">
+              <button onclick="toggleDetails(${team.rosterId})" class="rounded-lg border border-slate-700 bg-slate-800 px-2.5 py-1 text-xs font-medium text-slate-300 hover:border-slate-500 hover:text-white">
+                ${isExpanded ? 'Hide' : 'Roster'}
+              </button>
+            </td>
+          </tr>
+          ${detailRow}
+        `;
+      }).join('');
+    }
+
+    window.addEventListener('DOMContentLoaded', () => {
+      const savedId = detectSavedLeagueId();
+      if (savedId) {
+        document.getElementById('leagueInput').value = savedId;
+        loadLeagueMatrix(savedId);
+      } else {
+        showStatus('Enter your Sleeper League ID or Username in the top right and click <strong>Sync Sleeper</strong>.');
+      }
+    });
+  </script>
+</body>
+</html>
