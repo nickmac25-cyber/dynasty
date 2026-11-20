@@ -210,108 +210,89 @@
     }
   });
 
-  // 3. Bulletproof Cross-Page User, Season & League Sync (index.html <-> standalone pages)
-  let lastFetchedLeagues = [];
+  // 3. Cross-Page Sync Bridge (index.html <-> all standalone pages)
+  let fetchedLeagues = [];
+  let isApplyingSavedLeague = false;
 
-  function findUserInput() {
-    return (
-      document.getElementById("user") ||
-      document.getElementById("username") ||
-      document.getElementById("sleeperUser") ||
-      [...document.querySelectorAll("input")].find(i => /user|sleeper/i.test(i.id || i.placeholder || ""))
-    );
+  const cleanName = str => (str || "").replace(/\s*\(\d+T\)\s*$/i, "").trim().toLowerCase();
+
+  function saveSelectedLeague(leagueSel) {
+    if (!leagueSel || isApplyingSavedLeague || !leagueSel.options.length) return;
+    const idx = leagueSel.selectedIndex;
+    const opt = leagueSel.options[idx];
+    if (!opt || !opt.textContent.trim()) return;
+
+    const cleaned = cleanName(opt.textContent);
+    localStorage.setItem("dd_league_name", cleaned);
+    if (fetchedLeagues[idx]?.league_id) {
+      localStorage.setItem("dd_league_id", String(fetchedLeagues[idx].league_id));
+    }
   }
 
-  function findLeagueSelect() {
-    return (
-      document.getElementById("league") ||
-      document.getElementById("leagueSelect") ||
-      document.getElementById("leagues") ||
-      [...document.querySelectorAll("select")].find(s =>
-        /league/i.test(s.id) || /league/i.test(s.name) || /emerald-300/.test(s.className)
-      )
-    );
-  }
-
-  function findSeasonSelect() {
-    return (
-      document.getElementById("season") ||
-      document.getElementById("seasonSelect") ||
-      [...document.querySelectorAll("select")].find(s => /season|year/i.test(s.id))
-    );
-  }
-
-  function findSyncButton() {
-    return (
-      document.getElementById("go") ||
-      document.getElementById("syncBtn") ||
-      document.getElementById("loadBtn") ||
-      [...document.querySelectorAll("button")].find(b =>
-        /^(sync|load|fetch|connect)/i.test(b.textContent.trim())
-      )
-    );
-  }
-
-  function cleanName(str) {
-    return (str || "").replace(/\s*\([^)]*\)\s*$/, "").trim().toLowerCase();
-  }
-
-  function syncSavedLeague(leagueSel) {
-    if (!leagueSel || !leagueSel.options.length) return false;
+  function applySavedLeague(leagueSel) {
+    if (!leagueSel || !leagueSel.options.length) return;
     const savedId = localStorage.getItem("dd_league_id");
     const savedName = localStorage.getItem("dd_league_name");
-    if (!savedId && !savedName) return false;
+    if (!savedId && !savedName) return;
 
     const opts = [...leagueSel.options];
     let matchIdx = -1;
 
-    // 1. Exact Sleeper league_id match (if option value is league_id or maps via lastFetchedLeagues)
-    if (savedId) {
-      matchIdx = opts.findIndex((o, idx) =>
-        o.value === savedId || (lastFetchedLeagues[idx] && String(lastFetchedLeagues[idx].league_id) === savedId)
-      );
+    if (savedId && fetchedLeagues.length) {
+      matchIdx = fetchedLeagues.findIndex(l => String(l.league_id) === savedId);
     }
-
-    // 2. Exact or cleaned league name match (strips trailing "(12T SF)" tags if index.html adds them)
     if (matchIdx === -1 && savedName) {
-      const targetClean = cleanName(savedName);
-      matchIdx = opts.findIndex(o => {
-        const optClean = cleanName(o.textContent);
-        return optClean === targetClean || optClean.includes(targetClean) || targetClean.includes(optClean);
-      });
+      matchIdx = opts.findIndex(o => cleanName(o.textContent) === savedName);
     }
 
     if (matchIdx > -1 && leagueSel.selectedIndex !== matchIdx) {
+      isApplyingSavedLeague = true;
       leagueSel.selectedIndex = matchIdx;
       leagueSel.dispatchEvent(new Event("change", { bubbles: true }));
-      return true;
+      if (typeof leagueSel.onchange === "function") {
+        leagueSel.onchange({ target: leagueSel });
+      }
+      isApplyingSavedLeague = false;
     }
-    return matchIdx > -1;
   }
 
-  function attachSyncListeners() {
-    const userInp = findUserInput();
-    const seasonSel = findSeasonSelect();
-    const leagueSel = findLeagueSelect();
-
-    if (userInp && !userInp.dataset.ddBound) {
-      userInp.dataset.ddBound = "1";
-      const savedUser = localStorage.getItem("dd_user");
-      if (savedUser && !userInp.value.trim()) {
-        userInp.value = savedUser;
-      } else if (userInp.value.trim() && !savedUser) {
-        localStorage.setItem("dd_user", userInp.value.trim());
+  // Intercept Sleeper /leagues/nfl/ fetch so we capture the exact league list
+  const origFetch = window.fetch;
+  window.fetch = async function(...args) {
+    const res = await origFetch.apply(this, args);
+    try {
+      const url = typeof args[0] === "string" ? args[0] : args[0]?.url || "";
+      if (url.includes("api.sleeper.app/v1/user/") && url.includes("/leagues/nfl/")) {
+        res.clone().json().then(data => {
+          if (Array.isArray(data)) {
+            fetchedLeagues = data;
+            // Wait a tick for the page's own script to populate #league, then switch to saved league
+            setTimeout(() => applySavedLeague(document.getElementById("league")), 60);
+            setTimeout(() => applySavedLeague(document.getElementById("league")), 250);
+          }
+        }).catch(() => {});
       }
-      userInp.addEventListener("input", () => {
-        if (userInp.value.trim()) localStorage.setItem("dd_user", userInp.value.trim());
-      });
+    } catch (e) {}
+    return res;
+  };
+
+  window.addEventListener("DOMContentLoaded", () => {
+    const userInp = document.getElementById("user");
+    const seasonSel = document.getElementById("season");
+    const leagueSel = document.getElementById("league");
+    const goBtn = document.getElementById("go");
+
+    // 1. Sync Username
+    if (userInp) {
+      const savedUser = localStorage.getItem("dd_user");
+      if (savedUser && !userInp.value.trim()) userInp.value = savedUser;
       userInp.addEventListener("change", () => {
         if (userInp.value.trim()) localStorage.setItem("dd_user", userInp.value.trim());
       });
     }
 
-    if (seasonSel && !seasonSel.dataset.ddBound) {
-      seasonSel.dataset.ddBound = "1";
+    // 2. Sync Season
+    if (seasonSel) {
       const savedSeason = localStorage.getItem("dd_season");
       if (savedSeason && [...seasonSel.options].some(o => o.value === savedSeason)) {
         seasonSel.value = savedSeason;
@@ -321,60 +302,18 @@
       });
     }
 
-    if (leagueSel && !leagueSel.dataset.ddBound) {
-      leagueSel.dataset.ddBound = "1";
-      leagueSel.addEventListener("change", () => {
-        const idx = leagueSel.selectedIndex;
-        const opt = leagueSel.options[idx];
-        if (opt && opt.textContent.trim()) {
-          localStorage.setItem("dd_league_name", cleanName(opt.textContent));
-          if (lastFetchedLeagues[idx]?.league_id) {
-            localStorage.setItem("dd_league_id", String(lastFetchedLeagues[idx].league_id));
-          } else if (/^\d{10,}$/.test(opt.value)) {
-            localStorage.setItem("dd_league_id", opt.value);
-          }
-        }
-      });
-
-      const obs = new MutationObserver(() => syncSavedLeague(leagueSel));
+    // 3. Watch #league for manual user switches AND initial population
+    if (leagueSel) {
+      leagueSel.addEventListener("change", () => saveSelectedLeague(leagueSel));
+      const obs = new MutationObserver(() => applySavedLeague(leagueSel));
       obs.observe(leagueSel, { childList: true });
-      syncSavedLeague(leagueSel);
     }
-  }
 
-  // Intercept Sleeper league list fetch so we capture exact league_ids and trigger sync immediately
-  const origFetch = window.fetch;
-  window.fetch = async function(...args) {
-    const res = await origFetch.apply(this, args);
-    try {
-      const url = typeof args[0] === "string" ? args[0] : args[0]?.url || "";
-      if (url.includes("api.sleeper.app/v1/user/") && url.includes("/leagues/nfl/")) {
-        const cloned = res.clone();
-        cloned.json().then(data => {
-          if (Array.isArray(data)) lastFetchedLeagues = data;
-          [80, 250, 600].forEach(delay => {
-            setTimeout(() => {
-              attachSyncListeners();
-              syncSavedLeague(findLeagueSelect());
-            }, delay);
-          });
-        }).catch(() => {});
-      }
-    } catch (e) {}
-    return res;
-  };
-
-  window.addEventListener("DOMContentLoaded", () => {
-    attachSyncListeners();
-    // If user is saved in localStorage and dropdown hasn't populated yet, auto-trigger Sync/Load once
-    setTimeout(() => {
-      attachSyncListeners();
-      const userInp = findUserInput();
-      const leagueSel = findLeagueSelect();
-      const syncBtn = findSyncButton();
-      if (userInp && userInp.value.trim() && (!leagueSel || !leagueSel.options.length) && syncBtn) {
-        syncBtn.click();
-      }
-    }, 200);
+    // 4. Auto-click Sync on index.html if username is saved (standalone pages already auto-click)
+    if (isIndex && userInp && userInp.value.trim() && goBtn) {
+      setTimeout(() => {
+        if (leagueSel && leagueSel.hidden) goBtn.click();
+      }, 150);
+    }
   });
 })();
