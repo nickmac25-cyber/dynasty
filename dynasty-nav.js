@@ -1,5 +1,4 @@
 (function() {
-  // All internal tabs inside index.html + all standalone tool pages in one unified bar
   const navItems = [
     // Internal index.html tabs
     { type: "tab", tab: "tab-trade", label: "Trade & Targets" },
@@ -27,7 +26,7 @@
   const currentFile = window.location.pathname.split("/").pop() || "index.html";
   const isIndex = currentFile === "index.html" || currentFile === "";
 
-  // Build the unified top nav bar
+  // 1. Build the unified top nav bar
   const nav = document.createElement("nav");
   nav.id = "dynasty-master-nav";
   nav.style.cssText = "background:#090d16; border-bottom:1px solid #1e293b; padding:10px 16px; display:flex; flex-wrap:wrap; align-items:center; gap:6px; font-family:system-ui,-apple-system,sans-serif; font-size:12px; position:relative; z-index:50;";
@@ -46,11 +45,8 @@
   }
 
   function activateIndexTab(tabId) {
-    // Trigger index.html's existing tab button if present
     const nativeBtn = document.querySelector(`.tab-btn[data-tab="${tabId}"]`);
     if (nativeBtn) nativeBtn.click();
-
-    // Update highlight on the master nav bar
     btnElements.forEach(({ el, item }) => {
       styleButton(el, item.type === "tab" && item.tab === tabId);
     });
@@ -73,14 +69,12 @@
       el.href = item.href;
     }
 
-    // Add a subtle visual divider right before the standalone pages
     if (idx === 11) {
       const sep = document.createElement("span");
       sep.style.cssText = "width:1px; height:18px; background:#334155; margin:0 4px; display:inline-block;";
       nav.appendChild(sep);
     }
 
-    // Determine initial active highlight
     let isActive = false;
     if (isIndex && item.type === "tab") {
       const hashTab = window.location.hash.replace("#", "") || "tab-trade";
@@ -96,9 +90,53 @@
 
   document.body.insertBefore(nav, document.body.firstChild);
 
-  // If landing on index.html with a #hash (e.g. index.html#tab-finder), auto-open that tab
   if (isIndex && window.location.hash) {
     const targetTab = window.location.hash.replace("#", "");
     setTimeout(() => activateIndexTab(targetTab), 50);
   }
+
+  // 2. Global League & Season Sync Persistence across all 9 pages
+  window.addEventListener("DOMContentLoaded", () => {
+    const seasonSel = document.getElementById("season");
+    const leagueSel = document.getElementById("league");
+
+    // Restore saved season before auto-sync runs
+    try {
+      const savedSeason = localStorage.getItem("dd_season");
+      if (seasonSel && savedSeason && [...seasonSel.options].some(o => o.value === savedSeason)) {
+        seasonSel.value = savedSeason;
+      }
+      if (seasonSel) {
+        seasonSel.addEventListener("change", () => {
+          localStorage.setItem("dd_season", seasonSel.value);
+        });
+      }
+    } catch (e) {}
+
+    // Watch #league dropdown for population & user selection changes
+    if (leagueSel) {
+      leagueSel.addEventListener("change", () => {
+        const opt = leagueSel.options[leagueSel.selectedIndex];
+        if (opt) {
+          localStorage.setItem("dd_league_name", opt.textContent.trim());
+          localStorage.setItem("dd_league_idx", leagueSel.value);
+        }
+      });
+
+      const obs = new MutationObserver(() => {
+        if (!leagueSel.options.length) return;
+        const savedName = localStorage.getItem("dd_league_name");
+        if (!savedName) return;
+
+        // Match by league name (works whether option value is index "0","1" or Sleeper league_id)
+        const matchIdx = [...leagueSel.options].findIndex(o => o.textContent.trim() === savedName);
+        if (matchIdx > -1 && leagueSel.selectedIndex !== matchIdx) {
+          leagueSel.selectedIndex = matchIdx;
+          leagueSel.dispatchEvent(new Event("change"));
+        }
+      });
+
+      obs.observe(leagueSel, { childList: true });
+    }
+  });
 })();
