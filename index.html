@@ -597,14 +597,14 @@ function ownedPicks(lg, rosters, traded, myRid) {
   traded.forEach(t => owner[`${t.season}-${t.round}-${t.roster_id}`] = t.owner_id);
   for (const key in owner) if (owner[key] === myRid) {
     const [y, k, origin] = key.split("-"); const val = pickValue(y, +k);
-    if (val) out.push({pick: true, name: `${y} Round ${k}` + (+origin !== myRid ? ` (via Team ${origin})` : ""), pos: "PICK", age: null, v: val, fc: val, dp: null, trend: 0, sid: "pk" + key});
+    if (val || +y > base) out.push({pick: true, name: `${y} Round ${k}` + (+origin !== myRid ? ` (via Team ${origin})` : ""), pos: "PICK", age: null, v: val, fc: val, dp: null, trend: 0, sid: "pk" + key});
   }
   return out.sort((a, b) => b.v - a.v);
 }
 
+const pickRe = k => new RegExp(`\\b${k}(?:st|nd|rd|th)\\b|Pick ${k}\\.|Round ${k}\\b`, "i");
 function pickValue(y, k) {
-  const sfx = ["", "st", "nd", "rd", "th"][Math.min(k, 4)];
-  const hits = S.all.filter(p => p.pick && p.name.includes(y) && (new RegExp(`\b${k}${sfx}\b|Pick ${k}\.`, "i")).test(p.name));
+  const re = pickRe(k), hits = S.all.filter(p => p.pick && p.name.includes(y) && re.test(p.name));
   return hits.length ? Math.round(hits.reduce((s, p) => s + p.v, 0) / hits.length) : 0;
 }
 
@@ -1184,7 +1184,7 @@ const AGE_F = {QB: a => a <= 33 ? 1 : a <= 36 ? .88 : .72, RB: a => a <= 23 ? 1.
 function projV(p, y) { let v = p.v, a = Math.floor(p.age || 26); for (let i = 0; i < y; i++) v *= (AGE_F[p.pos] || (() => 1))(a + i); return Math.round(v); }
 const pickParts = p => { const [y, k, o] = p.sid.slice(2).split("-"); return {y, k: +k, o: +o}; };
 function tierValue(y, k, tier) {
-  const sfx = ["", "st", "nd", "rd", "th"][Math.min(k, 4)], re = new RegExp(`\\b${k}${sfx}\\b|Pick ${k}\\.`, "i"), tr = new RegExp(tier, "i");
+  const re = pickRe(k), tr = new RegExp(tier, "i");
   const hits = S.all.filter(p => p.pick && p.name.includes(y) && re.test(p.name) && tr.test(p.name));
   return hits.length ? Math.round(hits.reduce((s, p) => s + p.v, 0) / hits.length) : pickValue(y, k);
 }
@@ -1210,7 +1210,7 @@ function leagueModel() {
 
 function extrasPro() {
   try {
-    S.M = leagueModel(); drawAudit(S.M); drawWindow(S.M); ensureLeagueTabs();
+    S.M = leagueModel(); drawAudit(S.M); drawWindow(S.M); ensureLeagueTabs(); pickDiag();
     $("finderOut").innerHTML = S.fin ? $("finderOut").innerHTML : '<p class="text-xs text-slate-500">Press “Scan league” to look for trades that make both teams better.</p>';
   } catch (e) { console.error(e); status("Audit error: " + e.message); }
 }
@@ -1525,6 +1525,12 @@ function matchupFactor(p, oppRaw, mx) {
     else if (rank > n - 8) { f *= .95; notes.push(`${oppRaw} allows just ${dv[role].toFixed(1)} PPR points per game to ${role}s (${nth(rank)} most of ${n})`); }
   }
   return notes.length || f !== 1 ? {f, notes} : null;
+}
+
+function pickDiag() {
+  const z = (S.picks || []).filter(p => !p.v); if (!z.length) return;
+  const names = S.all.filter(p => p.pick).slice(0, 4).map(p => p.name).join(", ") || "none returned";
+  setTimeout(() => status(`${z.length} of your picks have no market value yet. FantasyCalc pick names look like: ${names}.`), 0);
 }
 </script>
 </body>
