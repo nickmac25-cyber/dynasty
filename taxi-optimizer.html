@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Taxi Optimizer · Dynasty Suite</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script>tailwind.config = { darkMode: 'class', theme: { extend: { colors: { slate: { 850: '#151e2e', 900: '#0f172a', 950: '#090d16' } } } } }</script>
+</head>
+<body class="bg-slate-950 text-slate-100 font-sans antialiased min-h-screen flex flex-col">
+<script src="dynasty-nav.js"></script>
+
+<header class="bg-slate-900 border-b border-slate-800 px-4 py-3">
+  <div class="max-w-7xl mx-auto flex flex-wrap items-center justify-between gap-3">
+    <div>
+      <h1 class="font-bold text-lg text-white">Taxi Squad &amp; Bench Stash Optimizer</h1>
+      <p class="text-xs text-slate-400">Audits your taxi efficiency and uncovers high-upside stashes buried on opponent taxi squads.</p>
+    </div>
+    <div class="flex flex-wrap items-center gap-2">
+      <input id="user" placeholder="Sleeper username" class="bg-slate-950 border border-slate-700 rounded-lg px-3 py-1.5 text-sm text-white w-40">
+      <select id="season" class="bg-slate-950 border border-slate-700 rounded-lg px-2.5 py-1.5 text-sm text-white"></select>
+      <button id="go" class="bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-medium px-4 py-1.5 rounded-lg cursor-pointer">Sync</button>
+      <select id="league" hidden class="bg-slate-800 border border-slate-600 rounded-lg px-3 py-1.5 text-sm text-emerald-300 max-w-[200px] truncate"></select>
+    </div>
+  </div>
+  <div id="status" class="max-w-7xl mx-auto text-xs text-slate-400 mt-2">Ready.</div>
+</header>
+
+<main class="max-w-7xl w-full mx-auto px-4 py-6 space-y-6 flex-1">
+  <section id="mySec" hidden class="bg-slate-900 border border-slate-800 rounded-xl p-5 shadow-xl">
+    <h2 class="text-lg font-bold text-white mb-1">Your Taxi Squad Audit</h2>
+    <p id="taxiRules" class="text-xs text-slate-400 mb-4"></p>
+    <div id="myTaxiGrid" class="grid grid-cols-1 md:grid-cols-2 gap-4"></div>
+  </section>
+
+  <section id="oppSec" hidden class="bg-slate-900 border border-slate-800 rounded-xl p-5 shadow-xl">
+    <h2 class="text-lg font-bold text-white mb-1">Opponent Taxi Squad Poach Targets</h2>
+    <p class="text-xs text-slate-400 mb-4">Valuable young players buried on league-mates' taxi squads (great trade throw-ins).</p>
+    <div id="oppTaxi" class="grid grid-cols-1 md:grid-cols-3 gap-3"></div>
+  </section>
+</main>
+
+<script>
+const $ = id => document.getElementById(id);
+const SL = "https://api.sleeper.app/v1", FC = "https://api.fantasycalc.com/values/current";
+const POS = ["QB", "RB", "WR", "TE"];
+const yr = new Date().getFullYear();
+for (let y = yr; y >= yr - 2; y--) $("season").add(new Option(y, y));
+try { if (localStorage.getItem("dd_user")) $("user").value = localStorage.getItem("dd_user"); } catch (e) {}
+
+const j = async u => { const r = await fetch(u); if (!r.ok) throw new Error(r.status); return r.json(); };
+const esc = t => (t || "").replace(/&/g, "&amp;").replace(/</g, "&lt;");
+
+$("go").onclick = async () => {
+  try {
+    const uname = $("user").value.trim();
+    if (!uname) return $("status").textContent = "Enter a Sleeper username.";
+    localStorage.setItem("dd_user", uname);
+    $("status").textContent = "Fetching user & leagues...";
+    const u = await j(`${SL}/user/${encodeURIComponent(uname)}`);
+    const ls = await j(`${SL}/user/${u.user_id}/leagues/nfl/${$("season").value}`);
+    const sel = $("league"); sel.innerHTML = ""; sel.hidden = false;
+    ls.forEach((l, i) => sel.add(new Option(l.name, i)));
+    sel.onchange = () => run(ls[sel.value], u.user_id);
+    run(ls[0], u.user_id);
+  } catch (e) { $("status").textContent = "Error: " + e.message; }
+};
+
+async function run(lg, uid) {
+  $("status").textContent = "Auditing taxi squads...";
+  const sf = (lg.roster_positions || []).filter(p => p === "SUPER_FLEX").length;
+  const qb = (lg.roster_positions || []).filter(p => p === "QB").length;
+  const numQbs = sf || qb > 1 ? 2 : 1, ppr = lg.scoring_settings?.rec ?? 1;
+  const maxTaxi = lg.settings?.taxi_slots || 0;
+  const maxExp = lg.settings?.taxi_years ?? 1;
+
+  const [fc, rosters, users] = await Promise.all([
+    j(`${FC}?isDynasty=true&numQbs=${numQbs}&numTeams=${lg.total_rosters}&ppr=${ppr}`),
+    j(`${SL}/league/${lg.league_id}/rosters`),
+    j(`${SL}/league/${lg.league_id}/users`)
+  ]);
+
+  const valMap = new Map();
+  fc.forEach(e => {
+    if (e.player.sleeperId) valMap.set(String(e.player.sleeperId), {
+      sid: String(e.player.sleeperId), name: e.player.name, pos: e.player.position,
+      age: e.player.maybeAge || 22, v: e.value
+    });
+  });
+
+  const me = rosters.find(r => r.owner_id === uid) || rosters[0];
+  const myTaxiIds = new Set(me.taxi || []);
+  const myStarters = new Set(me.starters || []);
+  const myTaxi = [...myTaxiIds].map(id => valMap.get(id)).filter(Boolean);
+  const myBenchEligible = (me.players || [])
+    .filter(id => !myTaxiIds.has(id) && !myStarters.has(id))
+    .map(id => valMap.get(id))
+    .filter(p => p && POS.includes(p.pos) && p.age <= (22 + maxExp));
+
+  $("taxiRules").textContent = maxTaxi
+    ? `League allows ${maxTaxi} taxi slots (up to ${maxExp + 1} yrs experience). You are using ${myTaxi.length}/${maxTaxi} slots.`
+    : "This league does not have Taxi Squad slots enabled.";
+
+  $("myTaxiGrid").innerHTML = `
+    <div class="bg-slate-950 border border-slate-800 rounded-xl p-4">
+      <div class="font-bold text-emerald-400 text-sm mb-2">Currently on Your Taxi (${myTaxi.length}/${maxTaxi})</div>
+      <div class="space-y-2">
+        ${myTaxi.sort((a, b) => b.v - a.v).map(p => `
+          <div class="flex justify-between items-center text-xs bg-slate-900 px-3 py-2 rounded-lg">
+            <span><b class="text-white">${esc(p.name)}</b> <span class="text-slate-400">${p.pos} · ${p.age.toFixed(1)}y</span></span>
+            <span class="font-mono text-emerald-400 font-bold">${p.v.toLocaleString()}</span>
+          </div>
+        `).join("") || '<div class="text-xs text-slate-500">Empty</div>'}
+      </div>
+    </div>
+    <div class="bg-slate-950 border border-slate-800 rounded-xl p-4">
+      <div class="font-bold text-amber-400 text-sm mb-2">Young Bench Players (Taxi Candidates)</div>
+      <div class="space-y-2">
+        ${myBenchEligible.sort((a, b) => b.v - a.v).map(p => `
+          <div class="flex justify-between items-center text-xs bg-slate-900 px-3 py-2 rounded-lg">
+            <span><b class="text-white">${esc(p.name)}</b> <span class="text-slate-400">${p.pos} · ${p.age.toFixed(1)}y</span></span>
+            <span class="font-mono text-slate-200">${p.v.toLocaleString()}</span>
+          </div>
+        `).join("") || '<div class="text-xs text-slate-500">No young bench candidates found.</div>'}
+      </div>
+    </div>`;
+
+  const oppStashes = [];
+  rosters.forEach(r => {
+    if (r.owner_id === uid) return;
+    const u = users.find(x => x.user_id === r.owner_id);
+    const tname = u?.metadata?.team_name || u?.display_name || "Team " + r.roster_id;
+    (r.taxi || []).forEach(id => {
+      const p = valMap.get(id);
+      if (p && p.v >= 800) oppStashes.push({ ...p, team: tname });
+    });
+  });
+
+  $("oppTaxi").innerHTML = oppStashes.sort((a, b) => b.v - a.v).map(p => `
+    <div class="bg-slate-950 border border-slate-800 rounded-xl p-3 flex justify-between items-center">
+      <div>
+        <div class="font-bold text-white text-sm">${esc(p.name)} <span class="text-xs text-sky-400">${p.pos}</span></div>
+        <div class="text-xs text-slate-400">${esc(p.team)} · ${p.age.toFixed(1)}y</div>
+      </div>
+      <span class="font-mono text-sm font-bold text-emerald-400">${p.v.toLocaleString()}</span>
+    </div>
+  `).join("") || `<p class="text-xs text-slate-500 col-span-3">No high-value players found on opponent taxi squads.</p>`;
+
+  $("mySec").hidden = false;
+  $("oppSec").hidden = false;
+  $("status").textContent = `Synced ${lg.name}.`;
+}
+if ($("user").value) $("go").click();
+</script>
+</body>
+</html>
