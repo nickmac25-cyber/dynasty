@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Trade Matchmaker · Dynasty Suite</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script>tailwind.config = { darkMode: 'class', theme: { extend: { colors: { slate: { 850: '#151e2e', 900: '#0f172a', 950: '#090d16' } } } } }</script>
+</head>
+<body class="bg-slate-950 text-slate-100 font-sans antialiased min-h-screen flex flex-col">
+<script src="dynasty-nav.js"></script>
+
+<header class="bg-slate-900 border-b border-slate-800 px-4 py-3">
+  <div class="max-w-7xl mx-auto flex flex-wrap items-center justify-between gap-3">
+    <div>
+      <h1 class="font-bold text-lg text-white">Trade Block &amp; Needs Matchmaker</h1>
+      <p class="text-xs text-slate-400">Finds complementary positional surpluses and holes across your league.</p>
+    </div>
+    <div class="flex flex-wrap items-center gap-2">
+      <input id="user" placeholder="Sleeper username" class="bg-slate-950 border border-slate-700 rounded-lg px-3 py-1.5 text-sm text-white w-40">
+      <select id="season" class="bg-slate-950 border border-slate-700 rounded-lg px-2.5 py-1.5 text-sm text-white"></select>
+      <button id="go" class="bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-medium px-4 py-1.5 rounded-lg cursor-pointer">Sync</button>
+      <select id="league" hidden class="bg-slate-800 border border-slate-600 rounded-lg px-3 py-1.5 text-sm text-emerald-300 max-w-[200px] truncate"></select>
+    </div>
+  </div>
+  <div id="status" class="max-w-7xl mx-auto text-xs text-slate-400 mt-2">Ready.</div>
+</header>
+
+<main class="max-w-7xl w-full mx-auto px-4 py-6 space-y-6 flex-1">
+  <section id="matchesSec" hidden class="bg-slate-900 border border-slate-800 rounded-xl p-5 shadow-xl">
+    <h2 class="text-lg font-bold text-white mb-1">Best Complementary Trade Matches For You</h2>
+    <p class="text-xs text-slate-400 mb-4">Pairs your positional surpluses with teams starving at that position (and vice versa).</p>
+    <div id="matches" class="grid grid-cols-1 md:grid-cols-2 gap-4"></div>
+  </section>
+
+  <section id="matrixSec" hidden class="bg-slate-900 border border-slate-800 rounded-xl p-5 shadow-xl">
+    <h2 class="text-lg font-bold text-white mb-1">League-Wide Surplus &amp; Hole Matrix</h2>
+    <p class="text-xs text-slate-400 mb-4">Compares each team's starter + top-bench positional value against the league average.</p>
+    <div class="overflow-x-auto">
+      <table id="matrix" class="w-full text-left border-collapse text-sm min-w-[650px]"></table>
+    </div>
+  </section>
+</main>
+
+<script>
+const $ = id => document.getElementById(id);
+const SL = "https://api.sleeper.app/v1", FC = "https://api.fantasycalc.com/values/current";
+const POS = ["QB", "RB", "WR", "TE"];
+const yr = new Date().getFullYear();
+for (let y = yr; y >= yr - 2; y--) $("season").add(new Option(y, y));
+try { if (localStorage.getItem("dd_user")) $("user").value = localStorage.getItem("dd_user"); } catch (e) {}
+
+const j = async u => { const r = await fetch(u); if (!r.ok) throw new Error(r.status); return r.json(); };
+const esc = t => (t || "").replace(/&/g, "&amp;").replace(/</g, "&lt;");
+
+function sendToAnalyzer(giveIds, getIds) {
+  localStorage.setItem("dd_pending_trade", JSON.stringify({ a: giveIds, b: getIds }));
+  window.location.href = "index.html#tab-trade";
+}
+
+$("go").onclick = async () => {
+  try {
+    const uname = $("user").value.trim();
+    if (!uname) return $("status").textContent = "Enter a Sleeper username.";
+    localStorage.setItem("dd_user", uname);
+    $("status").textContent = "Fetching user & leagues...";
+    const u = await j(`${SL}/user/${encodeURIComponent(uname)}`);
+    const ls = await j(`${SL}/user/${u.user_id}/leagues/nfl/${$("season").value}`);
+    const sel = $("league"); sel.innerHTML = ""; sel.hidden = false;
+    ls.forEach((l, i) => sel.add(new Option(l.name, i)));
+    sel.onchange = () => run(ls[sel.value], u.user_id);
+    run(ls[0], u.user_id);
+  } catch (e) { $("status").textContent = "Error: " + e.message; }
+};
+
+async function run(lg, uid) {
+  $("status").textContent = "Analyzing league positional surpluses...";
+  const sf = (lg.roster_positions || []).filter(p => p === "SUPER_FLEX").length;
+  const qb = (lg.roster_positions || []).filter(p => p === "QB").length;
+  const numQbs = sf || qb > 1 ? 2 : 1, ppr = lg.scoring_settings?.rec ?? 1;
+
+  const [fc, rosters, users] = await Promise.all([
+    j(`${FC}?isDynasty=true&numQbs=${numQbs}&numTeams=${lg.total_rosters}&ppr=${ppr}`),
+    j(`${SL}/league/${lg.league_id}/rosters`),
+    j(`${SL}/league/${lg.league_id}/users`)
+  ]);
+
+  const valMap = new Map();
+  fc.forEach(e => {
+    if (e.player.sleeperId) valMap.set(String(e.player.sleeperId), {
+      sid: String(e.player.sleeperId), name: e.player.name, pos: e.player.position,
+      age: e.player.maybeAge || 26, v: e.value
+    });
+  });
+
+  const tname = rid => {
+    const r = rosters.find(x => x.roster_id === rid);
+    const u = users.find(x => x.user_id === r?.owner_id);
+    return u?.metadata?.team_name || u?.display_name || "Team " + rid;
+  };
+
+  const teams = rosters.map(r => {
+    const players = (r.players || []).map(id => valMap.get(id)).filter(p => p && POS.includes(p.pos));
+    const posVal = {}, posPlayers = {};
+    POS.forEach(pos => {
+      const list = players.filter(p => p.pos === pos).sort((a, b) => b.v - a.v);
+      posPlayers[pos] = list;
+      posVal[pos] = list.slice(0, 4).reduce((s, p) => s + p.v, 0);
+    });
+    return { rid: r.roster_id, owner: r.owner_id, name: tname(r.roster_id), players, posVal, posPlayers };
+  });
+
+  const avg = {};
+  POS.forEach(pos => avg[pos] = teams.reduce((s, t) => s + t.posVal[pos], 0) / teams.length);
+
+  teams.forEach(t => {
+    t.diff = {}; t.surplus = []; t.needs = [];
+    POS.forEach(pos => {
+      const pct = (t.posVal[pos] - avg[pos]) / (avg[pos] || 1);
+      t.diff[pos] = pct;
+      if (pct >= 0.22 && t.posPlayers[pos].length >= 3) t.surplus.push(pos);
+      if (pct <= -0.22) t.needs.push(pos);
+    });
+  });
+
+  const me = teams.find(t => t.owner === uid) || teams[0];
+
+  $("matrix").innerHTML = `<thead><tr class="border-b border-slate-800 text-xs uppercase text-slate-400">
+    <th class="py-2.5 px-3">Team</th>${POS.map(p => `<th class="py-2.5 px-3 text-right">${p}</th>`).join("")}<th class="py-2.5 px-3">Surplus</th><th class="py-2.5 px-3">Needs</th>
+  </tr></thead><tbody>` + teams.map(t => {
+    const cell = pos => {
+      const pct = Math.round(t.diff[pos] * 100);
+      const cls = pct >= 22 ? "text-emerald-400 font-bold" : pct <= -22 ? "text-rose-400 font-bold" : "text-slate-300";
+      return `<td class="py-2.5 px-3 text-right font-mono ${cls}">${t.posVal[pos].toLocaleString()} <span class="text-[10px]">(${pct >= 0 ? "+" : ""}${pct}%)</span></td>`;
+    };
+    return `<tr class="border-b border-slate-800/60 ${t.rid === me.rid ? "bg-emerald-500/10" : ""}">
+      <td class="py-2.5 px-3 font-medium text-white">${esc(t.name)}${t.rid === me.rid ? " (You)" : ""}</td>
+      ${POS.map(cell).join("")}
+      <td class="py-2.5 px-3 text-xs text-emerald-400">${t.surplus.join(", ") || "—"}</td>
+      <td class="py-2.5 px-3 text-xs text-rose-400">${t.needs.join(", ") || "—"}</td>
+    </tr>`;
+  }).join("") + `</tbody>`;
+
+  const deals = [];
+  teams.forEach(opp => {
+    if (opp.rid === me.rid) return;
+    const myGivePos = me.surplus.filter(p => opp.needs.includes(p));
+    const myGetPos = opp.surplus.filter(p => me.needs.includes(p));
+
+    myGivePos.forEach(gp => {
+      myGetPos.forEach(rp => {
+        const giveCand = me.posPlayers[gp].slice(1, 4);
+        const getCand = opp.posPlayers[rp].slice(1, 4);
+        giveCand.forEach(g => {
+          getCand.forEach(r => {
+            if (g.v >= 1200 && r.v >= 1200 && Math.abs(g.v - r.v) / Math.max(g.v, r.v) <= 0.25) {
+              deals.push({ opp, g, r, score: 10000 - Math.abs(g.v - r.v) });
+            }
+          });
+        });
+      });
+    });
+  });
+
+  deals.sort((a, b) => b.score - a.score);
+  $("matches").innerHTML = deals.length ? deals.slice(0, 8).map(d => `
+    <div class="bg-slate-950 border border-slate-800 rounded-xl p-4 flex flex-col justify-between gap-3">
+      <div>
+        <div class="flex justify-between items-center mb-2">
+          <span class="font-bold text-white text-sm">${esc(d.opp.name)}</span>
+          <span class="text-[11px] bg-emerald-500/15 text-emerald-300 border border-emerald-500/30 px-2 py-0.5 rounded">Mutual Fit</span>
+        </div>
+        <div class="text-xs space-y-1">
+          <div><span class="text-rose-400 font-bold">You Send (${d.g.pos} Surplus):</span> <span class="text-white font-medium">${esc(d.g.name)}</span> <span class="text-slate-400 font-mono">(${d.g.v.toLocaleString()})</span></div>
+          <div><span class="text-emerald-400 font-bold">You Get (${d.r.pos} Surplus):</span> <span class="text-white font-medium">${esc(d.r.name)}</span> <span class="text-slate-400 font-mono">(${d.r.v.toLocaleString()})</span></div>
+        </div>
+      </div>
+      <button onclick='sendToAnalyzer(["${d.g.sid}"], ["${d.r.sid}"])' class="bg-slate-800 hover:bg-emerald-600 text-slate-200 hover:text-white text-xs font-semibold py-2 px-3 rounded-lg border border-slate-700 transition cursor-pointer">
+        Load in Trade Analyzer →
+      </button>
+    </div>
+  `).join("") : `<p class="text-sm text-slate-400 col-span-2">No exact 1-for-1 surplus swaps found within 25% value—check the matrix below to build a 2-for-1 package!</p>`;
+
+  $("matchesSec").hidden = false;
+  $("matrixSec").hidden = false;
+  $("status").textContent = `Synced ${lg.name}.`;
+}
+if ($("user").value) $("go").click();
+</script>
+</body>
+</html>
