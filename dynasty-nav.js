@@ -95,48 +95,86 @@
     setTimeout(() => activateIndexTab(targetTab), 50);
   }
 
-  // 2. Global League & Season Sync Persistence across all 9 pages
-  window.addEventListener("DOMContentLoaded", () => {
-    const seasonSel = document.getElementById("season");
-    const leagueSel = document.getElementById("league");
+  // 2. Universal League & Season Sync across index.html AND all standalone pages
+  function findLeagueSelect() {
+    return (
+      document.getElementById("league") ||
+      document.getElementById("leagueSelect") ||
+      document.getElementById("leagues") ||
+      [...document.querySelectorAll("select")].find(s =>
+        /league/i.test(s.id) || /league/i.test(s.name) || /emerald-300/.test(s.className)
+      )
+    );
+  }
 
-    // Restore saved season before auto-sync runs
-    try {
+  function findSeasonSelect() {
+    return (
+      document.getElementById("season") ||
+      document.getElementById("seasonSelect") ||
+      [...document.querySelectorAll("select")].find(s => /season|year/i.test(s.id))
+    );
+  }
+
+  function syncSavedLeague(leagueSel) {
+    if (!leagueSel || !leagueSel.options.length) return;
+    const savedName = localStorage.getItem("dd_league_name");
+    if (!savedName) return;
+
+    const matchIdx = [...leagueSel.options].findIndex(
+      o => o.textContent.trim().toLowerCase() === savedName.toLowerCase()
+    );
+    if (matchIdx > -1 && leagueSel.selectedIndex !== matchIdx) {
+      leagueSel.selectedIndex = matchIdx;
+      leagueSel.dispatchEvent(new Event("change", { bubbles: true }));
+    }
+  }
+
+  function attachSyncListeners() {
+    const seasonSel = findSeasonSelect();
+    const leagueSel = findLeagueSelect();
+
+    if (seasonSel && !seasonSel.dataset.ddBound) {
+      seasonSel.dataset.ddBound = "1";
       const savedSeason = localStorage.getItem("dd_season");
-      if (seasonSel && savedSeason && [...seasonSel.options].some(o => o.value === savedSeason)) {
+      if (savedSeason && [...seasonSel.options].some(o => o.value === savedSeason)) {
         seasonSel.value = savedSeason;
       }
-      if (seasonSel) {
-        seasonSel.addEventListener("change", () => {
-          localStorage.setItem("dd_season", seasonSel.value);
-        });
-      }
-    } catch (e) {}
+      seasonSel.addEventListener("change", () => {
+        localStorage.setItem("dd_season", seasonSel.value);
+      });
+    }
 
-    // Watch #league dropdown for population & user selection changes
-    if (leagueSel) {
+    if (leagueSel && !leagueSel.dataset.ddBound) {
+      leagueSel.dataset.ddBound = "1";
       leagueSel.addEventListener("change", () => {
         const opt = leagueSel.options[leagueSel.selectedIndex];
-        if (opt) {
+        if (opt && opt.textContent.trim()) {
           localStorage.setItem("dd_league_name", opt.textContent.trim());
-          localStorage.setItem("dd_league_idx", leagueSel.value);
         }
       });
 
-      const obs = new MutationObserver(() => {
-        if (!leagueSel.options.length) return;
-        const savedName = localStorage.getItem("dd_league_name");
-        if (!savedName) return;
-
-        // Match by league name (works whether option value is index "0","1" or Sleeper league_id)
-        const matchIdx = [...leagueSel.options].findIndex(o => o.textContent.trim() === savedName);
-        if (matchIdx > -1 && leagueSel.selectedIndex !== matchIdx) {
-          leagueSel.selectedIndex = matchIdx;
-          leagueSel.dispatchEvent(new Event("change"));
-        }
-      });
-
+      const obs = new MutationObserver(() => syncSavedLeague(leagueSel));
       obs.observe(leagueSel, { childList: true });
+      syncSavedLeague(leagueSel);
     }
-  });
+  }
+
+  // Intercept Sleeper league list responses so index.html & standalone pages always snap to the saved league
+  const origFetch = window.fetch;
+  window.fetch = async function(...args) {
+    const res = await origFetch.apply(this, args);
+    try {
+      const url = typeof args[0] === "string" ? args[0] : args[0]?.url || "";
+      if (url.includes("api.sleeper.app/v1/user/") && url.includes("/leagues/nfl/")) {
+        setTimeout(() => {
+          attachSyncListeners();
+          syncSavedLeague(findLeagueSelect());
+        }, 120);
+      }
+    } catch (e) {}
+    return res;
+  };
+
+  window.addEventListener("DOMContentLoaded", attachSyncListeners);
+  setTimeout(attachSyncListeners, 100);
 })();
