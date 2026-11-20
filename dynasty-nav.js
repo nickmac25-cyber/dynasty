@@ -1,26 +1,28 @@
 (function() {
   const navItems = [
     // Internal index.html tabs
-    { type: "tab", tab: "tab-trade", label: "Trade & Targets" },
-    { type: "tab", tab: "tab-roster", label: "Roster & Waivers" },
-    { type: "tab", tab: "tab-startsit", label: "Start/Sit" },
-    { type: "tab", tab: "tab-draftroom", label: "Draft Room" },
-    { type: "tab", tab: "tab-managers", label: "Managers" },
-    { type: "tab", tab: "tab-audit", label: "Team Audit" },
-    { type: "tab", tab: "tab-finder", label: "Trade Finder" },
-    { type: "tab", tab: "tab-live", label: "Alerts & News" },
-    { type: "tab", tab: "tab-draft", label: "2027 Rookies" },
-    { type: "tab", tab: "tab-ai", label: "AI Advisor" },
-    { type: "tab", tab: "tab-weights", label: "⚙ Weights" },
+    { type: "tab", tab: "tab-trade", label: "Trade & Targets", desc: "Trade calculator & positional targets" },
+    { type: "tab", tab: "tab-roster", label: "Roster & Waivers", desc: "Full roster breakdown & waiver adds" },
+    { type: "tab", tab: "tab-startsit", label: "Start/Sit", desc: "Weekly lineup optimizer" },
+    { type: "tab", tab: "tab-draftroom", label: "Draft Room", desc: "Live draft war room & tracker" },
+    { type: "tab", tab: "tab-managers", label: "Managers", desc: "League manager profiles & tendencies" },
+    { type: "tab", tab: "tab-audit", label: "Team Audit", desc: "Contender vs. rebuilder roster audit" },
+    { type: "tab", tab: "tab-finder", label: "Trade Finder", desc: "Automated 1-for-1 & 2-for-1 trade proposals" },
+    { type: "tab", tab: "tab-live", label: "Alerts & News", desc: "Live player news & injury alerts" },
+    { type: "tab", tab: "tab-draft", label: "2027 Rookies", desc: "2027 incoming rookie prospect rankings" },
+    { type: "tab", tab: "tab-ai", label: "AI Advisor", desc: "Custom AI front-office strategy advice" },
+    { type: "tab", tab: "tab-weights", label: "⚙ Weights", desc: "Custom scoring & age curve weight settings" },
     // Standalone tool pages
-    { type: "page", href: "draft-capital.html", label: "Draft Capital" },
-    { type: "page", href: "league-matrix.html", label: "Power Matrix" },
-    { type: "page", href: "waiver-stashes.html", label: "Waiver Stashes" },
-    { type: "page", href: "trade-block.html", label: "Trade Matchmaker" },
-    { type: "page", href: "age-curves.html", label: "Age Heatmap" },
-    { type: "page", href: "schedule-luck.html", label: "Schedule Luck" },
-    { type: "page", href: "taxi-optimizer.html", label: "Taxi & Stashes" },
-    { type: "page", href: "mock-draft.html", label: "Mock Draft" }
+    { type: "page", href: "draft-capital.html", label: "Draft Capital", desc: "Future rookie pick inventory across all teams" },
+    { type: "page", href: "league-matrix.html", label: "Power Matrix", desc: "Starter vs. bench dynasty value rankings" },
+    { type: "page", href: "waiver-stashes.html", label: "Waiver Stashes", desc: "Top unrostered dynasty stashes on waivers" },
+    { type: "page", href: "trade-block.html", label: "Trade Matchmaker", desc: "Surplus-to-need trade partner matcher" },
+    { type: "page", href: "age-curves.html", label: "Age Heatmap", desc: "Positional age & prime-window heatmap" },
+    { type: "page", href: "schedule-luck.html", label: "Schedule Luck", desc: "All-Play record vs. actual standings luck" },
+    { type: "page", href: "taxi-optimizer.html", label: "Taxi & Stashes", desc: "Taxi squad audit & opponent poach targets" },
+    { type: "page", href: "mock-draft.html", label: "Mock Draft", desc: "League-aware 2027 rookie mock draft simulator" },
+    { type: "page", href: "history.html", label: "Franchise History", desc: "All-time trophies, H2H rivalries & records" },
+    { type: "page", href: "trade-grades.html", label: "Trade Ledger", desc: "Historical trades: value then vs. value now" }
   ];
 
   const currentFile = window.location.pathname.split("/").pop() || "index.html";
@@ -35,6 +37,14 @@
   brand.textContent = "Dynasty Suite:";
   brand.style.cssText = "color:#64748b; font-weight:700; letter-spacing:0.05em; text-transform:uppercase; margin-right:4px; white-space:nowrap;";
   nav.appendChild(brand);
+
+  // Command Palette trigger button (great on mobile & desktop)
+  const cmdBtn = document.createElement("button");
+  cmdBtn.type = "button";
+  cmdBtn.innerHTML = `🔍 Quick Jump <span style="opacity:0.65; font-size:10px; margin-left:4px; background:#0f172a; padding:1px 5px; border-radius:4px; border:1px solid #334155;">⌘K</span>`;
+  cmdBtn.style.cssText = "background:#0f172a; color:#34d399; border:1px solid rgba(16,185,129,0.4); padding:5px 10px; border-radius:6px; font-weight:700; white-space:nowrap; cursor:pointer; margin-right:4px;";
+  cmdBtn.onclick = () => openPalette();
+  nav.appendChild(cmdBtn);
 
   const btnElements = [];
 
@@ -52,6 +62,19 @@
     });
   }
 
+  function navigateToItem(item) {
+    if (item.type === "tab") {
+      if (isIndex) {
+        history.replaceState(null, "", `#${item.tab}`);
+        activateIndexTab(item.tab);
+      } else {
+        window.location.href = `index.html#${item.tab}`;
+      }
+    } else {
+      window.location.href = item.href;
+    }
+  }
+
   navItems.forEach((item, idx) => {
     const el = document.createElement("a");
     el.textContent = item.label;
@@ -61,8 +84,7 @@
       if (isIndex) {
         el.onclick = (e) => {
           e.preventDefault();
-          history.replaceState(null, "", `#${item.tab}`);
-          activateIndexTab(item.tab);
+          navigateToItem(item);
         };
       }
     } else {
@@ -95,7 +117,101 @@
     setTimeout(() => activateIndexTab(targetTab), 50);
   }
 
-  // 2. Universal League & Season Sync across index.html AND all standalone pages
+  // 2. Command Palette Modal (Cmd+K / Ctrl+K)
+  const overlay = document.createElement("div");
+  overlay.id = "dd-cmd-overlay";
+  overlay.style.cssText = "display:none; position:fixed; inset:0; background:rgba(2,6,23,0.8); backdrop-filter:blur(4px); z-index:9999; align-items:flex-start; justify-content:center; padding:60px 16px 16px; font-family:system-ui,-apple-system,sans-serif;";
+  overlay.innerHTML = `
+    <div style="background:#0f172a; border:1px solid #334155; border-radius:14px; width:100%; max-width:520px; box-shadow:0 25px 50px -12px rgba(0,0,0,0.75); overflow:hidden;">
+      <div style="padding:12px 16px; border-bottom:1px solid #1e293b; display:flex; align-items:center; gap:10px;">
+        <span style="color:#34d399; font-weight:700;">🔍</span>
+        <input id="dd-cmd-input" placeholder="Jump to any tool or tab (e.g., Trade Ledger, Mock Draft, Audit)..." style="background:transparent; border:none; outline:none; color:#f8fafc; font-size:14px; width:100%;">
+        <button id="dd-cmd-close" style="background:#1e293b; color:#94a3b8; border:none; border-radius:6px; padding:3px 8px; font-size:11px; cursor:pointer;">ESC</button>
+      </div>
+      <div id="dd-cmd-list" style="max-height:360px; overflow-y:auto; padding:8px;"></div>
+    </div>
+  `;
+  document.body.appendChild(overlay);
+
+  const cmdInput = document.getElementById("dd-cmd-input");
+  const cmdList = document.getElementById("dd-cmd-list");
+  let filteredItems = [...navItems];
+  let selectedIdx = 0;
+
+  function renderPalette() {
+    cmdList.innerHTML = filteredItems.map((it, i) => `
+      <div data-idx="${i}" style="padding:10px 12px; border-radius:8px; cursor:pointer; display:flex; justify-content:space-between; align-items:center; background:${i === selectedIdx ? "rgba(16,185,129,0.16)" : "transparent"}; border:1px solid ${i === selectedIdx ? "rgba(16,185,129,0.4)" : "transparent"};">
+        <div>
+          <div style="color:${i === selectedIdx ? "#34d399" : "#f1f5f9"}; font-weight:700; font-size:13px;">${it.label}</div>
+          <div style="color:#64748b; font-size:11px;">${it.desc}</div>
+        </div>
+        <span style="font-size:10px; color:#64748b; text-transform:uppercase;">${it.type === "tab" ? "Tab" : "Page"}</span>
+      </div>
+    `).join("") || `<div style="padding:16px; text-align:center; color:#64748b; font-size:12px;">No matching tools found.</div>`;
+
+    [...cmdList.children].forEach(row => {
+      row.onclick = () => {
+        const idx = Number(row.dataset.idx);
+        if (filteredItems[idx]) {
+          closePalette();
+          navigateToItem(filteredItems[idx]);
+        }
+      };
+    });
+  }
+
+  function openPalette() {
+    overlay.style.display = "flex";
+    cmdInput.value = "";
+    filteredItems = [...navItems];
+    selectedIdx = 0;
+    renderPalette();
+    setTimeout(() => cmdInput.focus(), 10);
+  }
+
+  function closePalette() {
+    overlay.style.display = "none";
+  }
+
+  document.getElementById("dd-cmd-close").onclick = closePalette;
+  overlay.onclick = (e) => { if (e.target === overlay) closePalette(); };
+
+  cmdInput.oninput = () => {
+    const q = cmdInput.value.trim().toLowerCase();
+    filteredItems = navItems.filter(it =>
+      it.label.toLowerCase().includes(q) || it.desc.toLowerCase().includes(q)
+    );
+    selectedIdx = 0;
+    renderPalette();
+  };
+
+  cmdInput.onkeydown = (e) => {
+    if (e.key === "ArrowDown") {
+      e.preventDefault();
+      selectedIdx = (selectedIdx + 1) % Math.max(1, filteredItems.length);
+      renderPalette();
+    } else if (e.key === "ArrowUp") {
+      e.preventDefault();
+      selectedIdx = (selectedIdx - 1 + filteredItems.length) % Math.max(1, filteredItems.length);
+      renderPalette();
+    } else if (e.key === "Enter" && filteredItems[selectedIdx]) {
+      e.preventDefault();
+      const chosen = filteredItems[selectedIdx];
+      closePalette();
+      navigateToItem(chosen);
+    } else if (e.key === "Escape") {
+      closePalette();
+    }
+  };
+
+  document.addEventListener("keydown", (e) => {
+    if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") {
+      e.preventDefault();
+      overlay.style.display === "flex" ? closePalette() : openPalette();
+    }
+  });
+
+  // 3. Universal League & Season Sync across index.html AND all standalone pages
   function findLeagueSelect() {
     return (
       document.getElementById("league") ||
@@ -159,7 +275,6 @@
     }
   }
 
-  // Intercept Sleeper league list responses so index.html & standalone pages always snap to the saved league
   const origFetch = window.fetch;
   window.fetch = async function(...args) {
     const res = await origFetch.apply(this, args);
