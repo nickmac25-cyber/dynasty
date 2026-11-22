@@ -1,4 +1,4 @@
-// Dynasty Desk Pro — 6-Source Valuation, Volatility, Historical Grading & Caching Engine
+// Dynasty Desk Pro — 6-Source Valuation, Position-Locked Starters & Dynamic Rookie/Pick Engine
 window.DD = (function () {
   const SL = "https://api.sleeper.app/v1";
   const FC = "https://api.fantasycalc.com/values/current";
@@ -6,9 +6,21 @@ window.DD = (function () {
   const SC = "https://api.statchasers.com/api/v1/dynasty";
   const DD_API = "https://www.dynastydealer.com/api/player-values";
   const DP = "https://raw.githubusercontent.com/dynastyprocess/data/master/files/values.csv";
+  const DP_PICKS = "https://raw.githubusercontent.com/dynastyprocess/data/master/files/values-picks.csv";
 
   const POS = ["QB", "RB", "WR", "TE"];
   const CLIFF = { QB: 34, RB: 26, WR: 29, TE: 30 };
+  const SLOT_ELIG = {
+    QB: ["QB"],
+    RB: ["RB"],
+    WR: ["WR"],
+    TE: ["TE"],
+    FLEX: ["RB", "WR", "TE"],
+    SUPER_FLEX: ["QB", "RB", "WR", "TE"],
+    REC_FLEX: ["WR", "TE"],
+    WRRB_FLEX: ["RB", "WR"]
+  };
+
   const AGE_F = {
     QB: a => a <= 33 ? 1.00 : a <= 36 ? 0.88 : 0.72,
     RB: a => a <= 23 ? 1.04 : a <= 25 ? 1.00 : a === 26 ? 0.90 : a === 27 ? 0.80 : 0.68,
@@ -16,17 +28,17 @@ window.DD = (function () {
     TE: a => a <= 25 ? 1.03 : a <= 30 ? 1.00 : a === 31 ? 0.90 : 0.75
   };
 
-  // Unified 2027 Incoming Rookie Prospect Pool (50 prospects, 1QB + SF values)
-  const ROOKIES_2027 = [
+  // Fallback 2027 Incoming Rookie Prospect Pool (used only if live/synced feeds lack upcoming class)
+  const FALLBACK_ROOKIES = [
     { name: "Jeremiah Smith", pos: "WR", college: "Ohio State", v1qb: 8200, vsf: 7800 },
     { name: "Arch Manning", pos: "QB", college: "Texas", v1qb: 4800, vsf: 8100 },
-    { name: "Dante Moore", pos: "QB", college: "Oregon", v1qb: 4500, vsf: 7600 },
     { name: "Cam Coleman", pos: "WR", college: "Texas", v1qb: 7100, vsf: 6700 },
+    { name: "Dante Moore", pos: "QB", college: "Oregon", v1qb: 4500, vsf: 7600 },
     { name: "Ryan Williams", pos: "WR", college: "Alabama", v1qb: 6900, vsf: 6500 },
-    { name: "Nico Iamaleava", pos: "QB", college: "Tennessee", v1qb: 4100, vsf: 6900 },
-    { name: "DJ Lagway", pos: "QB", college: "Florida", v1qb: 3900, vsf: 6600 },
-    { name: "Drew Mestemaker", pos: "QB", college: "Oklahoma State", v1qb: 3750, vsf: 6400 },
+    { name: "Drew Mestemaker", pos: "QB", college: "Oklahoma State", v1qb: 4300, vsf: 7300 },
+    { name: "Ahmad Hardy", pos: "RB", college: "Missouri", v1qb: 6300, vsf: 6000 },
     { name: "Nate Frazier", pos: "RB", college: "Georgia", v1qb: 6100, vsf: 5800 },
+    { name: "DJ Lagway", pos: "QB", college: "Florida", v1qb: 3900, vsf: 6600 },
     { name: "Jadan Baugh", pos: "RB", college: "Florida", v1qb: 5850, vsf: 5550 },
     { name: "Kewan Lacy", pos: "RB", college: "Ole Miss", v1qb: 5700, vsf: 5400 },
     { name: "Charlie Becker", pos: "WR", college: "Indiana", v1qb: 5600, vsf: 5300 },
@@ -35,39 +47,19 @@ window.DD = (function () {
     { name: "LaNorris Sellers", pos: "QB", college: "South Carolina", v1qb: 3350, vsf: 5800 },
     { name: "Nick Marsh", pos: "WR", college: "Indiana", v1qb: 5250, vsf: 4950 },
     { name: "Jamari Johnson", pos: "TE", college: "Oregon", v1qb: 5100, vsf: 4900 },
-    { name: "Ahmad Hardy", pos: "RB", college: "Missouri", v1qb: 4950, vsf: 4700 },
+    { name: "Dylan Riley", pos: "RB", college: "Boise State", v1qb: 4950, vsf: 4700 },
     { name: "Trey'Dez Green", pos: "TE", college: "LSU", v1qb: 4850, vsf: 4650 },
     { name: "Justice Haynes", pos: "RB", college: "Georgia Tech", v1qb: 4700, vsf: 4450 },
-    { name: "Darian Mensah", pos: "QB", college: "Miami", v1qb: 2950, vsf: 5200 },
+    { name: "Wyatt Young", pos: "WR", college: "Oklahoma State", v1qb: 4600, vsf: 4350 },
+    { name: "Jamal Roberts", pos: "RB", college: "Missouri", v1qb: 4500, vsf: 4250 },
     { name: "CJ Carr", pos: "QB", college: "Notre Dame", v1qb: 2850, vsf: 5050 },
-    { name: "Trinidad Chambliss", pos: "QB", college: "Ole Miss", v1qb: 2750, vsf: 4900 },
-    { name: "TJ Moore", pos: "WR", college: "Clemson", v1qb: 4550, vsf: 4300 },
-    { name: "Bryant Wesco Jr.", pos: "WR", college: "Clemson", v1qb: 4450, vsf: 4200 },
-    { name: "Ryan Wingo", pos: "WR", college: "Texas", v1qb: 4350, vsf: 4100 },
-    { name: "KJ Duff", pos: "WR", college: "Rutgers", v1qb: 4200, vsf: 3950 },
-    { name: "Duce Robinson", pos: "WR", college: "Florida State", v1qb: 4100, vsf: 3850 },
-    { name: "Mark Fletcher", pos: "RB", college: "Miami", v1qb: 3950, vsf: 3750 },
-    { name: "Jayden Maiava", pos: "QB", college: "USC", v1qb: 2450, vsf: 4350 },
-    { name: "Deuce Alexander", pos: "WR", college: "Ole Miss", v1qb: 3800, vsf: 3600 },
-    { name: "Reed Harris", pos: "WR", college: "Arizona State", v1qb: 3700, vsf: 3500 },
-    { name: "Jackson Harris", pos: "WR", college: "LSU", v1qb: 3600, vsf: 3400 },
-    { name: "Jamal Roberts", pos: "RB", college: "Missouri", v1qb: 3500, vsf: 3300 },
-    { name: "Isaiah Sategna III", pos: "WR", college: "Oklahoma", v1qb: 3400, vsf: 3200 },
-    { name: "Antwan Raymond", pos: "RB", college: "Rutgers", v1qb: 3300, vsf: 3100 },
-    { name: "LJ Martin", pos: "RB", college: "BYU", v1qb: 3200, vsf: 3050 },
-    { name: "Raleek Brown", pos: "RB", college: "Texas", v1qb: 3100, vsf: 2950 },
-    { name: "DJ Vonnahme", pos: "TE", college: "Iowa", v1qb: 3050, vsf: 2900 },
-    { name: "Luke Reynolds", pos: "TE", college: "Virginia Tech", v1qb: 2950, vsf: 2800 },
-    { name: "Austin Simmons", pos: "QB", college: "Missouri", v1qb: 2100, vsf: 3750 },
-    { name: "Terrance Carter", pos: "TE", college: "Texas Tech", v1qb: 2850, vsf: 2700 },
-    { name: "Dylan Riley", pos: "RB", college: "Boise State", v1qb: 2750, vsf: 2600 },
-    { name: "Wyatt Young", pos: "WR", college: "Oklahoma State", v1qb: 2650, vsf: 2500 },
-    { name: "Connor Weigman", pos: "QB", college: "Houston", v1qb: 1950, vsf: 3450 },
-    { name: "Amare Thomas", pos: "WR", college: "Houston", v1qb: 2550, vsf: 2400 },
-    { name: "DeSean Bishop", pos: "RB", college: "Tennessee", v1qb: 2450, vsf: 2300 },
-    { name: "Wayne Knight", pos: "RB", college: "UCLA", v1qb: 2350, vsf: 2200 },
-    { name: "Braylon Staley", pos: "WR", college: "Tennessee", v1qb: 2250, vsf: 2100 },
-    { name: "Lawson Luckie", pos: "TE", college: "Georgia", v1qb: 2150, vsf: 2050 }
+    { name: "TJ Moore", pos: "WR", college: "Clemson", v1qb: 4450, vsf: 4200 },
+    { name: "Bryant Wesco Jr.", pos: "WR", college: "Clemson", v1qb: 4350, vsf: 4100 },
+    { name: "Ryan Wingo", pos: "WR", college: "Texas", v1qb: 4250, vsf: 4000 },
+    { name: "KJ Duff", pos: "WR", college: "Rutgers", v1qb: 4150, vsf: 3900 },
+    { name: "Duce Robinson", pos: "WR", college: "Florida State", v1qb: 4050, vsf: 3800 },
+    { name: "Austin Simmons", pos: "QB", college: "Missouri", v1qb: 2600, vsf: 4650 },
+    { name: "Mark Fletcher", pos: "RB", college: "Miami", v1qb: 3900, vsf: 3700 }
   ];
 
   const norm = n => (n || "").toLowerCase().replace(/[.'’]/g, "").replace(/\b(jr|sr|ii|iii|iv)\b/g, "").replace(/[^a-z ]/g, " ").replace(/\s+/g, " ").trim();
@@ -87,7 +79,6 @@ window.DD = (function () {
     return rows.map(r => Object.fromEntries(h.map((k, i) => [k, r[i]])));
   }
 
-  // 6-Source Weights: [FantasyCalc, StatsGuy, StatChasers, DynastyDealer, DynastyProcess, ECR]
   function getWeights() {
     try {
       const w = JSON.parse(localStorage.getItem("dd_weights_v2") || "null");
@@ -127,7 +118,7 @@ window.DD = (function () {
 
   let memPlayers = null;
   async function getPlayers(force = false, onStatus = null) {
-    const CACHE_KEY = "dd_sleeper_players_v3";
+    const CACHE_KEY = "dd_sleeper_players_v4";
     const TTL = 24 * 60 * 60 * 1000;
     if (!force && memPlayers && Date.now() - memPlayers.t < TTL) return memPlayers;
     if (!force) {
@@ -150,6 +141,7 @@ window.DD = (function () {
         full_name: p.full_name || `${p.first_name || ""} ${p.last_name || ""}`.trim(),
         position: p.position,
         team: p.team || "",
+        college: p.college || "",
         age: p.age || null,
         injury_status: p.injury_status || null,
         depth_chart_order: p.depth_chart_order || null,
@@ -165,16 +157,39 @@ window.DD = (function () {
     const rosterPos = lg.roster_positions || [];
     const sf = rosterPos.filter(p => p === "SUPER_FLEX").length;
     const qb = rosterPos.filter(p => p === "QB").length;
-    const starters = rosterPos.filter(p => !["BN", "IR", "TAXI"].includes(p)).length;
-    const bench = Math.max(4, rosterPos.length - starters);
+    const starterSlots = rosterPos.filter(p => SLOT_ELIG[p]);
+    const bench = Math.max(4, rosterPos.length - starterSlots.length);
     const tep = lg.scoring_settings?.bonus_rec_te || 0;
     return {
       numQbs: sf > 0 || qb > 1 ? 2 : 1,
       ppr: lg.scoring_settings?.rec ?? 1,
       teams: lg.total_rosters || 12,
       tep,
-      bench
+      bench,
+      starterSlots: starterSlots.length ? starterSlots : ["QB", "RB", "RB", "WR", "WR", "TE", "FLEX", "FLEX", "SUPER_FLEX"]
     };
+  }
+
+  // Position-locked optimal starter solver (replaces naive .slice(0, 9))
+  function calcOptimalStarters(players, rosterPositions, metricKey = "v") {
+    const slots = (rosterPositions || []).filter(s => SLOT_ELIG[s]);
+    const activeSlots = slots.length ? slots : ["QB", "RB", "RB", "WR", "WR", "TE", "FLEX", "FLEX", "SUPER_FLEX"];
+    // Fill strict single-position slots first (most constrained), then multi-position flex slots
+    const orderedSlots = [...activeSlots].sort((a, b) => (SLOT_ELIG[a]?.length || 9) - (SLOT_ELIG[b]?.length || 9));
+    const pool = [...players].filter(p => !p.pick && POS.includes(p.pos)).sort((a, b) => (b[metricKey] || 0) - (a[metricKey] || 0));
+
+    const used = new Set();
+    const starters = [];
+    for (const sl of orderedSlots) {
+      const allowed = SLOT_ELIG[sl] || [sl];
+      const pick = pool.find(p => !used.has(p.id) && allowed.includes(p.pos));
+      if (pick) {
+        used.add(pick.id);
+        starters.push({ slot: sl, player: pick });
+      }
+    }
+    const total = starters.reduce((s, x) => s + (x.player[metricKey] || 0), 0);
+    return { total, starters, starterIds: used };
   }
 
   function blend(item, weights = getWeights()) {
@@ -187,7 +202,6 @@ window.DD = (function () {
     return Math.round(tot ? sum / tot : (item.fc ?? item.sgf ?? item.sc ?? item.dd ?? item.dp ?? item.ecr ?? 0));
   }
 
-  // Unified 6-Source Market Valuation Engine
   async function loadMarket(lg, onStatus = null) {
     const fmt = detectFormat(lg);
     const isSF = fmt.numQbs === 2;
@@ -196,7 +210,7 @@ window.DD = (function () {
     const scScoring = fmt.ppr >= 1 ? "ppr" : fmt.ppr >= 0.5 ? "half" : "std";
     const scTep = [0, 0.25, 0.5, 0.75, 1].reduce((prev, curr) => Math.abs(curr - fmt.tep) < Math.abs(prev - fmt.tep) ? curr : prev);
 
-    if (onStatus) onStatus("Syncing 6 live & daily market feeds (FC, StatsGuy, StatChasers, DynastyDealer, DP, Volatility)...");
+    if (onStatus) onStatus("Syncing 6 live & daily market feeds + automated pick/rookie curves...");
 
     const [fc, sgfRaw, scRaw, ddRaw, ghMarket, playersObj] = await Promise.all([
       j(`${FC}?isDynasty=true&numQbs=${fmt.numQbs}&numTeams=${fmt.teams}&ppr=${fmt.ppr}`),
@@ -207,21 +221,37 @@ window.DD = (function () {
       getPlayers(false, onStatus)
     ]);
 
-    // Fallback to raw DynastyProcess CSV if market-data.json isn't present yet
     let dpConsensus = ghMarket?.consensus || null;
-    if (!dpConsensus) {
-      const txt = await fetch(DP).then(r => r.ok ? r.text() : "").catch(() => "");
-      const rows = txt ? csv(txt) : [];
-      dpConsensus = {};
-      rows.forEach(r => {
-        const k = `${norm(r.player)}|${r.pos}`;
-        dpConsensus[k] = { v1qb: +r.value_1qb || 0, vsf: +r.value_2qb || 0, ecr_1qb: +r.ecr_1qb || null, ecr_sf: +r.ecr_2qb || null };
-      });
+    let dpPicks = ghMarket?.picks || null;
+    let ghRookies = ghMarket?.rookies || null;
+
+    if (!dpConsensus || !dpPicks) {
+      const [txtVal, txtPicks] = await Promise.all([
+        fetch(DP).then(r => r.ok ? r.text() : "").catch(() => ""),
+        fetch(DP_PICKS).then(r => r.ok ? r.text() : "").catch(() => "")
+      ]);
+      if (!dpConsensus && txtVal) {
+        dpConsensus = {};
+        csv(txtVal).forEach(r => {
+          dpConsensus[`${norm(r.player)}|${r.pos}`] = {
+            v1qb: +r.value_1qb || 0, vsf: +r.value_2qb || 0,
+            ecr_1qb: +r.ecr_1qb || null, ecr_sf: +r.ecr_2qb || null,
+            draft_year: +r.draft_year || null
+          };
+        });
+      }
+      if (!dpPicks && txtPicks) {
+        dpPicks = csv(txtPicks).map(r => ({
+          label: (r.player || "").trim(),
+          v1qb: +r.value_1qb || 0,
+          vsf: +r.value_2qb || 0
+        })).filter(x => x.label);
+      }
     }
+
     const volatilityMap = ghMarket?.volatility || {};
     const trendingMap = ghMarket?.trending || { adds: {}, drops: {} };
 
-    // Map Stats Guy Fantasy by Sleeper ID
     const sgfList = Array.isArray(sgfRaw) ? sgfRaw : (sgfRaw?.players || sgfRaw?.data || []);
     const sgfBySid = new Map();
     sgfList.forEach(p => {
@@ -230,7 +260,6 @@ window.DD = (function () {
       if (id && val > 0) sgfBySid.set(id, Math.round(Number(val)));
     });
 
-    // Map StatChasers by Sleeper ID
     const scList = Array.isArray(scRaw) ? scRaw : (scRaw?.values || scRaw?.players || scRaw?.data || []);
     const scBySid = new Map();
     scList.forEach(p => {
@@ -239,7 +268,6 @@ window.DD = (function () {
       if (id && val > 0) scBySid.set(id, Math.round(Number(val)));
     });
 
-    // Map Dynasty Dealer by normalized name|pos (1QB base scale; adjust QBs slightly in SF)
     const ddList = Array.isArray(ddRaw) ? ddRaw : (ddRaw?.players || ddRaw?.data || []);
     const ddByKey = new Map();
     ddList.forEach(p => {
@@ -259,7 +287,7 @@ window.DD = (function () {
       const sid = String(p.sleeperId || "");
       const key = `${norm(p.name)}|${p.position}`;
 
-      const dpEntry = isPick ? null : dpConsensus[key];
+      const dpEntry = isPick ? null : dpConsensus?.[key];
       const dpVal = dpEntry ? (isSF ? dpEntry.vsf : dpEntry.v1qb) : null;
       const er = dpEntry ? (isSF ? dpEntry.ecr_sf : dpEntry.ecr_1qb) : null;
       const ecrVal = er ? (curve[Math.round(er) - 1] ?? 0) : null;
@@ -282,7 +310,6 @@ window.DD = (function () {
         dp: dpVal || null,
         ecr: ecrVal || null,
         ecrSd: vol?.ecr_sd ?? null,
-        ecrRange: (vol?.ecr_best && vol?.ecr_worst) ? `${vol.ecr_best}-${vol.ecr_worst}` : null,
         adds48h: sid ? (trendingMap.adds?.[sid] || 0) : 0,
         drops48h: sid ? (trendingMap.drops?.[sid] || 0) : 0,
         pick: isPick,
@@ -296,25 +323,101 @@ window.DD = (function () {
     const bySid = new Map();
     all.forEach(item => { if (item.sid && !item.pick) bySid.set(item.sid, item); });
 
+    // Automated Pick Curve Engine (blends live FantasyCalc picks + DynastyProcess values-picks.csv)
     const pickRe = k => new RegExp(`\\b${k}(?:st|nd|rd|th)\\b|Pick ${k}\\.|Round ${k}\\b`, "i");
     function pickValue(year, round, tier = null) {
       const yStr = String(year);
       const re = pickRe(round);
-      let hits = all.filter(p => p.pick && p.name.includes(yStr) && re.test(p.name));
+      const samples = [];
+
+      // 1. Live FantasyCalc pick market
+      let fcHits = all.filter(p => p.pick && p.name.includes(yStr) && re.test(p.name));
       if (tier) {
-        const tr = new RegExp(tier, "i");
-        const tieredHits = hits.filter(p => tr.test(p.name));
-        if (tieredHits.length) hits = tieredHits;
+        const tiered = fcHits.filter(p => new RegExp(tier, "i").test(p.name));
+        if (tiered.length) fcHits = tiered;
       }
-      if (hits.length) return Math.round(hits.reduce((s, p) => s + p.v, 0) / hits.length);
+      if (fcHits.length) samples.push(fcHits.reduce((s, p) => s + p.v, 0) / fcHits.length);
+
+      // 2. Automated DynastyProcess pick curve (values-picks.csv)
+      if (dpPicks && dpPicks.length) {
+        let dpHits = dpPicks.filter(p => p.label.includes(yStr) && re.test(p.label));
+        if (tier) {
+          const tiered = dpHits.filter(p => new RegExp(tier, "i").test(p.label));
+          if (tiered.length) dpHits = tiered;
+        }
+        if (dpHits.length) {
+          samples.push(dpHits.reduce((s, p) => s + (isSF ? p.vsf : p.v1qb), 0) / dpHits.length);
+        }
+      }
+
+      if (samples.length) return Math.round(samples.reduce((s, x) => s + x, 0) / samples.length);
+
+      // 3. Dynamic anchor scaling from nearest known 1st-round market pick (zero magic numbers)
       const baseYear = Number(lg.season || new Date().getFullYear());
+      const nearest1st = all.filter(p => p.pick && pickRe(1).test(p.name));
+      const anchor1st = nearest1st.length
+        ? nearest1st.reduce((s, p) => s + p.v, 0) / nearest1st.length
+        : (curve[18] || 4200);
       const yrDiff = Math.max(0, Number(year) - baseYear);
-      const baseByRound = { 1: 4200, 2: 2100, 3: 1050, 4: 450 };
+      const roundDecay = Math.pow(0.52, Math.max(0, round - 1));
       const tierMult = tier === "Early" ? 1.32 : tier === "Late" ? 0.78 : 1.0;
-      return Math.round((baseByRound[round] || 250) * tierMult * Math.pow(0.88, yrDiff));
+      return Math.round(anchor1st * roundDecay * tierMult * Math.pow(0.88, yrDiff));
     }
 
-    // Historical trade batch grader via Stats Guy Fantasy API (values as of the exact trade date!)
+    // Dynamic Rookie Prospect Board (Sleeper years_exp===0 + synced DP rookies + fallback)
+    function getRookieBoard() {
+      const targetYear = Number(lg.season || new Date().getFullYear()) + 1;
+      const seen = new Set();
+      const board = [];
+
+      // 1. Live Sleeper rookie pool (years_exp === 0) priced by 6-source market engine
+      for (const [sid, sp] of Object.entries(playersObj.d)) {
+        if (sp.years_exp === 0 && POS.includes(sp.position)) {
+          const m = bySid.get(sid);
+          if (m && m.v >= 500) {
+            seen.add(norm(m.name));
+            board.push({
+              sid, name: m.name, pos: m.pos,
+              college: sp.college || sp.team || "Rookie",
+              v: m.v
+            });
+          }
+        }
+      }
+
+      // 2. Automated rookies synced in market-data.json
+      if (Array.isArray(ghRookies)) {
+        ghRookies.forEach(r => {
+          const k = norm(r.name);
+          if (!seen.has(k) && POS.includes(r.pos)) {
+            seen.add(k);
+            board.push({
+              name: r.name, pos: r.pos,
+              college: r.team && r.team !== "FA" ? r.team : `${r.draft_year || targetYear} Class`,
+              v: isSF ? (r.vsf || r.v1qb) : (r.v1qb || r.vsf)
+            });
+          }
+        });
+      }
+
+      // 3. Fill remaining slots with 2027 incoming prospect class if board has < 36 prospects
+      if (board.length < 36) {
+        FALLBACK_ROOKIES.forEach(r => {
+          const k = norm(r.name);
+          if (!seen.has(k)) {
+            seen.add(k);
+            board.push({
+              name: r.name, pos: r.pos,
+              college: `${r.college} · ${targetYear}`,
+              v: isSF ? r.vsf : r.v1qb
+            });
+          }
+        });
+      }
+
+      return board.sort((a, b) => b.v - a.v).slice(0, 50);
+    }
+
     async function gradeTradesHistorically(trades) {
       if (!trades.length) return null;
       try {
@@ -345,7 +448,7 @@ window.DD = (function () {
     return {
       fmt, fc, pmap: playersObj.d, cacheTs: playersObj.t,
       ghUpdatedAt: ghMarket?.updated_at || null,
-      all, bySid, pickValue, gradeTradesHistorically
+      all, bySid, pickValue, getRookieBoard, gradeTradesHistorically
     };
   }
 
@@ -385,10 +488,10 @@ window.DD = (function () {
   }
 
   return {
-    SL, FC, SGF, SC, DD_API, DP, POS, CLIFF, AGE_F, ROOKIES_2027,
+    SL, FC, SGF, SC, DD_API, DP, DP_PICKS, POS, CLIFF, SLOT_ELIG, AGE_F,
     norm, esc, j, csv,
     getWeights, setWeights, getSavedState, saveState,
-    getPlayers, detectFormat, blend, loadMarket,
+    getPlayers, detectFormat, calcOptimalStarters, blend, loadMarket,
     projV, ageFlag, studAdj, openInTradeCalculator, resolveUserAndLeagues
   };
 })();
