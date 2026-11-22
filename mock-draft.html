@@ -55,7 +55,7 @@
 
 <script>
 const $ = id => document.getElementById(id);
-const { SL, POS, ROOKIES_2027, esc, j, getSavedState, saveState, loadMarket, resolveUserAndLeagues } = DD;
+const { SL, POS, esc, j, getSavedState, saveState, loadMarket, resolveUserAndLeagues } = DD;
 
 const curYr = new Date().getFullYear();
 for (let y = curYr; y >= curYr - 3; y--) $("season").add(new Option(y, y));
@@ -133,13 +133,13 @@ async function initMock(lg, uid) {
     M.teamNeeds[r.roster_id] = Object.entries(posTotals).sort((a, b) => a[1] - b[1])[0][0];
   });
 
-  M.basePool = ROOKIES_2027.map((p, idx) => ({
-    id: "2027_" + idx,
+  M.basePool = market.getRookieBoard().map((p, idx) => ({
+    id: p.sid || ("ROOKIE_" + idx),
     name: p.name,
     pos: p.pos,
-    meta: `${p.college} · 2027 Class`,
-    v: isSF ? p.vsf : p.v1qb
-  })).sort((a, b) => b.v - a.v);
+    meta: p.college,
+    v: p.v
+  }));
 
   $("poolTag").textContent = isSF ? "Superflex / 2QB Board" : "1QB Board";
   resetMock();
