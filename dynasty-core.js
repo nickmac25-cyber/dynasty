@@ -1,8 +1,12 @@
-// Dynasty Desk Pro — Unified Valuation, Caching, Pick Pricing & State Engine
+// Dynasty Desk Pro — 6-Source Valuation, Volatility, Historical Grading & Caching Engine
 window.DD = (function () {
   const SL = "https://api.sleeper.app/v1";
   const FC = "https://api.fantasycalc.com/values/current";
+  const SGF = "https://api.statsguyfantasy.com/api/v1";
+  const SC = "https://api.statchasers.com/api/v1/dynasty";
+  const DD_API = "https://www.dynastydealer.com/api/player-values";
   const DP = "https://raw.githubusercontent.com/dynastyprocess/data/master/files/values.csv";
+
   const POS = ["QB", "RB", "WR", "TE"];
   const CLIFF = { QB: 34, RB: 26, WR: 29, TE: 30 };
   const AGE_F = {
@@ -69,6 +73,9 @@ window.DD = (function () {
   const norm = n => (n || "").toLowerCase().replace(/[.'’]/g, "").replace(/\b(jr|sr|ii|iii|iv)\b/g, "").replace(/[^a-z ]/g, " ").replace(/\s+/g, " ").trim();
   const esc = t => String(t ?? "").replace(/&/g, "&amp;").replace(/"/g, "&quot;").replace(/</g, "&lt;");
   const j = async u => { const r = await fetch(u); if (!r.ok) throw new Error(`${r.status} from ${u}`); return r.json(); };
+  const safeJson = async (u, fallback = null) => {
+    try { const r = await fetch(u); return r.ok ? await r.json() : fallback; } catch (e) { return fallback; }
+  };
 
   function csv(t) {
     const rows = t.trim().split(/\r?\n/).map(l => {
@@ -80,16 +87,17 @@ window.DD = (function () {
     return rows.map(r => Object.fromEntries(h.map((k, i) => [k, r[i]])));
   }
 
+  // 6-Source Weights: [FantasyCalc, StatsGuy, StatChasers, DynastyDealer, DynastyProcess, ECR]
   function getWeights() {
     try {
-      const w = JSON.parse(localStorage.getItem("dd_weights") || "null");
-      if (Array.isArray(w) && w.length === 3) return w.map(Number);
+      const w = JSON.parse(localStorage.getItem("dd_weights_v2") || "null");
+      if (Array.isArray(w) && w.length === 6) return w.map(Number);
     } catch (e) {}
-    return [40, 30, 30];
+    return [25, 25, 15, 15, 10, 10];
   }
 
   function setWeights(arr) {
-    try { localStorage.setItem("dd_weights", JSON.stringify(arr.map(Number))); } catch (e) {}
+    try { localStorage.setItem("dd_weights_v2", JSON.stringify(arr.map(Number))); } catch (e) {}
   }
 
   function getSavedState() {
@@ -117,7 +125,6 @@ window.DD = (function () {
     } catch (e) {}
   }
 
-  // Single 24h Sleeper NFL Player Database Cache shared across ALL pages
   let memPlayers = null;
   async function getPlayers(force = false, onStatus = null) {
     const CACHE_KEY = "dd_sleeper_players_v3";
@@ -128,14 +135,11 @@ window.DD = (function () {
         const raw = localStorage.getItem(CACHE_KEY);
         if (raw) {
           const parsed = JSON.parse(raw);
-          if (parsed && parsed.d && Date.now() - parsed.t < TTL) {
-            memPlayers = parsed;
-            return parsed;
-          }
+          if (parsed && parsed.d && Date.now() - parsed.t < TTL) { memPlayers = parsed; return parsed; }
         }
       } catch (e) {}
     }
-    if (onStatus) onStatus("Downloading Sleeper NFL player database (cached 24h across all tools)...");
+    if (onStatus) onStatus("Downloading Sleeper NFL player database (cached 24h)...");
     const full = await j(`${SL}/players/nfl`);
     const slim = {};
     for (const [id, p] of Object.entries(full)) {
@@ -148,10 +152,7 @@ window.DD = (function () {
         team: p.team || "",
         age: p.age || null,
         injury_status: p.injury_status || null,
-        injury_body_part: p.injury_body_part || null,
-        injury_notes: p.injury_notes || null,
         depth_chart_order: p.depth_chart_order || null,
-        depth_chart_position: p.depth_chart_position || null,
         years_exp: p.years_exp ?? null
       };
     }
@@ -160,66 +161,130 @@ window.DD = (function () {
     return memPlayers;
   }
 
-  let memDP = null;
-  async function getDP() {
-    if (memDP && Date.now() - memDP.t < 6 * 3600 * 1000) return memDP.d;
-    const txt = await fetch(DP).then(r => r.ok ? r.text() : "").catch(() => "");
-    memDP = { t: Date.now(), d: txt ? csv(txt) : [] };
-    return memDP.d;
-  }
-
   function detectFormat(lg) {
-    const sf = (lg.roster_positions || []).filter(p => p === "SUPER_FLEX").length;
-    const qb = (lg.roster_positions || []).filter(p => p === "QB").length;
+    const rosterPos = lg.roster_positions || [];
+    const sf = rosterPos.filter(p => p === "SUPER_FLEX").length;
+    const qb = rosterPos.filter(p => p === "QB").length;
+    const starters = rosterPos.filter(p => !["BN", "IR", "TAXI"].includes(p)).length;
+    const bench = Math.max(4, rosterPos.length - starters);
+    const tep = lg.scoring_settings?.bonus_rec_te || 0;
     return {
       numQbs: sf > 0 || qb > 1 ? 2 : 1,
       ppr: lg.scoring_settings?.rec ?? 1,
       teams: lg.total_rosters || 12,
-      tep: lg.scoring_settings?.bonus_rec_te || 0
+      tep,
+      bench
     };
   }
 
   function blend(item, weights = getWeights()) {
     if (item.pick) return item.fc ?? item.v ?? 0;
-    const V = [item.fc, item.dp, item.ecr];
+    const V = [item.fc, item.sgf, item.sc, item.dd, item.dp, item.ecr];
     let sum = 0, tot = 0;
     V.forEach((v, i) => {
-      if (v != null && weights[i] > 0) { sum += v * weights[i]; tot += weights[i]; }
+      if (v != null && v > 0 && weights[i] > 0) { sum += v * weights[i]; tot += weights[i]; }
     });
-    return Math.round(tot ? sum / tot : (item.fc ?? item.dp ?? item.ecr ?? 0));
+    return Math.round(tot ? sum / tot : (item.fc ?? item.sgf ?? item.sc ?? item.dd ?? item.dp ?? item.ecr ?? 0));
   }
 
-  // Unified Market Valuation Engine (FantasyCalc + DynastyProcess + ECR)
+  // Unified 6-Source Market Valuation Engine
   async function loadMarket(lg, onStatus = null) {
     const fmt = detectFormat(lg);
-    const [fc, dpRows, playersObj] = await Promise.all([
+    const isSF = fmt.numQbs === 2;
+    const sgfFormat = isSF ? "sf_dynasty" : "1qb_dynasty";
+    const sgfTep = fmt.tep >= 0.75 ? "bigtep" : fmt.tep > 0 ? "tep" : "std";
+    const scScoring = fmt.ppr >= 1 ? "ppr" : fmt.ppr >= 0.5 ? "half" : "std";
+    const scTep = [0, 0.25, 0.5, 0.75, 1].reduce((prev, curr) => Math.abs(curr - fmt.tep) < Math.abs(prev - fmt.tep) ? curr : prev);
+
+    if (onStatus) onStatus("Syncing 6 live & daily market feeds (FC, StatsGuy, StatChasers, DynastyDealer, DP, Volatility)...");
+
+    const [fc, sgfRaw, scRaw, ddRaw, ghMarket, playersObj] = await Promise.all([
       j(`${FC}?isDynasty=true&numQbs=${fmt.numQbs}&numTeams=${fmt.teams}&ppr=${fmt.ppr}`),
-      getDP(),
+      safeJson(`${SGF}/players?tep=${sgfTep}`, []),
+      safeJson(`${SC}/values?teams=${Math.min(32, Math.max(8, fmt.teams))}&qb=${isSF ? "sf" : "1qb"}&scoring=${scScoring}&tep=${scTep}&bench=${Math.min(40, fmt.bench)}`, null),
+      safeJson(`${DD_API}`, null),
+      safeJson(`./market-data.json?t=${Math.floor(Date.now() / 3600000)}`, null),
       getPlayers(false, onStatus)
     ]);
 
-    const dpKey = fmt.numQbs === 2 ? "value_2qb" : "value_1qb";
-    const ek = fmt.numQbs === 2 ? "ecr_2qb" : "ecr_1qb";
-    const dpMap = new Map(dpRows.map(r => [norm(r.player) + "|" + r.pos, +r[dpKey]]).filter(x => x[1] > 0));
-    const ecrMap = new Map(dpRows.map(r => [norm(r.player) + "|" + r.pos, +r[ek]]).filter(x => x[1] > 0));
+    // Fallback to raw DynastyProcess CSV if market-data.json isn't present yet
+    let dpConsensus = ghMarket?.consensus || null;
+    if (!dpConsensus) {
+      const txt = await fetch(DP).then(r => r.ok ? r.text() : "").catch(() => "");
+      const rows = txt ? csv(txt) : [];
+      dpConsensus = {};
+      rows.forEach(r => {
+        const k = `${norm(r.player)}|${r.pos}`;
+        dpConsensus[k] = { v1qb: +r.value_1qb || 0, vsf: +r.value_2qb || 0, ecr_1qb: +r.ecr_1qb || null, ecr_sf: +r.ecr_2qb || null };
+      });
+    }
+    const volatilityMap = ghMarket?.volatility || {};
+    const trendingMap = ghMarket?.trending || { adds: {}, drops: {} };
+
+    // Map Stats Guy Fantasy by Sleeper ID
+    const sgfList = Array.isArray(sgfRaw) ? sgfRaw : (sgfRaw?.players || sgfRaw?.data || []);
+    const sgfBySid = new Map();
+    sgfList.forEach(p => {
+      const id = String(p.id || p.sleeper_id || "");
+      const val = p.values?.[sgfFormat]?.value ?? p.values?.[sgfFormat] ?? p[sgfFormat] ?? p.value ?? 0;
+      if (id && val > 0) sgfBySid.set(id, Math.round(Number(val)));
+    });
+
+    // Map StatChasers by Sleeper ID
+    const scList = Array.isArray(scRaw) ? scRaw : (scRaw?.values || scRaw?.players || scRaw?.data || []);
+    const scBySid = new Map();
+    scList.forEach(p => {
+      const id = String(p.sleeper_id || p.player_id || p.id || "");
+      const val = p.value ?? p.dynasty_value ?? 0;
+      if (id && val > 0) scBySid.set(id, Math.round(Number(val)));
+    });
+
+    // Map Dynasty Dealer by normalized name|pos (1QB base scale; adjust QBs slightly in SF)
+    const ddList = Array.isArray(ddRaw) ? ddRaw : (ddRaw?.players || ddRaw?.data || []);
+    const ddByKey = new Map();
+    ddList.forEach(p => {
+      const pos = String(p.position || p.pos || "").toUpperCase();
+      const name = p.name || p.player_name || "";
+      let val = Number(p.value || p.dynasty_value || 0);
+      if (isSF && pos === "QB" && val > 0) val = Math.round(Math.min(10000, val * 1.45));
+      if (name && pos && val > 0) ddByKey.set(`${norm(name)}|${pos}`, Math.round(val));
+    });
+
     const curve = fc.map(e => e.value).sort((a, b) => b - a);
     const weights = getWeights();
 
     const all = fc.map(e => {
       const p = e.player;
       const isPick = p.position === "PICK";
-      const d = isPick ? null : dpMap.get(norm(p.name) + "|" + p.position);
-      const er = isPick ? null : ecrMap.get(norm(p.name) + "|" + p.position);
-      const ecr = er ? (curve[Math.round(er) - 1] ?? 0) : null;
+      const sid = String(p.sleeperId || "");
+      const key = `${norm(p.name)}|${p.position}`;
+
+      const dpEntry = isPick ? null : dpConsensus[key];
+      const dpVal = dpEntry ? (isSF ? dpEntry.vsf : dpEntry.v1qb) : null;
+      const er = dpEntry ? (isSF ? dpEntry.ecr_sf : dpEntry.ecr_1qb) : null;
+      const ecrVal = er ? (curve[Math.round(er) - 1] ?? 0) : null;
+
+      const sgfVal = (!isPick && sid) ? (sgfBySid.get(sid) || null) : null;
+      const scVal = (!isPick && sid) ? (scBySid.get(sid) || null) : null;
+      const ddVal = !isPick ? (ddByKey.get(key) || null) : null;
+      const vol = !isPick ? (volatilityMap[key] || null) : null;
+
       const obj = {
-        sid: String(p.sleeperId || ""),
+        sid,
         name: p.name,
         pos: p.position,
         age: p.maybeAge || null,
         team: p.maybeTeam || "",
         fc: e.value,
-        dp: d || null,
-        ecr: ecr || null,
+        sgf: sgfVal,
+        sc: scVal,
+        dd: ddVal,
+        dp: dpVal || null,
+        ecr: ecrVal || null,
+        ecrSd: vol?.ecr_sd ?? null,
+        ecrRange: (vol?.ecr_best && vol?.ecr_worst) ? `${vol.ecr_best}-${vol.ecr_worst}` : null,
+        adds48h: sid ? (trendingMap.adds?.[sid] || 0) : 0,
+        drops48h: sid ? (trendingMap.drops?.[sid] || 0) : 0,
         pick: isPick,
         trend: e.trend30Day || 0,
         rank: e.overallRank || 999
@@ -242,7 +307,6 @@ window.DD = (function () {
         if (tieredHits.length) hits = tieredHits;
       }
       if (hits.length) return Math.round(hits.reduce((s, p) => s + p.v, 0) / hits.length);
-      // Fallback for distant years not yet listed on FantasyCalc
       const baseYear = Number(lg.season || new Date().getFullYear());
       const yrDiff = Math.max(0, Number(year) - baseYear);
       const baseByRound = { 1: 4200, 2: 2100, 3: 1050, 4: 450 };
@@ -250,15 +314,45 @@ window.DD = (function () {
       return Math.round((baseByRound[round] || 250) * tierMult * Math.pow(0.88, yrDiff));
     }
 
-    return { fmt, fc, dp: dpRows, pmap: playersObj.d, cacheTs: playersObj.t, all, bySid, pickValue };
+    // Historical trade batch grader via Stats Guy Fantasy API (values as of the exact trade date!)
+    async function gradeTradesHistorically(trades) {
+      if (!trades.length) return null;
+      try {
+        const payload = {
+          format: sgfFormat,
+          tep: sgfTep,
+          trades: trades.slice(0, 25).map(tr => ({
+            id: tr.id,
+            date: tr.isoDate,
+            sides: tr.sides.map(s => ({
+              players: s.playerIds,
+              picks: s.picks.map(pk => ({ year: Number(pk.season), round: Number(pk.round) }))
+            }))
+          }))
+        };
+        const res = await fetch(`${SGF}/trades/evaluate/batch`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload)
+        });
+        if (!res.ok) return null;
+        return await res.json();
+      } catch (e) {
+        return null;
+      }
+    }
+
+    return {
+      fmt, fc, pmap: playersObj.d, cacheTs: playersObj.t,
+      ghUpdatedAt: ghMarket?.updated_at || null,
+      all, bySid, pickValue, gradeTradesHistorically
+    };
   }
 
   function projV(p, yearsOut) {
     let v = p.v || 0;
     let a = Math.floor(p.age || 26);
-    for (let i = 0; i < yearsOut; i++) {
-      v *= (AGE_F[p.pos] || (() => 1))(a + i);
-    }
+    for (let i = 0; i < yearsOut; i++) v *= (AGE_F[p.pos] || (() => 1))(a + i);
     return Math.round(v);
   }
 
@@ -269,13 +363,12 @@ window.DD = (function () {
     if (p.age >= c - 2 && p.v > 4000) return ["sell", "Sell window opening"];
     if (p.age <= 23 && p.trend > 150) return ["buy", "Rising young asset"];
     if (p.trend < -400 && p.age < c - 2) return ["buy", "Buy low dip"];
+    if (p.ecrSd && p.ecrSd >= 16) return ["vol", `Polarizing (SD ${p.ecrSd})`];
     return ["hold", "Hold"];
   }
 
-  // Stud-premium consolidation curve (shared across Trade Calculator & Trade Finder)
   const studAdj = list => list.reduce((s, p) => s + Math.pow((p.v || 0) / 100, 1.8), 0);
 
-  // Send trade to index.html Trade Calculator from ANY page
   function openInTradeCalculator(giveSids, getSids) {
     try {
       localStorage.setItem("dd_pending_trade", JSON.stringify({ a: giveSids.map(String), b: getSids.map(String), ts: Date.now() }));
@@ -283,7 +376,6 @@ window.DD = (function () {
     window.location.href = "index.html#tab-trade";
   }
 
-  // Resolve user + leagues helper for standalone pages
   async function resolveUserAndLeagues(username, season) {
     const u = await j(`${SL}/user/${encodeURIComponent(username.trim())}`);
     if (!u || !u.user_id) throw new Error("Sleeper username not found.");
@@ -293,7 +385,7 @@ window.DD = (function () {
   }
 
   return {
-    SL, FC, DP, POS, CLIFF, AGE_F, ROOKIES_2027,
+    SL, FC, SGF, SC, DD_API, DP, POS, CLIFF, AGE_F, ROOKIES_2027,
     norm, esc, j, csv,
     getWeights, setWeights, getSavedState, saveState,
     getPlayers, detectFormat, blend, loadMarket,
