@@ -3,21 +3,22 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Mock Draft Simulator · Dynasty Suite</title>
+<title>Mock Draft Simulator · Dynasty Desk Pro</title>
 <script src="https://cdn.tailwindcss.com"></script>
 <script>tailwind.config = { darkMode: 'class', theme: { extend: { colors: { slate: { 850: '#151e2e', 900: '#0f172a', 950: '#090d16' } } } } }</script>
 </head>
 <body class="bg-slate-950 text-slate-100 font-sans antialiased min-h-screen flex flex-col">
+<script src="dynasty-core.js"></script>
 <script src="dynasty-nav.js"></script>
 
 <header class="bg-slate-900 border-b border-slate-800 px-4 py-3">
   <div class="max-w-7xl mx-auto flex flex-wrap items-center justify-between gap-3">
     <div>
-      <h1 class="font-bold text-lg text-white">League-Aware Rookie Mock Draft Simulator</h1>
-      <p class="text-xs text-slate-400">Uses your league's exact traded picks &amp; standings order + 2027 incoming rookie prospect board.</p>
+      <h1 class="font-bold text-lg text-white">League-Aware 2027 Rookie Mock Draft Simulator</h1>
+      <p class="text-xs text-slate-400">Uses your league's exact traded picks &amp; standings order + unified 50-prospect 2027 board.</p>
     </div>
     <div class="flex flex-wrap items-center gap-2">
-      <input id="user" placeholder="Sleeper username" class="bg-slate-950 border border-slate-700 rounded-lg px-3 py-1.5 text-sm text-white w-40">
+      <input id="user" placeholder="Sleeper username" class="bg-slate-950 border border-slate-700 rounded-lg px-3 py-1.5 text-sm text-white w-36 sm:w-44">
       <select id="season" class="bg-slate-950 border border-slate-700 rounded-lg px-2.5 py-1.5 text-sm text-white"></select>
       <button id="go" class="bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-medium px-4 py-1.5 rounded-lg cursor-pointer">Load Draft</button>
       <select id="league" hidden class="bg-slate-800 border border-slate-600 rounded-lg px-3 py-1.5 text-sm text-emerald-300 max-w-[200px] truncate"></select>
@@ -27,7 +28,6 @@
 </header>
 
 <main id="main" hidden class="max-w-7xl w-full mx-auto px-4 py-6 grid grid-cols-1 lg:grid-cols-3 gap-6 flex-1">
-  <!-- Left: Draft Board -->
   <section class="lg:col-span-2 bg-slate-900 border border-slate-800 rounded-xl p-5 shadow-xl">
     <div class="flex flex-wrap items-center justify-between gap-2 mb-4">
       <div>
@@ -43,7 +43,6 @@
     <div id="board" class="space-y-1.5 max-h-[620px] overflow-y-auto pr-1"></div>
   </section>
 
-  <!-- Right: Available Rookies -->
   <section class="bg-slate-900 border border-slate-800 rounded-xl p-5 shadow-xl">
     <div class="flex items-center justify-between mb-1">
       <h2 class="text-lg font-bold text-white">2027 Rookie Prospects</h2>
@@ -56,54 +55,13 @@
 
 <script>
 const $ = id => document.getElementById(id);
-const SL = "https://api.sleeper.app/v1", FC = "https://api.fantasycalc.com/values/current";
-const POS = ["QB", "RB", "WR", "TE"];
-const yr = new Date().getFullYear();
-for (let y = yr; y >= yr - 2; y--) $("season").add(new Option(y, y));
-try { if (localStorage.getItem("dd_user")) $("user").value = localStorage.getItem("dd_user"); } catch (e) {}
+const { SL, POS, ROOKIES_2027, esc, j, getSavedState, saveState, loadMarket, resolveUserAndLeagues } = DD;
 
-const j = async u => { const r = await fetch(u); if (!r.ok) throw new Error(r.status); return r.json(); };
-const esc = t => (t || "").replace(/&/g, "&amp;").replace(/</g, "&lt;");
-
-// Built-in 2027 Incoming Rookie Prospect Board (1QB base values; QB values automatically boost in Superflex/2QB)
-const ROOKIES_2027 = [
-  { name: "Jeremiah Smith", pos: "WR", college: "Ohio State", v1qb: 7800, vsf: 7400 },
-  { name: "Ryan Williams", pos: "WR", college: "Alabama", v1qb: 7100, vsf: 6700 },
-  { name: "Arch Manning", pos: "QB", college: "Texas", v1qb: 4600, vsf: 7600 },
-  { name: "Nico Iamaleava", pos: "QB", college: "Tennessee", v1qb: 4100, vsf: 6800 },
-  { name: "Cam Coleman", pos: "WR", college: "Auburn", v1qb: 6200, vsf: 5900 },
-  { name: "DJ Lagway", pos: "QB", college: "Florida", v1qb: 3900, vsf: 6500 },
-  { name: "Dylan Raiola", pos: "QB", college: "Nebraska", v1qb: 3700, vsf: 6200 },
-  { name: "Nate Frazier", pos: "RB", college: "Georgia", v1qb: 5600, vsf: 5300 },
-  { name: "Isaac Brown", pos: "RB", college: "Louisville", v1qb: 5400, vsf: 5100 },
-  { name: "TJ Moore", pos: "WR", college: "Clemson", v1qb: 5200, vsf: 4900 },
-  { name: "LaNorris Sellers", pos: "QB", college: "South Carolina", v1qb: 3500, vsf: 5800 },
-  { name: "Bryant Wesco Jr.", pos: "WR", college: "Clemson", v1qb: 4900, vsf: 4650 },
-  { name: "Ahmad Hardy", pos: "RB", college: "ULM / Transfer", v1qb: 4700, vsf: 4450 },
-  { name: "Nick Marsh", pos: "WR", college: "Michigan State", v1qb: 4550, vsf: 4300 },
-  { name: "Jadan Baugh", pos: "RB", college: "Florida", v1qb: 4400, vsf: 4150 },
-  { name: "Micah Hudson", pos: "WR", college: "Texas A&M", v1qb: 4250, vsf: 4000 },
-  { name: "Julian Sayin", pos: "QB", college: "Ohio State", v1qb: 3100, vsf: 5100 },
-  { name: "Kewan Lacy", pos: "RB", college: "Ole Miss", v1qb: 4100, vsf: 3900 },
-  { name: "Taylor Tatum", pos: "RB", college: "Oklahoma", v1qb: 3950, vsf: 3750 },
-  { name: "Ryan Wingo", pos: "WR", college: "Texas", v1qb: 3850, vsf: 3650 },
-  { name: "Caden Durham", pos: "RB", college: "LSU", v1qb: 3750, vsf: 3550 },
-  { name: "Aidan Chiles", pos: "QB", college: "Michigan State", v1qb: 2700, vsf: 4400 },
-  { name: "Duane Thomas Jr.", pos: "WR", college: "UCF", v1qb: 3600, vsf: 3400 },
-  { name: "Jordan Marshall", pos: "RB", college: "Michigan", v1qb: 3500, vsf: 3300 },
-  { name: "Trey'Dez Green", pos: "TE", college: "LSU", v1qb: 3400, vsf: 3250 },
-  { name: "Emmett Mosley V", pos: "WR", college: "Stanford", v1qb: 3250, vsf: 3100 },
-  { name: "Sam Leavitt", pos: "QB", college: "Arizona State", v1qb: 2400, vsf: 3900 },
-  { name: "Fluff Bothwell", pos: "RB", college: "South Alabama", v1qb: 3150, vsf: 3000 },
-  { name: "Mylan Graham", pos: "WR", college: "Ohio State", v1qb: 3050, vsf: 2900 },
-  { name: "Dakorien Moore", pos: "WR", college: "Oregon", v1qb: 2950, vsf: 2800 },
-  { name: "Bryce Underwood", pos: "QB", college: "Michigan", v1qb: 2200, vsf: 3650 },
-  { name: "Jerrick Gibson", pos: "RB", college: "Texas", v1qb: 2850, vsf: 2700 },
-  { name: "Elijah Brown", pos: "QB", college: "Stanford", v1qb: 2050, vsf: 3350 },
-  { name: "Davon Mitchell", pos: "TE", college: "Oklahoma", v1qb: 2750, vsf: 2600 },
-  { name: "Perry Thompson", pos: "WR", college: "Auburn", v1qb: 2650, vsf: 2500 },
-  { name: "Aneyas Williams", pos: "RB", college: "Notre Dame", v1qb: 2550, vsf: 2400 }
-];
+const curYr = new Date().getFullYear();
+for (let y = curYr; y >= curYr - 3; y--) $("season").add(new Option(y, y));
+const saved = getSavedState();
+if (saved.user) $("user").value = saved.user;
+if (saved.season) $("season").value = saved.season;
 
 let M = { slots: [], pool: [], basePool: [], idx: 0, myRid: null, teamNeeds: {} };
 
@@ -111,31 +69,29 @@ $("go").onclick = async () => {
   try {
     const uname = $("user").value.trim();
     if (!uname) return $("status").textContent = "Enter a Sleeper username.";
-    localStorage.setItem("dd_user", uname);
+    saveState({ user: uname, season: $("season").value });
     $("status").textContent = "Fetching user & leagues...";
-    const u = await j(`${SL}/user/${encodeURIComponent(uname)}`);
-    const ls = await j(`${SL}/user/${u.user_id}/leagues/nfl/${$("season").value}`);
+    const { user, leagues } = await resolveUserAndLeagues(uname, $("season").value);
     const sel = $("league"); sel.innerHTML = ""; sel.hidden = false;
-    ls.forEach((l, i) => sel.add(new Option(l.name, i)));
-    sel.onchange = () => initMock(ls[sel.value], u.user_id);
-    initMock(ls[0], u.user_id);
+    leagues.forEach((l, i) => sel.add(new Option(l.name, i)));
+    const idx = leagues.findIndex(l => String(l.league_id) === String(saved.leagueId));
+    if (idx >= 0) sel.value = idx;
+    sel.onchange = () => initMock(leagues[sel.value], user.user_id);
+    await initMock(leagues[sel.value || 0], user.user_id);
   } catch (e) { $("status").textContent = "Error: " + e.message; }
 };
 
 async function initMock(lg, uid) {
+  saveState({ leagueId: lg.league_id });
   $("status").textContent = "Building league draft order & 2027 rookie prospect board...";
-  const sf = (lg.roster_positions || []).filter(p => p === "SUPER_FLEX").length;
-  const qb = (lg.roster_positions || []).filter(p => p === "QB").length;
-  const isSF = sf > 0 || qb > 1;
-  const numQbs = isSF ? 2 : 1, ppr = lg.scoring_settings?.rec ?? 1;
-
-  const [fc, rosters, traded, users] = await Promise.all([
-    j(`${FC}?isDynasty=true&numQbs=${numQbs}&numTeams=${lg.total_rosters}&ppr=${ppr}`),
+  const [market, rosters, traded, users] = await Promise.all([
+    loadMarket(lg, msg => $("status").textContent = msg),
     j(`${SL}/league/${lg.league_id}/rosters`),
     j(`${SL}/league/${lg.league_id}/traded_picks`),
     j(`${SL}/league/${lg.league_id}/users`)
   ]);
 
+  const isSF = market.fmt.numQbs === 2;
   const tname = rid => {
     const r = rosters.find(x => x.roster_id === rid);
     const u = users.find(x => x.user_id === r?.owner_id);
@@ -145,7 +101,6 @@ async function initMock(lg, uid) {
   const me = rosters.find(r => r.owner_id === uid) || rosters[0];
   M.myRid = me.roster_id;
 
-  // Order teams worst-to-best by current standings
   const ordered = [...rosters].sort((a, b) => (a.settings.wins - b.settings.wins) || (a.settings.fpts - b.settings.fpts));
   const targetSeason = String(Number(lg.season) + 1);
   const pickOwner = {};
@@ -168,33 +123,28 @@ async function initMock(lg, uid) {
     });
   }
 
-  // Analyze each team's weakest position for AI drafting logic
   M.teamNeeds = {};
   rosters.forEach(r => {
     const posTotals = { QB: 0, RB: 0, WR: 0, TE: 0 };
     (r.players || []).forEach(id => {
-      const item = fc.find(e => String(e.player.sleeperId) === id);
-      if (item && POS.includes(item.player.position)) posTotals[item.player.position] += item.value;
+      const item = market.bySid.get(id);
+      if (item && POS.includes(item.pos)) posTotals[item.pos] += item.v;
     });
-    const weakest = Object.entries(posTotals).sort((a, b) => a[1] - b[1])[0][0];
-    M.teamNeeds[r.roster_id] = weakest;
+    M.teamNeeds[r.roster_id] = Object.entries(posTotals).sort((a, b) => a[1] - b[1])[0][0];
   });
 
-  // Load 2027 Incoming Rookie Board scaled to league format (Superflex vs 1QB)
-  M.basePool = ROOKIES_2027
-    .map((p, idx) => ({
-      id: "2027_" + idx,
-      name: p.name,
-      pos: p.pos,
-      meta: `${p.college} · 2027 Class`,
-      v: isSF ? p.vsf : p.v1qb
-    }))
-    .sort((a, b) => b.v - a.v);
+  M.basePool = ROOKIES_2027.map((p, idx) => ({
+    id: "2027_" + idx,
+    name: p.name,
+    pos: p.pos,
+    meta: `${p.college} · 2027 Class`,
+    v: isSF ? p.vsf : p.v1qb
+  })).sort((a, b) => b.v - a.v);
 
   $("poolTag").textContent = isSF ? "Superflex / 2QB Board" : "1QB Board";
   resetMock();
   $("main").hidden = false;
-  $("status").textContent = `Loaded ${targetSeason} Rookie Mock Draft (${M.basePool.length} incoming prospects) for ${lg.name}.`;
+  $("status").textContent = `Loaded ${targetSeason} Rookie Mock Draft (${M.basePool.length} prospects) for ${lg.name}.`;
 }
 
 function resetMock() {
@@ -207,8 +157,7 @@ function resetMock() {
 function makePick(playerIdx = 0) {
   if (M.idx >= M.slots.length || !M.pool.length) return;
   const slot = M.slots[M.idx];
-  const chosen = M.pool.splice(playerIdx, 1)[0];
-  slot.picked = chosen;
+  slot.picked = M.pool.splice(playerIdx, 1)[0];
   M.idx++;
   renderMock();
 }
@@ -268,6 +217,7 @@ function renderMock() {
     </button>
   `).join("");
 }
+
 if ($("user").value) $("go").click();
 </script>
 </body>

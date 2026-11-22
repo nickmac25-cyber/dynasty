@@ -1,0 +1,280 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Trade Hub &amp; Grades · Dynasty Desk Pro</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script>tailwind.config = { darkMode: 'class', theme: { extend: { colors: { slate: { 850: '#151e2e', 900: '#0f172a', 950: '#090d16' } } } } }</script>
+</head>
+<body class="bg-slate-950 text-slate-100 font-sans antialiased min-h-screen flex flex-col">
+<script src="dynasty-core.js"></script>
+<script src="dynasty-nav.js"></script>
+
+<header class="bg-slate-900 border-b border-slate-800 px-4 py-3">
+  <div class="max-w-7xl mx-auto flex flex-wrap items-center justify-between gap-3">
+    <div>
+      <h1 class="font-bold text-lg text-white">Trade Hub &amp; Historical Trade Grades</h1>
+      <p class="text-xs text-slate-400">Positional surplus/hole matchmaking with 1-click Trade Calculator handoff + hindsight trade grades.</p>
+    </div>
+    <div class="flex flex-wrap items-center gap-2">
+      <input id="user" placeholder="Sleeper username" class="bg-slate-950 border border-slate-700 rounded-lg px-3 py-1.5 text-sm text-white w-36 sm:w-44">
+      <select id="season" class="bg-slate-950 border border-slate-700 rounded-lg px-2.5 py-1.5 text-sm text-white"></select>
+      <button id="go" class="bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-medium px-4 py-1.5 rounded-lg cursor-pointer">Sync League</button>
+      <select id="league" hidden class="bg-slate-800 border border-slate-600 rounded-lg px-3 py-1.5 text-sm text-emerald-300 max-w-[210px] truncate"></select>
+    </div>
+  </div>
+  <div id="status" class="max-w-7xl mx-auto text-xs text-slate-400 mt-2">Ready.</div>
+</header>
+
+<main id="main" hidden class="max-w-7xl w-full mx-auto px-4 py-6 space-y-6 flex-1">
+  <!-- Sub-navigation -->
+  <div class="flex gap-2 border-b border-slate-800 pb-3">
+    <button id="btnMatch" class="px-4 py-2 rounded-lg text-xs font-bold bg-emerald-600 text-white cursor-pointer">🤝 Needs &amp; Surplus Matchmaker</button>
+    <button id="btnGrades" class="px-4 py-2 rounded-lg text-xs font-bold bg-slate-900 text-slate-300 border border-slate-800 hover:text-white cursor-pointer">📜 Past Trade Grades &amp; Manager Savvy</button>
+  </div>
+
+  <!-- VIEW 1: MATCHMAKER -->
+  <section id="viewMatch" class="space-y-6">
+    <div class="bg-slate-900 border border-slate-800 rounded-xl p-5">
+      <h2 class="text-base font-bold text-white mb-1">Your Positional Surplus vs. Holes</h2>
+      <p class="text-xs text-slate-400 mb-4">Compared against your league's median starter strength at each position.</p>
+      <div id="mySummary" class="grid grid-cols-2 sm:grid-cols-4 gap-3"></div>
+    </div>
+
+    <div class="bg-slate-900 border border-slate-800 rounded-xl p-5">
+      <h2 class="text-base font-bold text-white mb-1">Best Mutual Trade Partners</h2>
+      <p class="text-xs text-slate-400 mb-4">Pairs your surplus depth with rivals who need it—and have surplus where you are thin.</p>
+      <div id="partnersGrid" class="grid grid-cols-1 md:grid-cols-2 gap-4"></div>
+    </div>
+  </section>
+
+  <!-- VIEW 2: PAST TRADE GRADES -->
+  <section id="viewGrades" hidden class="space-y-6">
+    <div class="bg-slate-900 border border-slate-800 rounded-xl p-5">
+      <h2 class="text-base font-bold text-white mb-1">Manager Trade Savvy Leaderboard (Hindsight Net Value)</h2>
+      <p class="text-xs text-slate-400 mb-4">Evaluates every completed trade in the selected season using today's live blended values.</p>
+      <div id="savvyBoard" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3"></div>
+    </div>
+
+    <div class="bg-slate-900 border border-slate-800 rounded-xl p-5">
+      <div class="flex flex-wrap items-center justify-between gap-2 mb-4">
+        <h2 class="text-base font-bold text-white">Completed Trade Ledger</h2>
+        <select id="teamFilter" class="bg-slate-950 border border-slate-700 rounded-lg px-3 py-1.5 text-xs text-white"></select>
+      </div>
+      <div id="tradeLedger" class="space-y-3"></div>
+    </div>
+  </section>
+</main>
+
+<script>
+const $ = id => document.getElementById(id);
+const { SL, POS, esc, j, getSavedState, saveState, loadMarket, openInTradeCalculator, resolveUserAndLeagues } = DD;
+
+const curYr = new Date().getFullYear();
+for (let y = curYr; y >= curYr - 3; y--) $("season").add(new Option(y, y));
+const saved = getSavedState();
+if (saved.user) $("user").value = saved.user;
+if (saved.season) $("season").value = saved.season;
+
+$("btnMatch").onclick = () => {
+  $("viewMatch").hidden = false; $("viewGrades").hidden = true;
+  $("btnMatch").className = "px-4 py-2 rounded-lg text-xs font-bold bg-emerald-600 text-white cursor-pointer";
+  $("btnGrades").className = "px-4 py-2 rounded-lg text-xs font-bold bg-slate-900 text-slate-300 border border-slate-800 hover:text-white cursor-pointer";
+};
+$("btnGrades").onclick = () => {
+  $("viewMatch").hidden = true; $("viewGrades").hidden = false;
+  $("btnGrades").className = "px-4 py-2 rounded-lg text-xs font-bold bg-emerald-600 text-white cursor-pointer";
+  $("btnMatch").className = "px-4 py-2 rounded-lg text-xs font-bold bg-slate-900 text-slate-300 border border-slate-800 hover:text-white cursor-pointer";
+};
+
+$("go").onclick = async () => {
+  try {
+    const uname = $("user").value.trim();
+    if (!uname) return $("status").textContent = "Enter a Sleeper username.";
+    saveState({ user: uname, season: $("season").value });
+    $("status").textContent = "Resolving leagues...";
+    const { user, leagues } = await resolveUserAndLeagues(uname, $("season").value);
+    const sel = $("league"); sel.innerHTML = ""; sel.hidden = false;
+    leagues.forEach((l, i) => sel.add(new Option(l.name, i)));
+    const idx = leagues.findIndex(l => String(l.league_id) === String(saved.leagueId));
+    if (idx >= 0) sel.value = idx;
+    sel.onchange = () => initHub(leagues[sel.value], user.user_id);
+    await initHub(leagues[sel.value || 0], user.user_id);
+  } catch (e) { $("status").textContent = "Error: " + e.message; }
+};
+
+async function initHub(lg, uid) {
+  saveState({ leagueId: lg.league_id });
+  $("status").textContent = "Loading blended market values, rosters & trade history...";
+  const [market, rosters, users] = await Promise.all([
+    loadMarket(lg, msg => $("status").textContent = msg),
+    j(`${SL}/league/${lg.league_id}/rosters`),
+    j(`${SL}/league/${lg.league_id}/users`)
+  ]);
+
+  const tname = rid => {
+    const r = rosters.find(x => x.roster_id === rid);
+    const u = users.find(x => x.user_id === r?.owner_id);
+    return u?.metadata?.team_name || u?.display_name || "Team " + rid;
+  };
+
+  const teams = rosters.map(r => {
+    const players = (r.players || []).map(id => {
+      const m = market.bySid.get(id);
+      const sp = market.pmap[id];
+      const pos = m?.pos || sp?.position;
+      if (!POS.includes(pos)) return null;
+      return { id, name: m?.name || sp?.full_name || id, pos, v: m?.v || 0 };
+    }).filter(Boolean).sort((a, b) => b.v - a.v);
+
+    const byPos = {};
+    POS.forEach(p => byPos[p] = players.filter(x => x.pos === p));
+    return { rid: r.roster_id, ownerId: r.owner_id, name: tname(r.roster_id), players, byPos };
+  });
+
+  const me = teams.find(t => t.ownerId === uid) || teams[0];
+
+  // League median top-2 score per position
+  const med = {};
+  POS.forEach(p => {
+    const scores = teams.map(t => t.byPos[p].slice(0, 2).reduce((s, x) => s + x.v, 0)).sort((a, b) => a - b);
+    med[p] = scores[Math.floor(scores.length / 2)] || 1;
+  });
+
+  const myStatus = {};
+  POS.forEach(p => {
+    const score = me.byPos[p].slice(0, 2).reduce((s, x) => s + x.v, 0);
+    const ratio = score / med[p];
+    myStatus[p] = { score, ratio, tag: ratio >= 1.15 ? "SURPLUS" : ratio <= 0.85 ? "NEED" : "NEUTRAL" };
+  });
+
+  $("mySummary").innerHTML = POS.map(p => {
+    const st = myStatus[p];
+    const cls = st.tag === "SURPLUS" ? "border-emerald-500/40 bg-emerald-500/10 text-emerald-300" : st.tag === "NEED" ? "border-rose-500/40 bg-rose-500/10 text-rose-300" : "border-slate-800 bg-slate-950 text-slate-300";
+    return `
+      <div class="rounded-xl border p-3.5 ${cls}">
+        <div class="flex justify-between items-center text-xs font-bold"><span>${p}</span><span>${st.tag}</span></div>
+        <div class="text-lg font-extrabold text-white mt-1">${st.score.toLocaleString()}</div>
+        <div class="text-[11px] opacity-80">Top-2 Starter Val (${Math.round(st.ratio * 100)}% of med)</div>
+      </div>`;
+  }).join("");
+
+  const surplusPos = POS.filter(p => myStatus[p].tag === "SURPLUS");
+  const needPos = POS.filter(p => myStatus[p].tag === "NEED");
+  const fallbackNeed = POS.slice().sort((a, b) => myStatus[a].ratio - myStatus[b].ratio)[0];
+  const fallbackSurplus = POS.slice().sort((a, b) => myStatus[b].ratio - myStatus[a].ratio)[0];
+  const activeNeeds = needPos.length ? needPos : [fallbackNeed];
+  const activeSurplus = surplusPos.length ? surplusPos : [fallbackSurplus];
+
+  const matches = [];
+  teams.filter(t => t.rid !== me.rid).forEach(opp => {
+    const oppNeeds = POS.filter(p => (opp.byPos[p].slice(0, 2).reduce((s, x) => s + x.v, 0) / med[p]) <= 0.92);
+    const oppSurplus = POS.filter(p => (opp.byPos[p].slice(0, 2).reduce((s, x) => s + x.v, 0) / med[p]) >= 1.08);
+    const fitGet = activeNeeds.find(p => oppSurplus.includes(p)) || activeNeeds[0];
+    const fitGive = activeSurplus.find(p => oppNeeds.includes(p)) || activeSurplus[0];
+
+    const targetPlayer = opp.byPos[fitGet]?.[1] || opp.byPos[fitGet]?.[0];
+    const sendPlayer = me.byPos[fitGive]?.[1] || me.byPos[fitGive]?.[0];
+    if (targetPlayer && sendPlayer) {
+      matches.push({ opp, sendPlayer, targetPlayer, fitGive, fitGet, mutual: oppNeeds.includes(fitGive) && oppSurplus.includes(fitGet) });
+    }
+  });
+  matches.sort((a, b) => Number(b.mutual) - Number(a.mutual));
+
+  $("partnersGrid").innerHTML = matches.map(m => `
+    <div class="bg-slate-950 border ${m.mutual ? "border-emerald-500/40" : "border-slate-800"} rounded-xl p-4 flex flex-col justify-between gap-3">
+      <div>
+        <div class="flex items-center justify-between text-xs mb-2">
+          <span class="font-bold text-white text-sm">${esc(m.opp.name)}</span>
+          ${m.mutual ? `<span class="bg-emerald-500/15 text-emerald-300 px-2 py-0.5 rounded font-semibold">Mutual Fit</span>` : `<span class="text-slate-500">Positional Fit</span>`}
+        </div>
+        <div class="text-xs text-rose-300">📤 Offer (${m.fitGive} Surplus): <b>${esc(m.sendPlayer.name)}</b> (${m.sendPlayer.v.toLocaleString()})</div>
+        <div class="text-xs text-emerald-300 mt-1">📥 Target (${m.fitGet} Need): <b>${esc(m.targetPlayer.name)}</b> (${m.targetPlayer.v.toLocaleString()})</div>
+      </div>
+      <button onclick='DD.openInTradeCalculator(["${m.sendPlayer.id}"],["${m.targetPlayer.id}"])' class="w-full bg-emerald-600/20 hover:bg-emerald-600 text-emerald-300 hover:text-white border border-emerald-500/40 text-xs font-semibold py-2 rounded-lg transition cursor-pointer">Load in Trade Analyzer →</button>
+    </div>`).join("");
+
+  // Load completed trades across weeks 1..18
+  const weekReqs = [];
+  for (let w = 1; w <= 18; w++) weekReqs.push(j(`${SL}/league/${lg.league_id}/transactions/${w}`).catch(() => []));
+  const allTx = (await Promise.all(weekReqs)).flat();
+  const trades = allTx.filter(tx => tx.type === "trade" && tx.status === "complete").sort((a, b) => b.status_updated - a.status_updated);
+
+  const netByRid = {};
+  teams.forEach(t => netByRid[t.rid] = { name: t.name, net: 0, count: 0 });
+
+  const gradedTrades = trades.map(tx => {
+    const sides = (tx.roster_ids || []).map(rid => {
+      const gained = [];
+      Object.entries(tx.adds || {}).forEach(([sid, toRid]) => {
+        if (toRid === rid) {
+          const m = market.bySid.get(sid);
+          const sp = market.pmap[sid];
+          gained.push({ name: m?.name || sp?.full_name || sid, v: m?.v || 0 });
+        }
+      });
+      (tx.draft_picks || []).forEach(pk => {
+        if (pk.owner_id === rid) {
+          const pv = market.pickValue(pk.season, pk.round);
+          gained.push({ name: `${pk.season} Rd ${pk.round}`, v: pv });
+        }
+      });
+      const total = gained.reduce((s, x) => s + x.v, 0);
+      return { rid, name: tname(rid), gained, total };
+    });
+
+    if (sides.length === 2) {
+      const d0 = sides[0].total - sides[1].total;
+      netByRid[sides[0].rid].net += d0; netByRid[sides[0].rid].count++;
+      netByRid[sides[1].rid].net -= d0; netByRid[sides[1].rid].count++;
+    }
+    return { id: tx.transaction_id, date: new Date(tx.status_updated).toLocaleDateString(), rids: tx.roster_ids || [], sides };
+  });
+
+  $("savvyBoard").innerHTML = Object.values(netByRid)
+    .filter(x => x.count > 0)
+    .sort((a, b) => b.net - a.net)
+    .map(x => `
+      <div class="bg-slate-950 border border-slate-800 rounded-lg p-3 flex justify-between items-center text-xs">
+        <div><b class="text-white text-sm">${esc(x.name)}</b><div class="text-slate-500">${x.count} trade(s)</div></div>
+        <span class="font-mono font-bold text-sm ${x.net >= 0 ? "text-emerald-400" : "text-rose-400"}">${x.net >= 0 ? "+" : ""}${x.net.toLocaleString()}</span>
+      </div>`).join("") || `<div class="text-xs text-slate-500">No completed trades logged yet this season.</div>`;
+
+  const fSel = $("teamFilter"); fSel.innerHTML = `<option value="ALL">All Teams (${gradedTrades.length} Trades)</option>`;
+  teams.forEach(t => fSel.add(new Option(t.name, t.rid)));
+
+  const renderLedger = () => {
+    const rid = fSel.value;
+    const list = gradedTrades.filter(tr => rid === "ALL" || tr.rids.includes(Number(rid)));
+    $("tradeLedger").innerHTML = list.map(tr => `
+      <div class="bg-slate-950 border border-slate-800 rounded-xl p-4">
+        <div class="text-[11px] text-slate-500 mb-2">Completed ${tr.date}</div>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+          ${tr.sides.map((s, idx) => {
+            const other = tr.sides[1 - idx];
+            const diff = other ? s.total - other.total : 0;
+            const grade = !other ? "—" : diff > 1800 ? "A+" : diff > 700 ? "A" : diff >= -700 ? "B (Fair)" : diff >= -1800 ? "C" : "D";
+            return `
+              <div class="bg-slate-900 border border-slate-800 rounded-lg p-3 text-xs">
+                <div class="flex justify-between items-center mb-1.5">
+                  <b class="text-white">${esc(s.name)} Received</b>
+                  <span class="font-mono font-bold ${diff >= 0 ? "text-emerald-400" : "text-rose-400"}">${s.total.toLocaleString()} · Grade ${grade}</span>
+                </div>
+                <div class="text-slate-300 space-y-0.5">${s.gained.map(g => `<div>+ ${esc(g.name)} <span class="text-slate-500">(${g.v.toLocaleString()})</span></div>`).join("") || "Nothing"}</div>
+              </div>`;
+          }).join("")}
+        </div>
+      </div>`).join("") || `<div class="text-xs text-slate-500">No trades match this filter.</div>`;
+  };
+  fSel.onchange = renderLedger;
+  renderLedger();
+
+  $("main").hidden = false;
+  $("status").textContent = `Loaded ${lg.name} Trade Hub & ${gradedTrades.length} graded trades.`;
+}
+
+if ($("user").value) $("go").click();
+</script>
+</body>
+</html>
