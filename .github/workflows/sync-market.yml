@@ -1,0 +1,35 @@
+name: Sync KTC & Expert Market Data
+
+on:
+  schedule:
+    - cron: '0 11 * * *' # Runs daily at 6:00 AM EST / 11:00 UTC
+  workflow_dispatch:      # Adds a manual "Run workflow" button in GitHub Actions
+
+permissions:
+  contents: write         # Allows the Action to commit market-data.json to your repo
+
+jobs:
+  build-market-json:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: pip install requests pandas
+
+      - name: Fetch KTC & DynastyProcess Volatility Data
+        run: python scripts/fetch_market.py
+
+      - name: Commit updated market-data.json
+        run: |
+          git config --local user.email "github-actions[bot]@users.noreply.github.com"
+          git config --local user.name "github-actions[bot]"
+          git add market-data.json
+          git diff --quiet && git diff --staged --quiet || git commit -m "chore: daily KTC & expert market sync"
+          git push
