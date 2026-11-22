@@ -91,7 +91,7 @@
 
 <script>
 const $ = id => document.getElementById(id);
-const { SL, POS, CLIFF, esc, j, getSavedState, saveState, loadMarket, projV, resolveUserAndLeagues } = DD;
+const { SL, POS, CLIFF, esc, j, getSavedState, saveState, loadMarket, calcOptimalStarters, projV, resolveUserAndLeagues } = DD;
 
 const curYr = new Date().getFullYear();
 for (let y = curYr; y >= curYr - 3; y--) $("season").add(new Option(y, y));
@@ -146,7 +146,7 @@ async function runAnalysis(lg, uid) {
       return { id, name: m?.name || sp?.full_name || id, pos, age: m?.age || sp?.age || 26, v: m?.v || 0 };
     }).filter(Boolean).sort((a, b) => b.v - a.v);
 
-    const starterV = players.slice(0, 9).reduce((s, p) => s + p.v, 0);
+    const starterV = calcOptimalStarters(players, lg.roster_positions).total;
     const totalV = players.reduce((s, p) => s + p.v, 0);
     const y1 = players.reduce((s, p) => s + projV(p, 1), 0);
     const y2 = players.reduce((s, p) => s + projV(p, 2), 0);
