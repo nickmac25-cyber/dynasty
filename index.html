@@ -509,7 +509,7 @@ async function loadLeague(lg) {
     assets.sort((a, b) => b.v - a.v);
     const playersOnly = assets.filter(a => !a.pick);
     const totalV = assets.reduce((s, a) => s + a.v, 0);
-    const starterV = playersOnly.slice(0, 9).reduce((s, a) => s + a.v, 0);
+    const starterV = calcOptimalStarters(playersOnly, lg.roster_positions).total;
     return {
       rid: r.roster_id,
       ownerId: r.owner_id,
@@ -737,7 +737,7 @@ function renderSmartTargets() {
 $("scanTrades").onclick = () => {
   const me = S.teams.find(t => t.rid === S.viewRid);
   const mode = $("finderMode").value;
-  const starterScore = list => [...list].filter(x => !x.pick).sort((a, b) => b.v - a.v).slice(0, 8).reduce((s, x) => s + x.v, 0);
+  const starterScore = list => calcOptimalStarters(list, S.lg.roster_positions).total;
   const myBase = starterScore(me.assets);
   const deals = [];
 
@@ -966,7 +966,7 @@ async function renderDraftRoom() {
     S.drafts.forEach(d => sel.add(new Option(`${d.season} ${d.type} Draft (${d.status})`, d.draft_id)));
   }
   const isSF = S.fmt.numQbs === 2;
-  const board2027 = ROOKIES_2027.map(r => ({ ...r, v: isSF ? r.vsf : r.v1qb })).sort((a, b) => b.v - a.v);
+  const board2027 = S.market.getRookieBoard();
 
   let leftHtml = `<div class="text-xs text-slate-500">No active/recent Sleeper draft found for this league.</div>`;
   if (sel.value) {
