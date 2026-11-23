@@ -273,21 +273,19 @@ $("go").onclick = async () => {
   }
 };
 
-// Resolve traded_picks chains accurately (handles A -> B -> C multi-hop pick trades)
+// Resolve traded_picks accurately for a given original roster_id, round, and season/draft year
 function resolvePickOwner(origRid, round, yr, tradedPicks) {
-  let currentOwner = Number(origRid);
-  const visited = new Set([currentOwner]);
-  const relevant = tradedPicks.filter(p =>
+  const matches = (tradedPicks || []).filter(p =>
     String(p.season) === String(yr) &&
     Number(p.round) === Number(round) &&
     Number(p.roster_id) === Number(origRid)
   );
-  // In Sleeper traded_picks, each row represents a transfer of roster_id's pick to owner_id
-  for (const tr of relevant) {
-    const nextOwner = Number(tr.owner_id);
-    if (nextOwner && !visited.has(nextOwner)) {
-      currentOwner = nextOwner;
-      visited.add(nextOwner);
+  if (!matches.length) return Number(origRid);
+  // If multiple entries exist for the same pick, follow chain or take the last non-null owner_id
+  let currentOwner = Number(origRid);
+  for (const tr of matches) {
+    if (tr.owner_id !== null && tr.owner_id !== undefined) {
+      currentOwner = Number(tr.owner_id);
     }
   }
   return currentOwner;
@@ -337,6 +335,7 @@ async function initDraft(lg, uid) {
     return {
       rid: Number(r.roster_id),
       ownerId: r.owner_id,
+      coOwners: r.co_owners || [],
       name: tname(r.roster_id),
       players,
       byPos,
@@ -365,7 +364,7 @@ async function initDraft(lg, uid) {
     });
   });
 
-  const me = teams.find(t => t.ownerId === uid) || teams[0];
+  const me = teams.find(t => t.ownerId === uid || (Array.isArray(t.coOwners) && t.coOwners.includes(uid))) || teams[0];
   state.lg = lg;
   state.uid = uid;
   state.myRid = me.rid;
@@ -630,7 +629,11 @@ function renderAll() {
       </span>
     </div>
     <div class="text-slate-400 font-mono">
-      Traded Picks Applied: <b class="text-amber-300">${tradedCount}</b>
+      My Picks: <b class="text-indigo-300">${state.slots.filter(s => s.isMine).map(s => s.label + (s.isTraded ? "(via " + s.origName + ")" : "")).join(", ") || "None"}</b> · Traded Picks: <b class="text-amber-300">${tradedCount}</b>
+    </div>
+    <div class="w-full text-[11px] text-slate-400 border-t border-slate-800/80 pt-2 mt-1 flex flex-wrap gap-x-4 gap-y-1">
+      <span>My Roster ID: <b class="text-slate-200">#${state.myRid}</b></span>
+      <span>Traded ${esc($("draftYr").value)} Picks in Sleeper API: <b class="text-slate-200">${state.tradedPicks.filter(p => String(p.season) === String($("draftYr").value)).map(p => `R${p.round} orig#${p.roster_id}→#${p.owner_id}`).join(" | ") || "None returned"}</b></span>
     </div>`;
 
   // 1. On The Clock Banner
