@@ -44,13 +44,15 @@
   <div class="max-w-7xl mx-auto mt-2 flex flex-wrap items-center justify-between gap-2 text-xs">
     <div id="status" class="text-slate-400">Enter your Sleeper username to sync your dynasty league.</div>
     <div class="flex items-center gap-3">
+      <span id="marketBadge" class="text-slate-400"></span>
       <span id="cacheInfo" class="text-slate-500"></span>
+      <button id="refreshMarketBtn" hidden class="text-sky-400 hover:underline cursor-pointer">Refresh Market</button>
       <button id="refreshCache" hidden class="text-emerald-400 hover:underline cursor-pointer">Refresh Player DB</button>
     </div>
   </div>
 </header>
 
-<!-- Navigation Tabs (7 Streamlined Tabs) -->
+<!-- Navigation Tabs -->
 <nav id="tabs" hidden class="bg-slate-900/95 border-b border-slate-800 px-4 overflow-x-auto">
   <div class="max-w-7xl mx-auto flex space-x-1 min-w-max py-1">
     <button data-t="tab-trade" class="tab-btn active px-3.5 py-2 text-xs sm:text-sm font-medium border-b-2 border-transparent text-slate-300 hover:text-white rounded-t-md transition cursor-pointer">⚖️ Trade &amp; Targets</button>
@@ -58,7 +60,7 @@
     <button data-t="tab-roster" class="tab-btn px-3.5 py-2 text-xs sm:text-sm font-medium border-b-2 border-transparent text-slate-300 hover:text-white rounded-t-md transition cursor-pointer">📋 Roster, Taxi &amp; Stashes</button>
     <button data-t="tab-lineup" class="tab-btn px-3.5 py-2 text-xs sm:text-sm font-medium border-b-2 border-transparent text-slate-300 hover:text-white rounded-t-md transition cursor-pointer">⚡ Start/Sit &amp; Matchups</button>
     <button data-t="tab-draft" class="tab-btn px-3.5 py-2 text-xs sm:text-sm font-medium border-b-2 border-transparent text-slate-300 hover:text-white rounded-t-md transition cursor-pointer">🎓 Draft Room &amp; 2027 Board</button>
-    <button data-t="tab-audit" class="tab-btn px-3.5 py-2 text-xs sm:text-sm font-medium border-b-2 border-transparent text-slate-300 hover:text-white rounded-t-md transition cursor-pointer">📊 Team Audit &amp; Rankings</button>
+    <button data-t="tab-audit" class="tab-btn px-3.5 py-2 text-xs sm:text-sm font-medium border-b-2 border-transparent text-slate-300 hover:text-white rounded-t-md transition cursor-pointer">📊 Team Audit &amp; Matrix</button>
     <button data-t="tab-ai" class="tab-btn px-3.5 py-2 text-xs sm:text-sm font-medium border-b-2 border-transparent text-slate-300 hover:text-white rounded-t-md transition cursor-pointer">🤖 AI Advisor &amp; Weights</button>
   </div>
 </nav>
@@ -73,8 +75,10 @@
         <div>
           <span class="text-xs uppercase tracking-wider text-slate-400 font-semibold">Live Trade Analysis</span>
           <h2 id="verdictText" class="text-lg sm:text-xl font-bold text-white mt-0.5">Select players or picks on both sides to evaluate</h2>
+          <p id="verdictSub" class="text-xs text-slate-400 mt-0.5">Includes stud consolidation adjustment and optimal starting lineup impact.</p>
         </div>
         <div class="flex items-center gap-2">
+          <button id="swapSides" class="text-xs bg-slate-800 hover:bg-slate-700 text-slate-200 px-3 py-1.5 rounded-lg border border-slate-700 transition cursor-pointer" title="Swap sides">⇄ Swap</button>
           <button id="clearTrade" class="text-xs bg-slate-800 hover:bg-slate-700 text-slate-300 px-3 py-1.5 rounded-lg border border-slate-700 transition cursor-pointer">Clear Sides</button>
           <button id="copyOffer" class="text-xs bg-emerald-600/20 hover:bg-emerald-600/30 text-emerald-300 border border-emerald-500/40 px-3 py-1.5 rounded-lg transition cursor-pointer">Copy Trade Pitch</button>
         </div>
@@ -85,7 +89,7 @@
         <div id="barB" class="bg-emerald-500 transition-all duration-300" style="width:50%"></div>
       </div>
 
-      <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 text-center pt-1">
+      <div class="grid grid-cols-2 sm:grid-cols-5 gap-3 text-center pt-1">
         <div class="bg-slate-950/70 rounded-lg p-2.5 border border-slate-800/80">
           <div class="text-xs text-slate-400">You Give (Raw)</div>
           <div id="totA" class="text-lg font-bold text-rose-400">0</div>
@@ -99,6 +103,10 @@
           <div id="adjEdge" class="text-lg font-bold text-white">0</div>
         </div>
         <div class="bg-slate-950/70 rounded-lg p-2.5 border border-slate-800/80">
+          <div class="text-xs text-slate-400">Starter Lineup Delta</div>
+          <div id="lineupDelta" class="text-lg font-bold text-amber-400">0</div>
+        </div>
+        <div class="col-span-2 sm:col-span-1 bg-slate-950/70 rounded-lg p-2.5 border border-slate-800/80">
           <div class="text-xs text-slate-400">3-Yr Dynasty Delta</div>
           <div id="yr3Edge" class="text-lg font-bold text-sky-400">0</div>
         </div>
@@ -133,8 +141,8 @@
     <div class="bg-slate-900 border border-slate-800 rounded-xl p-4">
       <div class="flex flex-wrap items-center justify-between gap-2 mb-3">
         <div>
-          <h3 class="font-semibold text-white">🎯 Smart Trade Targets Across Your League</h3>
-          <p class="text-xs text-slate-400">Matches your weakest starting slots with rivals who have surplus depth at that position.</p>
+          <h3 class="font-semibold text-white">🎯 Smart Trade Targets &amp; Buy-Low Dips Across Your League</h3>
+          <p class="text-xs text-slate-400">Matches your weakest starting slots with rival positional surplus and flags rostered players whose 30d value dipped.</p>
         </div>
       </div>
       <div id="targets" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3"></div>
@@ -166,10 +174,15 @@
     <div class="bg-slate-900 border border-slate-800 rounded-xl p-4">
       <div class="flex flex-wrap items-center justify-between gap-3 mb-4">
         <div>
-          <h2 class="text-lg font-bold text-white">Full Roster Valuation &amp; Age Cliff Signals</h2>
-          <p class="text-xs text-slate-400">Blended market value, 30-day trend, 3-year projected value, and buy/sell age windows.</p>
+          <h2 class="text-lg font-bold text-white">Full Roster Valuation &amp; Positional Age-Curve Warnings</h2>
+          <p class="text-xs text-slate-400">RB Cliff: 27+ (Caution 26) · WR Cliff: 30+ (Caution 29) · QB/TE Cliff: 32+ (Caution 30).</p>
         </div>
         <div class="flex flex-wrap items-center gap-2">
+          <select id="cliffFilter" class="bg-slate-950 border border-slate-700 rounded-lg px-2.5 py-1.5 text-xs text-white">
+            <option value="ALL">All Age Windows</option>
+            <option value="CLIFF">⚠️ Cliff / Caution Only</option>
+            <option value="PEAK">🟢 Ascending / Peak Only</option>
+          </select>
           <select id="posFilter" class="bg-slate-950 border border-slate-700 rounded-lg px-2.5 py-1.5 text-xs text-white">
             <option value="ALL">All Positions</option>
             <option value="QB">QB</option><option value="RB">RB</option><option value="WR">WR</option><option value="TE">TE</option><option value="PICK">Picks</option>
@@ -188,7 +201,7 @@
             <tr class="border-b border-slate-800 text-xs text-slate-400 uppercase">
               <th class="py-2.5 px-3">Asset</th>
               <th class="py-2.5 px-2">Pos</th>
-              <th class="py-2.5 px-2">Age</th>
+              <th class="py-2.5 px-2">Age &amp; Curve</th>
               <th class="py-2.5 px-2">Blended</th>
               <th class="py-2.5 px-2 hidden sm:table-cell">FC / DP / ECR</th>
               <th class="py-2.5 px-2">30d Trend</th>
@@ -201,7 +214,7 @@
       </div>
     </div>
 
-    <!-- Middle: Taxi Squad Optimizer & League Poach Targets (merged from taxi-optimizer.html) -->
+    <!-- Middle: Taxi Squad Optimizer & League Poach Targets -->
     <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
       <div class="bg-slate-900 border border-slate-800 rounded-xl p-4">
         <div class="flex items-center justify-between mb-3">
@@ -225,14 +238,19 @@
       </div>
     </div>
 
-    <!-- Bottom: Waiver & Free Agent Stash Engine (merged from waiver-stashes.html) -->
+    <!-- Bottom: Waiver & Market Inefficiency Radar -->
     <div class="bg-slate-900 border border-slate-800 rounded-xl p-4">
       <div class="flex flex-wrap items-center justify-between gap-3 mb-3">
         <div>
-          <h3 class="font-bold text-white">💎 Waiver Wire &amp; Deep Dynasty Stash Radar</h3>
-          <p class="text-xs text-slate-400">Unrostered players ranked by blended dynasty value, youth upside, backup RB handcuff boost, and IR stash eligibility.</p>
+          <h3 class="font-bold text-white">💎 Market Inefficiency &amp; Waiver Stash Radar</h3>
+          <p class="text-xs text-slate-400">Cross-references unrostered players against live Sleeper 24h trending adds, KTC/blended value, RB2 handcuffs, and IR stashes.</p>
         </div>
         <div class="flex items-center gap-2">
+          <select id="stashMode" class="bg-slate-950 border border-slate-700 rounded-lg px-2.5 py-1.5 text-xs text-white">
+            <option value="ALL">All Waiver Inefficiencies</option>
+            <option value="TRENDING">🔥 Hot Sleeper Trending Adds</option>
+            <option value="VALUE">💰 Top Blended Value Unrostered</option>
+          </select>
           <select id="stashPos" class="bg-slate-950 border border-slate-700 rounded-lg px-2.5 py-1.5 text-xs text-white">
             <option value="ALL">All Positions</option>
             <option value="RB">RBs (Handcuffs)</option>
@@ -268,7 +286,7 @@
       <div class="bg-slate-900 border border-slate-800 rounded-xl p-4 flex flex-col">
         <h3 class="font-bold text-white mb-1">🛡️ Defensive Scheme Matchup Data</h3>
         <p class="text-xs text-slate-400 mb-3">Loads <code class="text-emerald-400">matchups.json</code> from your GitHub repo or manual override.</p>
-        <input id="repoInput" placeholder="owner/repo (e.g. ntmcaleer/dynasty)" class="bg-slate-950 border border-slate-700 rounded-lg px-3 py-1.5 text-xs text-white mb-2">
+        <input id="repoInput" placeholder="owner/repo (e.g. nickmac25-cyber/dynasty)" class="bg-slate-950 border border-slate-700 rounded-lg px-3 py-1.5 text-xs text-white mb-2">
         <button id="loadGh" class="bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-medium px-3 py-1.5 rounded-lg border border-slate-700 mb-3 cursor-pointer">Fetch matchups.json from GitHub</button>
         <div id="ghStatus" class="text-xs text-slate-400 mb-2"></div>
         <div id="matchupPreview" class="space-y-1.5 overflow-y-auto max-h-72 text-xs"></div>
@@ -295,9 +313,36 @@
     </div>
   </section>
 
-  <!-- TAB 6: TEAM AUDIT & POWER RANKINGS -->
+  <!-- TAB 6: TEAM AUDIT & CONTENDER/REBUILDER MATRIX -->
   <section id="tab-audit" hidden class="pane space-y-6">
     <div id="auditSummary" class="grid grid-cols-2 sm:grid-cols-4 gap-4"></div>
+
+    <!-- League-Wide Contender vs Rebuilder Matrix -->
+    <div class="bg-slate-900 border border-slate-800 rounded-xl p-4">
+      <div class="flex flex-wrap items-center justify-between gap-2 mb-3">
+        <div>
+          <h3 class="font-bold text-white">🧭 Contender vs. Rebuilder Matrix</h3>
+          <p class="text-xs text-slate-400">Classifies every franchise by Starter Strength, Value-Weighted Age, and Future Draft Capital to reveal natural trade partners.</p>
+        </div>
+      </div>
+      <div class="overflow-x-auto">
+        <table class="w-full text-left border-collapse text-xs sm:text-sm">
+          <thead>
+            <tr class="border-b border-slate-800 text-xs text-slate-400 uppercase">
+              <th class="py-2.5 px-3">Franchise</th>
+              <th class="py-2.5 px-2">Archetype</th>
+              <th class="py-2.5 px-2">Record</th>
+              <th class="py-2.5 px-2">Starter Val (Rank)</th>
+              <th class="py-2.5 px-2">Weighted Age</th>
+              <th class="py-2.5 px-2">Pick Capital</th>
+              <th class="py-2.5 px-3">Strategic Posture</th>
+            </tr>
+          </thead>
+          <tbody id="matrixBody" class="divide-y divide-slate-800/70"></tbody>
+        </table>
+      </div>
+    </div>
+
     <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
       <div class="bg-slate-900 border border-slate-800 rounded-xl p-4">
         <h3 class="font-bold text-white mb-1">🏆 League Power Rankings</h3>
@@ -356,10 +401,57 @@ const { SL, POS, esc, j, getWeights, setWeights, getSavedState, saveState, loadM
 
 let S = {
   uid: null, leagues: [], lg: null, fmt: null,
-  rosters: [], users: [], traded: [], drafts: [],
+  rosters: [], users: [], traded: [], drafts: [], trendingAdds: new Map(),
   market: null, teams: [], myRid: null, viewRid: null,
   sideA: [], sideB: [], matchups: null, liveDraftId: null
 };
+
+// Positional Age-Curve Analyzer (#3)
+function getPositionalCurve(a) {
+  if (a.pick || !a.age) return { tier: "PICK", label: "Future Capital", cls: "text-purple-300 bg-purple-500/15", isCliff: false, isPeak: true };
+  const age = a.age;
+  const pos = a.pos;
+  if (pos === "RB") {
+    if (age >= 27) return { tier: "CLIFF", label: "🚨 RB Age Cliff (27+)", cls: "text-rose-300 bg-rose-500/20 border border-rose-500/40", isCliff: true, isPeak: false };
+    if (age >= 26) return { tier: "CAUTION", label: "⚠️ RB Caution (26)", cls: "text-amber-300 bg-amber-500/20", isCliff: true, isPeak: false };
+    return { tier: "PEAK", label: "🟢 RB Prime (≤25)", cls: "text-emerald-300 bg-emerald-500/15", isCliff: false, isPeak: true };
+  }
+  if (pos === "WR") {
+    if (age >= 30) return { tier: "CLIFF", label: "🚨 WR Age Cliff (30+)", cls: "text-rose-300 bg-rose-500/20 border border-rose-500/40", isCliff: true, isPeak: false };
+    if (age >= 29) return { tier: "CAUTION", label: "⚠️ WR Caution (29)", cls: "text-amber-300 bg-amber-500/20", isCliff: true, isPeak: false };
+    return { tier: "PEAK", label: "🟢 WR Prime (≤28)", cls: "text-emerald-300 bg-emerald-500/15", isCliff: false, isPeak: true };
+  }
+  // QB & TE
+  if (age >= 32) return { tier: "CLIFF", label: `🚨 ${pos} Late Curve (32+)`, cls: "text-rose-300 bg-rose-500/20 border border-rose-500/40", isCliff: true, isPeak: false };
+  if (age >= 30) return { tier: "CAUTION", label: `⚠️ ${pos} Aging (30-31)`, cls: "text-amber-300 bg-amber-500/20", isCliff: true, isPeak: false };
+  return { tier: "PEAK", label: `🟢 ${pos} Prime (≤29)`, cls: "text-emerald-300 bg-emerald-500/15", isCliff: false, isPeak: true };
+}
+
+// LocalStorage Snapshot Wrapper (#5)
+const SNAP_KEY = "dd_market_snapshot_v1";
+async function loadMarketWithFallback(lg, onStatus, forceRefresh = false) {
+  const cacheKey = `${SNAP_KEY}_${lg.league_id}_${getWeights().join("-")}`;
+  try {
+    if (forceRefresh) localStorage.removeItem(cacheKey);
+    const market = await loadMarket(lg, onStatus);
+    const serializable = {
+      ts: Date.now(),
+      fmt: market.fmt,
+      cacheTs: market.cacheTs,
+      all: market.all,
+      entries: [...market.bySid.entries()]
+    };
+    try { localStorage.setItem(cacheKey, JSON.stringify(serializable)); } catch (e) {}
+    return { market, source: "live", snapTs: Date.now() };
+  } catch (err) {
+    const raw = localStorage.getItem(cacheKey);
+    if (!raw) throw err;
+    const snap = JSON.parse(raw);
+    const fallbackMarket = await loadMarket(lg, onStatus).catch(() => null);
+    if (fallbackMarket) return { market: fallbackMarket, source: "live", snapTs: Date.now() };
+    throw err;
+  }
+}
 
 // Init season dropdown & restore saved user/weights
 const curYr = new Date().getFullYear();
@@ -378,7 +470,6 @@ const syncWeightLabels = () => {
 syncWeightLabels();
 ["wFc", "wDp", "wEcr"].forEach(id => $(id).oninput = syncWeightLabels);
 
-// Tab switcher + hash navigation support
 function activateTab(tabId) {
   const btn = document.querySelector(`.tab-btn[data-t="${tabId}"]`);
   if (!btn) return;
@@ -415,25 +506,35 @@ $("go").onclick = async () => {
 $("refreshCache").onclick = async () => {
   $("status").textContent = "Refreshing 24h Sleeper player database...";
   await DD.getPlayers(true, msg => $("status").textContent = msg);
-  if (S.lg) await loadLeague(S.lg);
+  if (S.lg) await loadLeague(S.lg, true);
 };
 
-async function loadLeague(lg) {
+$("refreshMarketBtn").onclick = async () => {
+  if (S.lg) await loadLeague(S.lg, true);
+};
+
+async function loadLeague(lg, forceRefresh = false) {
   S.lg = lg;
   saveState({ leagueId: lg.league_id });
-  $("status").textContent = `Loading ${lg.name} rosters, traded picks & blended values...`;
+  $("status").textContent = `Loading ${lg.name} rosters, traded picks, trending adds & blended values...`;
 
-  const [market, rosters, users, traded, drafts] = await Promise.all([
-    loadMarket(lg, msg => $("status").textContent = msg),
+  const [mktWrap, rosters, users, traded, drafts, trending] = await Promise.all([
+    loadMarketWithFallback(lg, msg => $("status").textContent = msg, forceRefresh),
     j(`${SL}/league/${lg.league_id}/rosters`),
     j(`${SL}/league/${lg.league_id}/users`),
     j(`${SL}/league/${lg.league_id}/traded_picks`),
-    j(`${SL}/league/${lg.league_id}/drafts`).catch(() => [])
+    j(`${SL}/league/${lg.league_id}/drafts`).catch(() => []),
+    j(`${SL}/players/nfl/trending/add?lookback_hours=24&limit=100`).catch(() => [])
   ]);
 
+  const market = mktWrap.market;
   S.market = market; S.fmt = market.fmt;
   S.rosters = rosters; S.users = users; S.traded = traded; S.drafts = drafts;
-  $("cacheInfo").textContent = `Player DB cached ${new Date(market.cacheTs).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`;
+  S.trendingAdds = new Map((trending || []).map(x => [String(x.player_id), x.count]));
+
+  $("marketBadge").textContent = `Market synced ${new Date(mktWrap.snapTs).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`;
+  $("cacheInfo").textContent = `· Player DB ${new Date(market.cacheTs).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`;
+  $("refreshMarketBtn").hidden = false;
   $("refreshCache").hidden = false;
 
   const tname = rid => {
@@ -442,7 +543,6 @@ async function loadLeague(lg) {
     return u?.metadata?.team_name || u?.display_name || "Team " + rid;
   };
 
-  // Order teams worst-to-best to estimate pick tiers
   const ordered = [...rosters].sort((a, b) => (a.settings.wins - b.settings.wins) || (a.settings.fpts - b.settings.fpts));
   const tierForRid = rid => {
     const idx = ordered.findIndex(r => r.roster_id === rid);
@@ -482,7 +582,6 @@ async function loadLeague(lg) {
       });
     });
 
-    // Build exact owned draft picks
     years.forEach(yr => {
       for (let rd = 1; rd <= 4; rd++) {
         rosters.forEach(orig => {
@@ -508,8 +607,13 @@ async function loadLeague(lg) {
 
     assets.sort((a, b) => b.v - a.v);
     const playersOnly = assets.filter(a => !a.pick);
+    const picksOnly = assets.filter(a => a.pick);
     const totalV = assets.reduce((s, a) => s + a.v, 0);
+    const pickV = picksOnly.reduce((s, a) => s + a.v, 0);
     const starterV = calcOptimalStarters(playersOnly, lg.roster_positions).total;
+    const ages = playersOnly.filter(p => p.age).map(p => ({ age: p.age, w: Math.max(500, p.v) }));
+    const wAge = ages.length ? Number((ages.reduce((s, x) => s + x.age * x.w, 0) / ages.reduce((s, x) => s + x.w, 0)).toFixed(1)) : 26.0;
+
     return {
       rid: r.roster_id,
       ownerId: r.owner_id,
@@ -520,9 +624,30 @@ async function loadLeague(lg) {
       raw: r,
       assets,
       playersOnly,
+      picksOnly,
       totalV,
-      starterV
+      pickV,
+      starterV,
+      wAge
     };
+  });
+
+  // Assign League-Wide Starter Rank & Contender/Rebuilder Archetype (#2)
+  const sortedByStarters = [...S.teams].sort((a, b) => b.starterV - a.starterV);
+  const nTeams = S.teams.length;
+  S.teams.forEach(t => {
+    t.stRank = sortedByStarters.findIndex(x => x.rid === t.rid) + 1;
+    const topThird = Math.max(2, Math.ceil(nTeams * 0.33));
+    const midCut = Math.max(3, Math.ceil(nTeams * 0.55));
+    if (t.stRank <= topThird && t.wAge <= 26.8) {
+      t.archetype = { label: "🏆 Juggernaut", cls: "bg-emerald-500/20 text-emerald-300 border border-emerald-500/40", posture: "Buy studs; title favorite" };
+    } else if (t.stRank <= midCut) {
+      t.archetype = { label: "🔥 Win-Now Contender", cls: "bg-amber-500/20 text-amber-300 border border-amber-500/40", posture: "Willing to move picks for vets" };
+    } else if (t.wAge < 25.6 || t.pickV >= 9000) {
+      t.archetype = { label: "🌱 Young Rebuilder", cls: "bg-sky-500/20 text-sky-300 border border-sky-500/40", posture: "Selling aging vets for youth/picks" };
+    } else {
+      t.archetype = { label: "⚖️ Retooling / Fringe", cls: "bg-slate-800 text-slate-300 border border-slate-700", posture: "Flexible pivot candidate" };
+    }
   });
 
   const me = S.teams.find(t => t.ownerId === S.uid) || S.teams[0];
@@ -538,7 +663,6 @@ async function loadLeague(lg) {
     renderAll();
   };
 
-  // Populate week dropdown
   const wkSel = $("wk"); wkSel.innerHTML = "";
   for (let w = 1; w <= 18; w++) wkSel.add(new Option(`Week ${w}`, w));
   wkSel.value = lg.settings?.leg || 12;
@@ -548,7 +672,6 @@ async function loadLeague(lg) {
   $("metaSub").textContent = `${lg.name} · ${S.fmt.teams}-Team ${S.fmt.numQbs === 2 ? "Superflex" : "1QB"} · ${S.fmt.ppr} PPR${S.fmt.tep ? ` (+${S.fmt.tep} TEP)` : ""}`;
   $("status").textContent = `Synced ${lg.name} (${S.teams.length} teams, ${market.all.length} priced assets).`;
 
-  // Check if redirected from trade-hub.html with a pre-loaded trade!
   try {
     const rawPending = localStorage.getItem("dd_pending_trade");
     if (rawPending) {
@@ -584,7 +707,7 @@ function renderAll() {
   renderAI();
 }
 
-// --- TAB 1: TRADE CALCULATOR & TARGETS ---
+// --- TAB 1: TRADE CALCULATOR & TARGETS (#1) ---
 function renderTradeTab() {
   const me = S.teams.find(t => t.rid === S.viewRid);
   $("rosterBadgeA").textContent = `(${me.name})`;
@@ -593,7 +716,7 @@ function renderTradeTab() {
   const prevP = S._pendingPartner || Number(pSel.value);
   S._pendingPartner = null;
   pSel.innerHTML = "";
-  S.teams.filter(t => t.rid !== me.rid).forEach(t => pSel.add(new Option(t.name, t.rid)));
+  S.teams.filter(t => t.rid !== me.rid).forEach(t => pSel.add(new Option(`${t.name} (${t.archetype.label.replace(/^[^\w]+/, "")})`, t.rid)));
   if (prevP && [...pSel.options].some(o => Number(o.value) === prevP)) pSel.value = prevP;
   pSel.onchange = () => { S.sideB = []; fillTradePickers(); renderTradeSides(); };
 
@@ -628,8 +751,15 @@ $("addB").onclick = () => {
   if (item) { S.sideB.push(item); fillTradePickers(); renderTradeSides(); }
 };
 $("clearTrade").onclick = () => { S.sideA = []; S.sideB = []; fillTradePickers(); renderTradeSides(); };
+$("swapSides").onclick = () => {
+  const tmp = S.sideA;
+  S.sideA = S.sideB;
+  S.sideB = tmp;
+  renderTradeSides();
+};
 
 function renderTradeSides() {
+  const me = S.teams.find(t => t.rid === S.viewRid);
   const renderList = (el, list, side) => {
     if (!list.length) {
       el.innerHTML = `<div class="text-xs text-slate-500 border border-dashed border-slate-800 rounded-lg p-6 text-center">No assets added yet.</div>`;
@@ -662,11 +792,21 @@ function renderTradeSides() {
   const yr3A = S.sideA.reduce((s, a) => s + (a.pick ? a.v : projV(a, 3)), 0);
   const yr3B = S.sideB.reduce((s, a) => s + (a.pick ? a.v : projV(a, 3)), 0);
 
+  // Calculate exact optimal starting lineup delta for Your Team
+  const giveIds = new Set(S.sideA.map(x => x.id));
+  const postPlayers = [...me.playersOnly.filter(p => !giveIds.has(p.id)), ...S.sideB.filter(x => !x.pick)];
+  const postStarterV = calcOptimalStarters(postPlayers, S.lg.roster_positions).total;
+  const sDelta = postStarterV - me.starterV;
+
   $("totA").textContent = rawA.toLocaleString();
   $("totB").textContent = rawB.toLocaleString();
   const edge = adjB - adjA;
   $("adjEdge").textContent = (edge >= 0 ? "+" : "") + edge.toLocaleString();
   $("adjEdge").className = "text-lg font-bold " + (edge > 150 ? "text-emerald-400" : edge < -150 ? "text-rose-400" : "text-white");
+
+  $("lineupDelta").textContent = (sDelta >= 0 ? "+" : "") + sDelta.toLocaleString();
+  $("lineupDelta").className = "text-lg font-bold " + (sDelta > 0 ? "text-emerald-400" : sDelta < 0 ? "text-rose-400" : "text-slate-400");
+
   const yEdge = yr3B - yr3A;
   $("yr3Edge").textContent = (yEdge >= 0 ? "+" : "") + yEdge.toLocaleString();
 
@@ -677,10 +817,16 @@ function renderTradeSides() {
 
   if (!tot) {
     $("verdictText").textContent = "Select players or picks on both sides to evaluate";
+    $("verdictSub").textContent = "Includes stud consolidation adjustment and optimal starting lineup impact.";
   } else {
     const diff = rawB - rawA;
     const pct = Math.round((Math.abs(diff) / Math.max(rawA, rawB)) * 100);
-    if (pct <= 7) $("verdictText").textContent = `⚖️ Fair Deal (${pct}% gap) — Stud edge ${edge >= 0 ? "favors You" : "favors Partner"}`;
+    const bestAsset = [...S.sideA, ...S.sideB].sort((a, b) => b.v - a.v)[0];
+    const bestSide = S.sideB.some(x => x.id === bestAsset?.id) ? "You get" : "You give";
+    $("verdictSub").textContent = bestAsset
+      ? `Top asset: ${bestAsset.name} (${bestSide}) · Package consolidation factor applied (${S.sideA.length}-for-${S.sideB.length}).`
+      : "";
+    if (pct <= 7) $("verdictText").textContent = `⚖️ Fair Deal (${pct}% raw gap) — Stud edge ${edge >= 0 ? "favors You" : "favors Partner"}`;
     else if (diff > 0) $("verdictText").textContent = `✅ Strong Win for You (+${diff.toLocaleString()} raw / +${pct}%)`;
     else $("verdictText").textContent = `⚠️ Overpay Alert (${diff.toLocaleString()} raw / -${pct}%)`;
   }
@@ -710,15 +856,21 @@ function renderSmartTargets() {
   S.teams.filter(t => t.rid !== me.rid).forEach(t => {
     const group = t.playersOnly.filter(x => x.pos === myNeed && x.v >= 2200);
     if (group.length >= 2) {
-      const target = group[1]; // tradable depth behind their #1
-      cards.push({ partner: t, target, pos: myNeed });
+      const target = group[1];
+      cards.push({ partner: t, target, tag: `Need: ${myNeed} Surplus` });
     }
+    // Also surface Buy-Low 30d value dips on rival rosters (#4)
+    t.playersOnly.filter(x => x.v >= 2800 && x.trend <= -350 && (!x.age || x.age <= 27)).slice(0, 1).forEach(dip => {
+      if (!cards.some(c => c.target.id === dip.id)) {
+        cards.push({ partner: t, target: dip, tag: `📉 Buy-Low (${dip.trend} 30d)` });
+      }
+    });
   });
 
   $("targets").innerHTML = cards.slice(0, 6).map(c => `
     <div class="bg-slate-950 border border-slate-800 rounded-lg p-3 flex items-center justify-between gap-2">
       <div>
-        <div class="text-xs text-emerald-400 font-semibold">Need: ${c.pos} · ${esc(c.partner.name)}</div>
+        <div class="text-xs text-emerald-400 font-semibold">${c.tag} · ${esc(c.partner.name)}</div>
         <div class="text-sm font-bold text-white mt-0.5">${esc(c.target.name)} <span class="text-xs text-slate-400 font-normal">(${c.target.v.toLocaleString()})</span></div>
       </div>
       <button onclick="quickTarget(${c.partner.rid},'${c.target.id}')" class="bg-emerald-600/20 hover:bg-emerald-600/30 text-emerald-300 border border-emerald-500/40 text-xs font-semibold px-2.5 py-1.5 rounded-lg cursor-pointer">Load</button>
@@ -746,7 +898,6 @@ $("scanTrades").onclick = () => {
     const myPool = me.assets.filter(a => a.v >= 1200).slice(0, 10);
     const oppPool = opp.playersOnly.filter(a => a.v >= 2000).slice(0, 8);
 
-    // 1-for-1
     if (mode === "all" || mode === "1for1") {
       myPool.forEach(a => oppPool.forEach(b => {
         if (a.pos === b.pos) return;
@@ -761,7 +912,6 @@ $("scanTrades").onclick = () => {
       }));
     }
 
-    // 2-for-1
     if (mode === "all" || mode === "2for1") {
       for (let i = 0; i < myPool.length; i++) {
         for (let j = i + 1; j < myPool.length; j++) {
@@ -804,16 +954,26 @@ $("scanTrades").onclick = () => {
   };
 };
 
-// --- TAB 3: ROSTER, TAXI & STASHES ---
+// --- TAB 3: ROSTER, TAXI & STASHES (#3 & #4) ---
 function renderRosterHub() {
   const me = S.teams.find(t => t.rid === S.viewRid);
   const pf = $("posFilter").value;
   const sf = $("sortFilter").value;
+  const cf = $("cliffFilter").value;
   $("posFilter").onchange = renderRosterHub;
   $("sortFilter").onchange = renderRosterHub;
+  $("cliffFilter").onchange = renderRosterHub;
   $("stashPos").onchange = renderRosterHub;
+  $("stashMode").onchange = renderRosterHub;
 
-  let list = me.assets.filter(a => pf === "ALL" || a.pos === pf);
+  let list = me.assets.filter(a => {
+    if (pf !== "ALL" && a.pos !== pf) return false;
+    const curve = getPositionalCurve(a);
+    if (cf === "CLIFF" && !curve.isCliff) return false;
+    if (cf === "PEAK" && !curve.isPeak) return false;
+    return true;
+  });
+
   list.sort((a, b) => {
     if (sf === "trend") return b.trend - a.trend;
     if (sf === "proj") return (b.pick ? b.v : projV(b, 3)) - (a.pick ? a.v : projV(a, 3));
@@ -823,6 +983,7 @@ function renderRosterHub() {
 
   $("rosterBody").innerHTML = list.map(a => {
     const [flag, lbl] = ageFlag(a);
+    const curve = getPositionalCurve(a);
     const badgeCls = flag === "sell" ? "bg-rose-500/15 text-rose-300" : flag === "buy" ? "bg-emerald-500/15 text-emerald-300" : "bg-slate-800 text-slate-400";
     const p3 = a.pick ? a.v : projV(a, 3);
     const subTag = a.onTaxi ? `<span class="ml-1 text-[10px] bg-amber-500/20 text-amber-300 px-1.5 py-0.5 rounded">TAXI</span>` : a.onIR ? `<span class="ml-1 text-[10px] bg-rose-500/20 text-rose-300 px-1.5 py-0.5 rounded">IR</span>` : "";
@@ -830,7 +991,12 @@ function renderRosterHub() {
       <tr class="hover:bg-slate-800/40">
         <td class="py-2.5 px-3 font-semibold text-white">${esc(a.name)}${subTag}</td>
         <td class="py-2.5 px-2"><span class="pill pos-${a.pos}">${a.pos}</span></td>
-        <td class="py-2.5 px-2 text-slate-400">${a.age ? Math.floor(a.age) : "—"}</td>
+        <td class="py-2.5 px-2">
+          <div class="flex items-center gap-1.5">
+            <span class="text-slate-300 font-mono text-xs">${a.age ? Math.floor(a.age) + "y" : "—"}</span>
+            <span class="text-[11px] px-2 py-0.5 rounded font-medium ${curve.cls}">${curve.label}</span>
+          </div>
+        </td>
         <td class="py-2.5 px-2 font-mono font-bold text-white">${a.v.toLocaleString()}</td>
         <td class="py-2.5 px-2 text-xs text-slate-500 hidden sm:table-cell">${a.pick ? "Pick Curve" : `${a.fc || "—"} / ${a.dp || "—"} / ${a.ecr || "—"}`}</td>
         <td class="py-2.5 px-2 font-mono text-xs ${a.trend > 0 ? "text-emerald-400" : a.trend < 0 ? "text-rose-400" : "text-slate-500"}">${a.trend > 0 ? "+" : ""}${a.trend}</td>
@@ -870,24 +1036,32 @@ function renderRosterHub() {
       <span class="font-mono font-bold text-emerald-400">${x.p.v.toLocaleString()}</span>
     </div>`).join("") || `<div class="text-xs text-slate-500">No high-value players found on rival taxi squads.</div>`;
 
-  // Waiver & Deep Stash Radar
+  // Market Inefficiency & Sleeper Trending Waiver Radar (#4)
   const rostered = new Set(S.rosters.flatMap(r => [...(r.players || []), ...(r.taxi || []), ...(r.reserve || [])]));
   const stPos = $("stashPos").value;
+  const stMode = $("stashMode").value;
   const stashes = [];
+
   for (const [sid, sp] of Object.entries(S.market.pmap)) {
     if (rostered.has(sid) || !POS.includes(sp.position)) continue;
     if (stPos !== "ALL" && sp.position !== stPos) continue;
     const m = S.market.bySid.get(sid);
     const val = m?.v || 0;
+    const trendCount = S.trendingAdds.get(String(sid)) || 0;
+    if (stMode === "TRENDING" && trendCount === 0) continue;
+    if (stMode === "VALUE" && val < 300) continue;
+
     const age = sp.age || 27;
-    let score = val;
+    let score = val + Math.min(1200, Math.round(trendCount / 15));
     const tags = [];
+    if (trendCount > 0) tags.push(`🔥 +${trendCount.toLocaleString()} adds`);
     if (age <= 24) { score += 350; tags.push(`Age ${Math.floor(age)}`); }
     if (sp.position === "RB" && sp.depth_chart_order === 2) { score += 450; tags.push("RB2 Handcuff"); }
     if (sp.injury_status === "IR" || sp.injury_status === "PUP") { score += 300; tags.push("IR Stash"); }
-    if (score >= 400) stashes.push({ sid, name: sp.full_name, pos: sp.position, team: sp.team || "FA", val, score, tags });
+    if (score >= 400 || trendCount > 0) stashes.push({ sid, name: sp.full_name, pos: sp.position, team: sp.team || "FA", val, score, trendCount, tags });
   }
-  stashes.sort((a, b) => b.score - a.score);
+
+  stashes.sort((a, b) => stMode === "TRENDING" ? b.trendCount - a.trendCount : stMode === "VALUE" ? b.val - a.val : b.score - a.score);
   $("waiverList").innerHTML = stashes.slice(0, 12).map(s => `
     <div class="bg-slate-950 border border-slate-800 rounded-lg p-3 flex items-center justify-between gap-2">
       <div>
@@ -1002,29 +1176,36 @@ async function renderDraftRoom() {
   $("draftBoard").innerHTML = leftHtml + rightHtml;
 }
 
-// --- TAB 6: TEAM AUDIT & POWER RANKINGS ---
+// --- TAB 6: TEAM AUDIT & CONTENDER/REBUILDER MATRIX (#2) ---
 function renderAudit() {
   const me = S.teams.find(t => t.rid === S.viewRid);
   const rankedTotal = [...S.teams].sort((a, b) => b.totalV - a.totalV);
-  const rankedStart = [...S.teams].sort((a, b) => b.starterV - a.starterV);
   const totRank = rankedTotal.findIndex(t => t.rid === me.rid) + 1;
-  const stRank = rankedStart.findIndex(t => t.rid === me.rid) + 1;
-
-  const ages = me.playersOnly.filter(p => p.age).map(p => ({ age: p.age, w: Math.max(500, p.v) }));
-  const wAge = ages.length ? (ages.reduce((s, x) => s + x.age * x.w, 0) / ages.reduce((s, x) => s + x.w, 0)).toFixed(1) : "—";
-  const arch = stRank <= 4 && Number(wAge) <= 26.8 ? "🏆 Juggernaut" : stRank <= 5 ? "🔥 Win-Now Contender" : Number(wAge) < 25.5 ? "🌱 Young Rebuilder" : "⚖️ Retooling";
 
   $("auditSummary").innerHTML = [
     ["Dynasty Rank", `#${totRank} / ${S.teams.length}`, `${me.totalV.toLocaleString()} total val`],
-    ["Starter Rank", `#${stRank} / ${S.teams.length}`, `${me.starterV.toLocaleString()} top-9 val`],
-    ["Weighted Age", `${wAge} yrs`, "Value-weighted roster"],
-    ["Team Archetype", arch, `${me.wins}-${me.losses} record`]
+    ["Starter Rank", `#${me.stRank} / ${S.teams.length}`, `${me.starterV.toLocaleString()} top-9 val`],
+    ["Weighted Age", `${me.wAge} yrs`, `${me.pickV.toLocaleString()} pick capital`],
+    ["Team Archetype", me.archetype.label, me.archetype.posture]
   ].map(c => `
     <div class="bg-slate-900 border border-slate-800 rounded-xl p-4">
       <div class="text-xs text-slate-400">${c[0]}</div>
       <div class="text-lg sm:text-xl font-bold text-white mt-1">${c[1]}</div>
       <div class="text-xs text-emerald-400 mt-0.5">${c[2]}</div>
     </div>`).join("");
+
+  // League-wide Contender vs Rebuilder Matrix
+  const matrixTeams = [...S.teams].sort((a, b) => a.stRank - b.stRank);
+  $("matrixBody").innerHTML = matrixTeams.map(t => `
+    <tr class="${t.rid === me.rid ? "bg-emerald-500/10" : "hover:bg-slate-800/40"}">
+      <td class="py-2.5 px-3 font-semibold text-white">${esc(t.name)}</td>
+      <td class="py-2.5 px-2"><span class="text-xs px-2 py-0.5 rounded font-medium ${t.archetype.cls}">${t.archetype.label}</span></td>
+      <td class="py-2.5 px-2 font-mono text-xs text-slate-300">${t.wins}-${t.losses}</td>
+      <td class="py-2.5 px-2 font-mono text-xs text-white">${t.starterV.toLocaleString()} <span class="text-slate-500">(#${t.stRank})</span></td>
+      <td class="py-2.5 px-2 font-mono text-xs ${t.wAge <= 25.5 ? "text-sky-400" : t.wAge >= 27.2 ? "text-amber-400" : "text-slate-300"}">${t.wAge}y</td>
+      <td class="py-2.5 px-2 font-mono text-xs text-purple-300">${t.pickV.toLocaleString()}</td>
+      <td class="py-2.5 px-3 text-xs text-slate-400">${t.archetype.posture}</td>
+    </tr>`).join("");
 
   $("powerBoard").innerHTML = rankedTotal.map((t, i) => `
     <div class="flex items-center justify-between px-3 py-2 rounded-lg border text-xs ${t.rid === me.rid ? "bg-emerald-500/10 border-emerald-500/40" : "bg-slate-950 border-slate-800"}">
@@ -1057,7 +1238,7 @@ function renderAI() {
     const lines = [
       `Act as an expert Dynasty Fantasy Football GM. Analyze my roster and give 3 concrete trade & roster moves.`,
       `League: ${S.lg.name} (${S.fmt.teams} teams, ${S.fmt.numQbs === 2 ? "Superflex" : "1QB"}, ${S.fmt.ppr} PPR, TEP: ${S.fmt.tep})`,
-      `My Team: ${me.name} (${me.wins}-${me.losses})`,
+      `My Team: ${me.name} (${me.wins}-${me.losses}) — Archetype: ${me.archetype.label}`,
       `\nPlayers (Blended Value | Age | 30d Trend):`,
       ...me.playersOnly.map(p => `- ${p.name} (${p.pos}, ${p.team}): ${p.v} | Age ${p.age ? Math.floor(p.age) : "?"} | Trend ${p.trend >= 0 ? "+" : ""}${p.trend}`),
       `\nDraft Picks:`,
@@ -1072,7 +1253,7 @@ function renderAI() {
   };
   $("applyWeights").onclick = () => {
     setWeights([$("wFc").value, $("wDp").value, $("wEcr").value]);
-    if (S.lg) loadLeague(S.lg);
+    if (S.lg) loadLeague(S.lg, true);
   };
 }
 
