@@ -273,7 +273,7 @@ $("go").onclick = async () => {
   }
 };
 
-// Resolve traded_picks accurately for a given original roster_id, round, and season/draft year
+// Resolve traded_picks accurately using Sleeper's current owner_id (never blocked by prior-season previous_owner_id)
 function resolvePickOwner(origRid, round, yr, tradedPicks) {
   const orig = Number(origRid);
   const matches = (tradedPicks || []).filter(p =>
@@ -282,38 +282,13 @@ function resolvePickOwner(origRid, round, yr, tradedPicks) {
     Number(p.roster_id) === orig
   );
   if (!matches.length) return orig;
+  if (matches.length === 1) return Number(matches[0].owner_id || orig);
 
-  // Trace multi-hop transfers cleanly:
-  // Start at orig. In each pass, if a trade has previous_owner_id matching currentOwner, advance.
-  // Also if trades appear in chronological order without previous_owner_id, advance if owner_id != currentOwner.
-  let currentOwner = orig;
-  const used = new Set();
-  let progressed = true;
-  while (progressed) {
-    progressed = false;
-    for (let i = 0; i < matches.length; i++) {
-      if (used.has(i)) continue;
-      const tr = matches[i];
-      const nextOwner = Number(tr.owner_id);
-      const prevOwner = tr.previous_owner_id !== undefined && tr.previous_owner_id !== null ? Number(tr.previous_owner_id) : null;
-      if (!nextOwner || nextOwner === currentOwner) {
-        used.add(i);
-        continue;
-      }
-      if (prevOwner !== null) {
-        if (prevOwner === currentOwner) {
-          currentOwner = nextOwner;
-          used.add(i);
-          progressed = true;
-        }
-      } else {
-        currentOwner = nextOwner;
-        used.add(i);
-        progressed = true;
-      }
-    }
-  }
-  return currentOwner;
+  // If Sleeper returns multiple entries for the same (season, round, roster_id),
+  // find the terminal owner_id that is NOT listed as a previous_owner_id in another entry
+  const prevSet = new Set(matches.map(m => Number(m.previous_owner_id)).filter(Boolean));
+  const terminal = matches.find(m => !prevSet.has(Number(m.owner_id)));
+  return Number((terminal || matches[matches.length - 1]).owner_id || orig);
 }
 
 async function initDraft(lg, uid) {
@@ -668,9 +643,8 @@ function renderAll() {
       My Picks: <b class="text-indigo-300">${state.slots.filter(s => s.isMine).map(s => s.label + (s.isTraded ? "(via " + s.origName + ")" : "")).join(", ") || "None"}</b> · Traded Picks: <b class="text-amber-300">${tradedCount}</b>
     </div>
     <div class="w-full text-[11px] text-slate-400 border-t border-slate-800/80 pt-2 mt-1 flex flex-wrap gap-x-4 gap-y-1">
-      <span>My Roster ID: <b class="text-slate-200">#${state.myRid}</b></span>
-      <span>Matched ${esc($("draftYr").value)} Traded Picks: <b class="text-amber-300">${state.tradedPicks.filter(p => String(p.season) === String($("draftYr").value)).map(p => `R${p.round} orig#${p.roster_id}→#${p.owner_id}`).join(" | ") || "None for " + esc($("draftYr").value)}</b></span>
-      <span>All Traded Picks in Sleeper API: <b class="text-slate-300">${state.tradedPicks.map(p => `[${p.season}] R${p.round} #${p.roster_id}→#${p.owner_id}`).join(" | ") || "Empty"}</b></span>
+      <span>Synced from Sleeper <code class="text-slate-300">/traded_picks</code> (Roster #${state.myRid})</span>
+      <span>${esc($("draftYr").value)} Traded Picks Active: <b class="text-amber-300">${state.tradedPicks.filter(p => String(p.season) === String($("draftYr").value)).length}</b></span>
     </div>`;
 
   // 1. On The Clock Banner
