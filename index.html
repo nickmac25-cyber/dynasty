@@ -263,32 +263,38 @@
     </div>
   </section>
 
-  <!-- TAB 4: START/SIT & MATCHUPS -->
+
+<!-- TAB 4: START/SIT & MATCHUPS -->
   <section id="tab-lineup" hidden class="pane space-y-6">
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
       <div class="lg:col-span-2 bg-slate-900 border border-slate-800 rounded-xl p-4">
         <div class="flex flex-wrap items-center justify-between gap-2 mb-3">
           <div>
-            <h2 class="text-lg font-bold text-white">Optimal Lineup &amp; Matchup Analyzer</h2>
-            <p id="weekSub" class="text-xs text-slate-400">Uses live Sleeper weekly projections + defensive matchup scheme splits.</p>
+            <h2 class="text-lg font-bold text-white">Contextual Start/Sit &amp; Matchup Optimizer</h2>
+            <p id="weekSub" class="text-xs text-slate-400">Blends Sleeper projections with live NFL opponent defense ranks, Vegas totals &amp; game-script reasoning.</p>
           </div>
           <div class="flex items-center gap-2">
             <label class="text-xs text-slate-400">Week</label>
             <select id="wk" class="bg-slate-950 border border-slate-700 rounded-lg px-2.5 py-1 text-xs text-white"></select>
-            <button id="refreshLineup" class="bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-medium px-3 py-1 rounded-lg cursor-pointer">Update</button>
+            <button id="refreshLineup" class="bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-medium px-3 py-1 rounded-lg cursor-pointer">Analyze Week</button>
           </div>
         </div>
         <div id="lineupAlert" class="mb-3"></div>
-        <div id="lineupSlots" class="space-y-2"></div>
+        <div id="lineupSlots" class="space-y-2.5"></div>
       </div>
 
-      <div class="bg-slate-900 border border-slate-800 rounded-xl p-4 flex flex-col">
-        <h3 class="font-bold text-white mb-1">🛡️ Defensive Scheme Matchup Data</h3>
-        <p class="text-xs text-slate-400 mb-3">Loads <code class="text-emerald-400">matchups.json</code> from your GitHub repo or manual override.</p>
-        <input id="repoInput" placeholder="owner/repo (e.g. nickmac25-cyber/dynasty)" class="bg-slate-950 border border-slate-700 rounded-lg px-3 py-1.5 text-xs text-white mb-2">
-        <button id="loadGh" class="bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-medium px-3 py-1.5 rounded-lg border border-slate-700 mb-3 cursor-pointer">Fetch matchups.json from GitHub</button>
-        <div id="ghStatus" class="text-xs text-slate-400 mb-2"></div>
-        <div id="matchupPreview" class="space-y-1.5 overflow-y-auto max-h-72 text-xs"></div>
+      <div class="space-y-6">
+        <div class="bg-slate-900 border border-slate-800 rounded-xl p-4">
+          <h3 class="font-bold text-white mb-1">🔥 Best &amp; Worst Roster Matchups</h3>
+          <p class="text-xs text-slate-400 mb-3">Auto-synced from live NFL team defensive points allowed &amp; Vegas game environments.</p>
+          <div id="matchupPreview" class="space-y-2 text-xs"></div>
+        </div>
+
+        <div class="bg-slate-900 border border-slate-800 rounded-xl p-4">
+          <h3 class="font-bold text-white mb-1">🏥 Roster Injury &amp; Status Watch</h3>
+          <p class="text-xs text-slate-400 mb-3">Live Sleeper injury designations for your active squad.</p>
+          <div id="injuryWatch" class="space-y-2 text-xs"></div>
+        </div>
       </div>
     </div>
   </section>
@@ -1114,35 +1120,157 @@ function renderRosterHub() {
     </div>`).join("") || `<div class="text-xs text-slate-500">No high-upside free agents found for this filter.</div>`;
 }
 
-// --- TAB 4: START/SIT & MATCHUPS ---
+
+// --- TAB 4: START/SIT & MATCHUPS (LIVE OPPONENT & REASONING ENGINE) ---
 $("refreshLineup").onclick = renderLineup;
-$("loadGh").onclick = async () => {
-  const repo = $("repoInput").value.trim();
-  if (!repo) return;
-  saveState({ repo });
-  $("ghStatus").textContent = "Fetching matchups.json from GitHub...";
+
+const TEAM_NORM = { JAX: "JAC", WSH: "WAS" };
+const normTm = t => TEAM_NORM[t] || t || "";
+
+async function fetchNflMatchupContext(season, week) {
+  const ctx = { games: {}, defRank: {}, offRank: {} };
   try {
-    const url = `https://raw.githubusercontent.com/${repo}/main/matchups.json?t=${Date.now()}`;
-    S.matchups = await j(url);
-    $("ghStatus").textContent = "Loaded matchups.json successfully.";
-    renderLineup();
-  } catch (e) { $("ghStatus").textContent = "Could not load matchups.json: " + e.message; }
-};
+    const [sb, st] = await Promise.all([
+      j(`https://site.api.espn.com/apis/site/v2/sports/football/nfl/scoreboard?seasontype=2&week=${week}`),
+      j(`https://site.api.espn.com/apis/v2/sports/football/nfl/standings`)
+    ]);
+
+    // 1. Parse live team offense & defense points-per-game rankings (1 = toughest defense, 32 = worst defense)
+    const teamStats = [];
+    (st?.children || []).forEach(conf => {
+      (conf?.standings?.entries || []).forEach(ent => {
+        const abbr = normTm(ent?.team?.abbreviation);
+        const stats = Object.fromEntries((ent?.stats || []).map(s => [s.name, Number(s.value)]));
+        if (abbr) {
+          teamStats.push({
+            abbr,
+            ppgFor: stats.avgPointsFor || (stats.pointsFor / Math.max(1, (stats.wins || 0) + (stats.losses || 0))) || 21.5,
+            ppgAgainst: stats.avgPointsAgainst || (stats.pointsAgainst / Math.max(1, (stats.wins || 0) + (stats.losses || 0))) || 21.5
+          });
+        }
+      });
+    });
+
+    const byDef = [...teamStats].sort((a, b) => a.ppgAgainst - b.ppgAgainst); // lowest allowed = #1 toughest
+    const byOff = [...teamStats].sort((a, b) => b.ppgFor - a.ppgFor);         // highest scored = #1 offense
+    byDef.forEach((t, i) => { ctx.defRank[t.abbr] = { rank: i + 1, ppgAgainst: Number(t.ppgAgainst.toFixed(1)) }; });
+    byOff.forEach((t, i) => { ctx.offRank[t.abbr] = { rank: i + 1, ppgFor: Number(t.ppgFor.toFixed(1)) }; });
+
+    // 2. Parse weekly schedule, home/away, and Vegas O/U + spread
+    (sb?.events || []).forEach(ev => {
+      const comp = ev?.competitions?.[0];
+      const teams = comp?.competitors || [];
+      if (teams.length !== 2) return;
+      const home = teams.find(x => x.homeAway === "home") || teams[0];
+      const away = teams.find(x => x.homeAway === "away") || teams[1];
+      const hAbbr = normTm(home?.team?.abbreviation);
+      const aAbbr = normTm(away?.team?.abbreviation);
+      const odds = comp?.odds?.[0] || {};
+      const ou = Number(odds.overUnder) || 44.5;
+      const spread = Number(odds.spread) || 0; // negative means home favored
+
+      ctx.games[hAbbr] = { opp: aAbbr, home: true, ou, teamSpread: spread, implied: Number(((ou - spread) / 2).toFixed(1)) };
+      ctx.games[aAbbr] = { opp: hAbbr, home: false, ou, teamSpread: -spread, implied: Number(((ou + spread) / 2).toFixed(1)) };
+    });
+  } catch (e) {
+    console.warn("ESPN matchup fallback active:", e);
+  }
+  return ctx;
+}
+
+function buildPlayerStartSitAnalysis(p, basePts, ctx, sp) {
+  const tm = normTm(p.team);
+  const gm = ctx.games[tm];
+  if (!gm) {
+    return {
+      adjPts: basePts,
+      badge: "BYE / TBD",
+      badgeCls: "bg-slate-800 text-slate-400",
+      reason: basePts > 0 ? `Projected ${basePts} pts on volume alone (no active NFL game listed for ${tm || "FA"}).` : `${p.name} is on BYE or inactive this week.`
+    };
+  }
+
+  const opp = gm.opp;
+  const def = ctx.defRank[opp] || { rank: 16, ppgAgainst: 21.8 };
+  const off = ctx.offRank[tm] || { rank: 16, ppgFor: 21.8 };
+  const reasons = [];
+  let mult = 1.0;
+
+  // Opponent defensive strength adjustment
+  if (def.rank >= 25) {
+    mult += 0.09;
+    reasons.push(`${opp} has a bottom-8 defense (#${def.rank}, allowing ${def.ppgAgainst} PPG)`);
+  } else if (def.rank >= 19) {
+    mult += 0.04;
+    reasons.push(`favorable draw vs. ${opp}'s #${def.rank} scoring defense (${def.ppgAgainst} PPG allowed)`);
+  } else if (def.rank <= 6) {
+    mult -= 0.08;
+    reasons.push(`tough matchup against ${opp}'s elite #${def.rank} defense (${def.ppgAgainst} PPG allowed)`);
+  } else if (def.rank <= 12) {
+    mult -= 0.04;
+    reasons.push(`${opp} fields a top-12 defense (#${def.rank})`);
+  }
+
+  // Position-specific game script & Vegas environment logic
+  if (p.pos === "RB") {
+    if (gm.teamSpread <= -4.5) {
+      mult += 0.06;
+      reasons.push(`${tm} is a ${Math.abs(gm.teamSpread)}-pt favorite—prime positive rushing script`);
+    } else if (gm.teamSpread >= 6.5) {
+      mult -= 0.05;
+      reasons.push(`${tm} is a ${gm.teamSpread}-pt underdog, risking negative rush script`);
+    }
+    if (off.rank <= 10) reasons.push(`${tm} ranks #${off.rank} in scoring (${off.ppgFor} PPG) for red-zone TD equity`);
+    if (sp?.depth_chart_order === 2) reasons.push(`high-upside RB2 rotation/handcuff role`);
+  } else if (p.pos === "QB" || p.pos === "WR" || p.pos === "TE") {
+    if (gm.ou >= 48.5) {
+      mult += 0.06;
+      reasons.push(`high ${gm.ou} Vegas O/U projects strong passing volume`);
+    } else if (gm.ou <= 40.5) {
+      mult -= 0.05;
+      reasons.push(`low ${gm.ou} game total caps aerial ceiling`);
+    }
+    if (gm.implied >= 25.5) reasons.push(`${tm} carries a strong ${gm.implied}-pt implied team total`);
+  }
+
+  if (!reasons.length) {
+    reasons.push(`neutral game environment ${gm.home ? "vs." : "@"} ${opp} (${gm.ou} O/U, #${def.rank} defense)`);
+  }
+
+  const adjPts = Number((basePts * mult).toFixed(1));
+  const loc = gm.home ? `vs ${opp}` : `@ ${opp}`;
+  let badge = `${loc} · Neutral`;
+  let badgeCls = "bg-slate-800 text-slate-300";
+  if (mult >= 1.07) { badge = `🔥 ${loc} · Smash`; badgeCls = "bg-emerald-500/20 text-emerald-300 border border-emerald-500/40"; }
+  else if (mult >= 1.03) { badge = `✅ ${loc} · Plus`; badgeCls = "bg-teal-500/15 text-teal-300"; }
+  else if (mult <= 0.94) { badge = `⚠️ ${loc} · Tough`; badgeCls = "bg-rose-500/20 text-rose-300 border border-rose-500/40"; }
+
+  const verb = mult >= 1.03 ? "Start" : mult <= 0.94 ? "Caution" : "Start";
+  const reasonText = `${verb} ${p.name}: ${reasons.join("; ")}.`;
+
+  return { adjPts, badge, badgeCls, reason: reasonText, mult };
+}
 
 async function renderLineup() {
   const me = S.teams.find(t => t.rid === S.viewRid);
   const wk = $("wk").value;
-  $("lineupSlots").innerHTML = `<div class="text-xs text-slate-400">Loading Week ${wk} projections...</div>`;
+  $("lineupSlots").innerHTML = `<div class="text-xs text-slate-400">Analyzing Week ${wk} projections, Vegas totals &amp; opponent defenses...</div>`;
   try {
-    const proj = await j(`https://api.sleeper.com/projections/nfl/${S.lg.season}/${wk}?season_type=regular`);
+    const [proj, ctx] = await Promise.all([
+      j(`https://api.sleeper.com/projections/nfl/${S.lg.season}/${wk}?season_type=regular`),
+      fetchNflMatchupContext(S.lg.season, wk)
+    ]);
+
     const slots = (S.lg.roster_positions || []).filter(p => p !== "BN" && p !== "IR" && p !== "TAXI");
     const elig = { QB: ["QB"], RB: ["RB"], WR: ["WR"], TE: ["TE"], FLEX: ["RB", "WR", "TE"], SUPER_FLEX: ["QB", "RB", "WR", "TE"], REC_FLEX: ["WR", "TE"] };
 
     const pool = me.playersOnly.filter(p => !p.onTaxi && !p.onIR).map(p => {
       const pr = proj[p.id]?.stats || {};
-      const pts = pr.pts_ppr || pr.pts_half_ppr || pr.pts_std || (p.v / 500);
-      return { ...p, pts: Number(pts.toFixed(1)) };
-    }).sort((a, b) => b.pts - a.pts);
+      const basePts = Number((pr.pts_ppr || pr.pts_half_ppr || pr.pts_std || (p.v / 550)).toFixed(1));
+      const sp = S.market.pmap[p.id];
+      const analysis = buildPlayerStartSitAnalysis(p, basePts, ctx, sp);
+      return { ...p, basePts, ...analysis };
+    }).sort((a, b) => b.adjPts - a.adjPts);
 
     const used = new Set();
     const chosen = slots.map(sl => {
@@ -1152,20 +1280,62 @@ async function renderLineup() {
       return { slot: sl, player: pick };
     });
 
+    const bench = pool.filter(p => !used.has(p.id) && p.basePts > 0);
     const curStarters = new Set(me.raw.starters || []);
     const missedPts = chosen.filter(c => c.player && !curStarters.has(c.player.id)).length;
-    $("lineupAlert").innerHTML = missedPts
-      ? `<div class="bg-amber-500/15 border border-amber-500/40 text-amber-200 text-xs rounded-lg p-2.5">⚠️ <b>${missedPts} lineup upgrade(s)</b> detected vs. your currently set Sleeper starters.</div>`
-      : `<div class="bg-emerald-500/15 border border-emerald-500/40 text-emerald-200 text-xs rounded-lg p-2.5">✅ Your current Sleeper lineup matches optimal projected starters.</div>`;
 
-    $("lineupSlots").innerHTML = chosen.map(c => `
-      <div class="flex items-center justify-between bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-sm">
-        <div class="flex items-center gap-2.5">
-          <span class="text-xs font-mono font-bold text-slate-400 w-20">${c.slot}</span>
-          ${c.player ? `<span class="pill pos-${c.player.pos}">${c.player.pos}</span><span class="font-semibold text-white">${esc(c.player.name)}</span>` : `<span class="text-slate-600 italic">Empty</span>`}
+    $("lineupAlert").innerHTML = missedPts
+      ? `<div class="bg-amber-500/15 border border-amber-500/40 text-amber-200 text-xs rounded-lg p-2.5">⚠️ <b>${missedPts} lineup upgrade(s)</b> recommended after factoring in projections + defensive matchups.</div>`
+      : `<div class="bg-emerald-500/15 border border-emerald-500/40 text-emerald-200 text-xs rounded-lg p-2.5">✅ Your current Sleeper starters match our matchup-adjusted optimal lineup.</div>`;
+
+    $("lineupSlots").innerHTML = chosen.map(c => {
+      const p = c.player;
+      if (!p) return `<div class="bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-xs text-slate-600">${c.slot}: Empty</div>`;
+      // Find top bench alternative for same slot to explain why this player won the start
+      const alt = bench.find(b => (elig[c.slot] || [c.slot]).includes(b.pos));
+      const edgeNote = alt ? ` <span class="text-slate-500">(Edges bench option ${esc(alt.name)} [${alt.adjPts} adj pts])</span>` : "";
+      return `
+        <div class="bg-slate-950 border border-slate-800 rounded-lg p-3 space-y-1.5">
+          <div class="flex flex-wrap items-center justify-between gap-2 text-sm">
+            <div class="flex items-center gap-2">
+              <span class="text-xs font-mono font-bold text-slate-400 w-20">${c.slot}</span>
+              <span class="pill pos-${p.pos}">${p.pos}</span>
+              <span class="font-bold text-white">${esc(p.name)}</span>
+              <span class="text-[11px] px-2 py-0.5 rounded font-semibold ${p.badgeCls}">${p.badge}</span>
+            </div>
+            <div class="text-right font-mono">
+              <span class="font-bold text-emerald-400">${p.adjPts} adj</span>
+              <span class="text-xs text-slate-500 ml-1">(${p.basePts} base)</span>
+            </div>
+          </div>
+          <div class="text-xs text-slate-300 pl-0 sm:pl-[88px] leading-relaxed">
+            💡 ${esc(p.reason)}${edgeNote}
+          </div>
+        </div>`;
+    }).join("");
+
+    // Right Panel 1: Best & Worst Matchups on Your Roster
+    const rankedMatchups = [...pool].filter(p => p.basePts >= 4).sort((a, b) => b.mult - a.mult);
+    const highlights = [...rankedMatchups.slice(0, 3), ...rankedMatchups.slice(-2).reverse()];
+    $("matchupPreview").innerHTML = highlights.map(p => `
+      <div class="bg-slate-950 border border-slate-800 rounded-lg p-2.5 space-y-1">
+        <div class="flex items-center justify-between">
+          <div><span class="pill pos-${p.pos} mr-1">${p.pos}</span><b class="text-white">${esc(p.name)}</b></div>
+          <span class="text-[10px] px-1.5 py-0.5 rounded font-semibold ${p.badgeCls}">${p.badge}</span>
         </div>
-        <span class="font-mono font-bold text-emerald-400">${c.player ? c.player.pts + " pts" : "—"}</span>
-      </div>`).join("");
+        <div class="text-[11px] text-slate-400">${esc(p.reason)}</div>
+      </div>`).join("") || `<div class="text-slate-500">No active matchup data for this week.</div>`;
+
+    // Right Panel 2: Live Roster Injury Watch
+    const flagged = me.playersOnly.filter(p => p.injury || p.onIR);
+    $("injuryWatch").innerHTML = flagged.length
+      ? flagged.map(p => `
+        <div class="bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 flex items-center justify-between">
+          <div><span class="pill pos-${p.pos} mr-1">${p.pos}</span><b class="text-white">${esc(p.name)}</b> <span class="text-slate-500">${p.team}</span></div>
+          <span class="px-2 py-0.5 rounded font-bold bg-rose-500/20 text-rose-300">${esc(p.injury || "IR")}</span>
+        </div>`).join("")
+      : `<div class="text-slate-400 bg-slate-950 border border-slate-800 rounded-lg p-3">✅ No active injury flags on your roster.</div>`;
+
   } catch (e) {
     $("lineupSlots").innerHTML = `<div class="text-xs text-rose-400">Error loading projections: ${e.message}</div>`;
   }
