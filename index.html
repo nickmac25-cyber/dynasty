@@ -29,7 +29,7 @@
     <div class="flex items-center gap-2.5">
       <div>
         <h1 class="font-bold text-base tracking-tight text-white">Command Center</h1>
-        <p id="metaSub" class="text-xs text-slate-400">Blended Market · Trade Calculator · Roster, Taxi &amp; Stashes · Start/Sit</p>
+        <p id="metaSub" class="text-xs text-slate-400">6-Source Market · Trade Calculator · Roster, Taxi &amp; Stashes · Start/Sit</p>
       </div>
     </div>
 
@@ -61,7 +61,7 @@
     <button data-t="tab-lineup" class="tab-btn px-3.5 py-2 text-xs sm:text-sm font-medium border-b-2 border-transparent text-slate-300 hover:text-white rounded-t-md transition cursor-pointer">⚡ Start/Sit &amp; Matchups</button>
     <button data-t="tab-draft" class="tab-btn px-3.5 py-2 text-xs sm:text-sm font-medium border-b-2 border-transparent text-slate-300 hover:text-white rounded-t-md transition cursor-pointer">🎓 Draft Room &amp; 2027 Board</button>
     <button data-t="tab-audit" class="tab-btn px-3.5 py-2 text-xs sm:text-sm font-medium border-b-2 border-transparent text-slate-300 hover:text-white rounded-t-md transition cursor-pointer">📊 Team Audit &amp; Matrix</button>
-    <button data-t="tab-ai" class="tab-btn px-3.5 py-2 text-xs sm:text-sm font-medium border-b-2 border-transparent text-slate-300 hover:text-white rounded-t-md transition cursor-pointer">🤖 AI Advisor &amp; Weights</button>
+    <button data-t="tab-ai" class="tab-btn px-3.5 py-2 text-xs sm:text-sm font-medium border-b-2 border-transparent text-slate-300 hover:text-white rounded-t-md transition cursor-pointer">🤖 AI Advisor &amp; 6-Source Weights</button>
   </div>
 </nav>
 
@@ -75,7 +75,7 @@
         <div>
           <span class="text-xs uppercase tracking-wider text-slate-400 font-semibold">Live Trade Analysis</span>
           <h2 id="verdictText" class="text-lg sm:text-xl font-bold text-white mt-0.5">Select players or picks on both sides to evaluate</h2>
-          <p id="verdictSub" class="text-xs text-slate-400 mt-0.5">Includes stud consolidation adjustment and optimal starting lineup impact.</p>
+          <p id="verdictSub" class="text-xs text-slate-400 mt-0.5">Includes stud consolidation adjustment and position-locked optimal starter delta.</p>
         </div>
         <div class="flex items-center gap-2">
           <button id="swapSides" class="text-xs bg-slate-800 hover:bg-slate-700 text-slate-200 px-3 py-1.5 rounded-lg border border-slate-700 transition cursor-pointer" title="Swap sides">⇄ Swap</button>
@@ -168,14 +168,13 @@
     <div id="finderResults" class="grid grid-cols-1 md:grid-cols-2 gap-4"></div>
   </section>
 
-  <!-- TAB 3: ROSTER, TAXI & STASHES (Unified Hub) -->
+  <!-- TAB 3: ROSTER, TAXI & STASHES -->
   <section id="tab-roster" hidden class="pane space-y-6">
-    <!-- Top: Full Roster & Picks -->
     <div class="bg-slate-900 border border-slate-800 rounded-xl p-4">
       <div class="flex flex-wrap items-center justify-between gap-3 mb-4">
         <div>
           <h2 class="text-lg font-bold text-white">Full Roster Valuation &amp; Positional Age-Curve Warnings</h2>
-          <p class="text-xs text-slate-400">RB Cliff: 27+ (Caution 26) · WR Cliff: 30+ (Caution 29) · QB/TE Cliff: 32+ (Caution 30).</p>
+          <p class="text-xs text-slate-400">RB Cliff: 26+ · WR Cliff: 29+ · TE Cliff: 30+ · QB Cliff: 34+ · 6-Source Market Breakdown.</p>
         </div>
         <div class="flex flex-wrap items-center gap-2">
           <select id="cliffFilter" class="bg-slate-950 border border-slate-700 rounded-lg px-2.5 py-1.5 text-xs text-white">
@@ -203,7 +202,7 @@
               <th class="py-2.5 px-2">Pos</th>
               <th class="py-2.5 px-2">Age &amp; Curve</th>
               <th class="py-2.5 px-2">Blended</th>
-              <th class="py-2.5 px-2 hidden sm:table-cell">FC / DP / ECR</th>
+              <th class="py-2.5 px-2 hidden xl:table-cell">FC / SGF / SC / DD / DP / ECR</th>
               <th class="py-2.5 px-2">30d Trend</th>
               <th class="py-2.5 px-2">3-Yr Proj</th>
               <th class="py-2.5 px-3">Dynasty Signal</th>
@@ -214,7 +213,7 @@
       </div>
     </div>
 
-    <!-- Middle: Taxi Squad Optimizer & League Poach Targets -->
+    <!-- Taxi Squad Optimizer & League Poach Targets -->
     <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
       <div class="bg-slate-900 border border-slate-800 rounded-xl p-4">
         <div class="flex items-center justify-between mb-3">
@@ -238,12 +237,12 @@
       </div>
     </div>
 
-    <!-- Bottom: Waiver & Market Inefficiency Radar -->
+    <!-- Waiver & Market Inefficiency Radar -->
     <div class="bg-slate-900 border border-slate-800 rounded-xl p-4">
       <div class="flex flex-wrap items-center justify-between gap-3 mb-3">
         <div>
           <h3 class="font-bold text-white">💎 Market Inefficiency &amp; Waiver Stash Radar</h3>
-          <p class="text-xs text-slate-400">Cross-references unrostered players against live Sleeper 24h trending adds, KTC/blended value, RB2 handcuffs, and IR stashes.</p>
+          <p class="text-xs text-slate-400">Cross-references unrostered players against live Sleeper 24h trending adds, 6-source blended value, RB2 handcuffs, and IR stashes.</p>
         </div>
         <div class="flex items-center gap-2">
           <select id="stashMode" class="bg-slate-950 border border-slate-700 rounded-lg px-2.5 py-1.5 text-xs text-white">
@@ -300,7 +299,7 @@
       <div class="flex flex-wrap items-center justify-between gap-3 mb-4">
         <div>
           <h2 class="text-lg font-bold text-white">Live Sleeper Draft Tracker &amp; 2027 Rookie Big Board</h2>
-          <p class="text-xs text-slate-400">Tracks active/completed Sleeper rookie drafts alongside our unified 50-prospect 2027 class ranking.</p>
+          <p class="text-xs text-slate-400">Tracks active/completed Sleeper rookie drafts alongside our unified 2027 class ranking.</p>
         </div>
         <div class="flex items-center gap-2">
           <select id="draftSel" class="bg-slate-950 border border-slate-700 rounded-lg px-3 py-1.5 text-xs text-white"></select>
@@ -317,7 +316,6 @@
   <section id="tab-audit" hidden class="pane space-y-6">
     <div id="auditSummary" class="grid grid-cols-2 sm:grid-cols-4 gap-4"></div>
 
-    <!-- League-Wide Contender vs Rebuilder Matrix -->
     <div class="bg-slate-900 border border-slate-800 rounded-xl p-4">
       <div class="flex flex-wrap items-center justify-between gap-2 mb-3">
         <div>
@@ -357,7 +355,7 @@
     </div>
   </section>
 
-  <!-- TAB 7: AI ADVISOR & SETTINGS -->
+  <!-- TAB 7: AI ADVISOR & 6-SOURCE SETTINGS -->
   <section id="tab-ai" hidden class="pane space-y-6">
     <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
       <div class="bg-slate-900 border border-slate-800 rounded-xl p-5">
@@ -367,29 +365,69 @@
           <button id="genPrompt" class="bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold px-4 py-2 rounded-lg cursor-pointer">Generate Full Prompt</button>
           <button id="copyPrompt" class="bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold px-4 py-2 rounded-lg border border-slate-700 cursor-pointer">Copy to Clipboard</button>
         </div>
-        <textarea id="aiBox" rows="12" class="w-full bg-slate-950 border border-slate-800 rounded-lg p-3 text-xs font-mono text-slate-300 focus:outline-none focus:border-emerald-500"></textarea>
+        <textarea id="aiBox" rows="16" class="w-full bg-slate-950 border border-slate-800 rounded-lg p-3 text-xs font-mono text-slate-300 focus:outline-none focus:border-emerald-500"></textarea>
       </div>
 
       <div class="bg-slate-900 border border-slate-800 rounded-xl p-5 space-y-4">
-        <div>
-          <h2 class="text-lg font-bold text-white mb-1">⚖️ Global Market Source Weights</h2>
-          <p class="text-xs text-slate-400">Saved automatically and applied across every page in Dynasty Desk Pro.</p>
+        <div class="flex flex-wrap items-start justify-between gap-2">
+          <div>
+            <h2 class="text-lg font-bold text-white mb-1">⚖️ 6-Source Market Weights</h2>
+            <p class="text-xs text-slate-400">Pick a strategy preset or fine-tune all 6 sources manually. Saved across every page.</p>
+          </div>
+          <span id="weightTotalBadge" class="text-xs font-mono bg-slate-800 text-emerald-400 px-2.5 py-1 rounded border border-slate-700">Total: 100%</span>
         </div>
-        <div class="space-y-3">
+
+        <!-- One-Click Strategy Presets (Order: FC, SGF, SC, DD, DP, ECR) -->
+        <div class="grid grid-cols-2 gap-2 pt-1">
+          <button type="button" data-preset="25,25,15,15,10,10" class="preset-btn text-left bg-slate-950 hover:bg-slate-800 border border-slate-800 hover:border-emerald-500/50 rounded-lg p-2.5 transition cursor-pointer">
+            <div class="text-xs font-bold text-white">⚖️ Balanced 6-Source</div>
+            <div class="text-[11px] text-slate-400">25·25·15·15·10·10 (Default)</div>
+          </button>
+          <button type="button" data-preset="45,25,10,10,5,5" class="preset-btn text-left bg-slate-950 hover:bg-slate-800 border border-slate-800 hover:border-emerald-500/50 rounded-lg p-2.5 transition cursor-pointer">
+            <div class="text-xs font-bold text-emerald-400">📈 Live Trade Market</div>
+            <div class="text-[11px] text-slate-400">Heavy FantasyCalc &amp; SGF</div>
+          </button>
+          <button type="button" data-preset="15,15,15,10,15,30" class="preset-btn text-left bg-slate-950 hover:bg-slate-800 border border-slate-800 hover:border-amber-500/50 rounded-lg p-2.5 transition cursor-pointer">
+            <div class="text-xs font-bold text-amber-400">🧠 Expert ECR &amp; Consensus</div>
+            <div class="text-[11px] text-slate-400">Heavy FantasyPros &amp; DP</div>
+          </button>
+          <button type="button" data-preset="15,25,35,15,5,5" class="preset-btn text-left bg-slate-950 hover:bg-slate-800 border border-slate-800 hover:border-sky-500/50 rounded-lg p-2.5 transition cursor-pointer">
+            <div class="text-xs font-bold text-sky-400">🎛️ League-Settings Custom</div>
+            <div class="text-[11px] text-slate-400">Heavy StatChasers &amp; SGF</div>
+          </button>
+        </div>
+
+        <div class="space-y-3 pt-1">
           <div>
-            <div class="flex justify-between text-xs mb-1"><span>FantasyCalc (Live Market Trades)</span><span id="wFcLbl" class="font-bold text-emerald-400">40%</span></div>
-            <input id="wFc" type="range" min="0" max="100" value="40" class="w-full accent-emerald-500">
+            <div class="flex justify-between text-xs mb-1"><span>1. FantasyCalc (Live Completed Trades)</span><span id="wFcLbl" class="font-bold text-emerald-400">25%</span></div>
+            <input id="wFc" type="range" min="0" max="100" value="25" class="w-full accent-emerald-500">
           </div>
           <div>
-            <div class="flex justify-between text-xs mb-1"><span>DynastyProcess (Crowdsourced Consensus)</span><span id="wDpLbl" class="font-bold text-sky-400">30%</span></div>
-            <input id="wDp" type="range" min="0" max="100" value="30" class="w-full accent-sky-500">
+            <div class="flex justify-between text-xs mb-1"><span>2. StatsGuyFantasy (Format &amp; TEP Adjusted)</span><span id="wSgfLbl" class="font-bold text-teal-400">25%</span></div>
+            <input id="wSgf" type="range" min="0" max="100" value="25" class="w-full accent-teal-500">
           </div>
           <div>
-            <div class="flex justify-between text-xs mb-1"><span>FantasyPros Dynasty ECR Curve</span><span id="wEcrLbl" class="font-bold text-amber-400">30%</span></div>
-            <input id="wEcr" type="range" min="0" max="100" value="30" class="w-full accent-amber-500">
+            <div class="flex justify-between text-xs mb-1"><span>3. StatChasers (Bench &amp; Scoring Curve)</span><span id="wScLbl" class="font-bold text-cyan-400">15%</span></div>
+            <input id="wSc" type="range" min="0" max="100" value="15" class="w-full accent-cyan-500">
+          </div>
+          <div>
+            <div class="flex justify-between text-xs mb-1"><span>4. DynastyDealer (Player Value Model)</span><span id="wDdLbl" class="font-bold text-indigo-400">15%</span></div>
+            <input id="wDd" type="range" min="0" max="100" value="15" class="w-full accent-indigo-500">
+          </div>
+          <div>
+            <div class="flex justify-between text-xs mb-1"><span>5. DynastyProcess (Crowdsourced Consensus)</span><span id="wDpLbl" class="font-bold text-sky-400">10%</span></div>
+            <input id="wDp" type="range" min="0" max="100" value="10" class="w-full accent-sky-500">
+          </div>
+          <div>
+            <div class="flex justify-between text-xs mb-1"><span>6. FantasyPros Dynasty ECR Curve</span><span id="wEcrLbl" class="font-bold text-amber-400">10%</span></div>
+            <input id="wEcr" type="range" min="0" max="100" value="10" class="w-full accent-amber-500">
           </div>
         </div>
-        <button id="applyWeights" class="bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold px-4 py-2 rounded-lg cursor-pointer">Recalculate Suite Values</button>
+
+        <div class="flex items-center gap-2 pt-1">
+          <button id="applyWeights" class="bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold px-4 py-2 rounded-lg cursor-pointer">Recalculate Suite Values</button>
+          <span id="presetStatus" class="text-xs text-slate-400"></span>
+        </div>
       </div>
     </div>
   </section>
@@ -397,7 +435,7 @@
 
 <script>
 const $ = id => document.getElementById(id);
-const { SL, POS, esc, j, getWeights, setWeights, getSavedState, saveState, loadMarket, calcOptimalStarters, projV, ageFlag, studAdj } = DD;
+const { SL, POS, CLIFF, esc, j, getWeights, setWeights, getSavedState, saveState, loadMarket, calcOptimalStarters, projV, ageFlag, studAdj } = DD;
 
 let S = {
   uid: null, leagues: [], lg: null, fmt: null,
@@ -406,69 +444,65 @@ let S = {
   sideA: [], sideB: [], matchups: null, liveDraftId: null
 };
 
-// Positional Age-Curve Analyzer (#3)
+// Positional Age-Curve Analyzer synced with dynasty-core.js CLIFF thresholds
 function getPositionalCurve(a) {
   if (a.pick || !a.age) return { tier: "PICK", label: "Future Capital", cls: "text-purple-300 bg-purple-500/15", isCliff: false, isPeak: true };
-  const age = a.age;
+  const age = Math.floor(a.age);
   const pos = a.pos;
-  if (pos === "RB") {
-    if (age >= 27) return { tier: "CLIFF", label: "🚨 RB Age Cliff (27+)", cls: "text-rose-300 bg-rose-500/20 border border-rose-500/40", isCliff: true, isPeak: false };
-    if (age >= 26) return { tier: "CAUTION", label: "⚠️ RB Caution (26)", cls: "text-amber-300 bg-amber-500/20", isCliff: true, isPeak: false };
-    return { tier: "PEAK", label: "🟢 RB Prime (≤25)", cls: "text-emerald-300 bg-emerald-500/15", isCliff: false, isPeak: true };
+  const cliff = CLIFF[pos] || 30;
+  if (age >= cliff) {
+    return { tier: "CLIFF", label: `🚨 ${pos} Age Cliff (${cliff}+)`, cls: "text-rose-300 bg-rose-500/20 border border-rose-500/40", isCliff: true, isPeak: false };
   }
-  if (pos === "WR") {
-    if (age >= 30) return { tier: "CLIFF", label: "🚨 WR Age Cliff (30+)", cls: "text-rose-300 bg-rose-500/20 border border-rose-500/40", isCliff: true, isPeak: false };
-    if (age >= 29) return { tier: "CAUTION", label: "⚠️ WR Caution (29)", cls: "text-amber-300 bg-amber-500/20", isCliff: true, isPeak: false };
-    return { tier: "PEAK", label: "🟢 WR Prime (≤28)", cls: "text-emerald-300 bg-emerald-500/15", isCliff: false, isPeak: true };
+  if (age >= cliff - 1) {
+    return { tier: "CAUTION", label: `⚠️ ${pos} Caution (${cliff - 1})`, cls: "text-amber-300 bg-amber-500/20", isCliff: true, isPeak: false };
   }
-  // QB & TE
-  if (age >= 32) return { tier: "CLIFF", label: `🚨 ${pos} Late Curve (32+)`, cls: "text-rose-300 bg-rose-500/20 border border-rose-500/40", isCliff: true, isPeak: false };
-  if (age >= 30) return { tier: "CAUTION", label: `⚠️ ${pos} Aging (30-31)`, cls: "text-amber-300 bg-amber-500/20", isCliff: true, isPeak: false };
-  return { tier: "PEAK", label: `🟢 ${pos} Prime (≤29)`, cls: "text-emerald-300 bg-emerald-500/15", isCliff: false, isPeak: true };
+  return { tier: "PEAK", label: `🟢 ${pos} Prime (≤${cliff - 2})`, cls: "text-emerald-300 bg-emerald-500/15", isCliff: false, isPeak: true };
 }
 
-// LocalStorage Snapshot Wrapper (#5)
-const SNAP_KEY = "dd_market_snapshot_v1";
+// LocalStorage Market Snapshot Fallback
+const SNAP_KEY = "dd_market_snapshot_v2";
 async function loadMarketWithFallback(lg, onStatus, forceRefresh = false) {
   const cacheKey = `${SNAP_KEY}_${lg.league_id}_${getWeights().join("-")}`;
   try {
     if (forceRefresh) localStorage.removeItem(cacheKey);
     const market = await loadMarket(lg, onStatus);
-    const serializable = {
-      ts: Date.now(),
-      fmt: market.fmt,
-      cacheTs: market.cacheTs,
-      all: market.all,
-      entries: [...market.bySid.entries()]
-    };
-    try { localStorage.setItem(cacheKey, JSON.stringify(serializable)); } catch (e) {}
-    return { market, source: "live", snapTs: Date.now() };
+    try {
+      localStorage.setItem(cacheKey, JSON.stringify({ ts: Date.now(), allCount: market.all.length }));
+    } catch (e) {}
+    return { market, snapTs: Date.now() };
   } catch (err) {
-    const raw = localStorage.getItem(cacheKey);
-    if (!raw) throw err;
-    const snap = JSON.parse(raw);
     const fallbackMarket = await loadMarket(lg, onStatus).catch(() => null);
-    if (fallbackMarket) return { market: fallbackMarket, source: "live", snapTs: Date.now() };
+    if (fallbackMarket) return { market: fallbackMarket, snapTs: Date.now() };
     throw err;
   }
 }
 
-// Init season dropdown & restore saved user/weights
+// Init season dropdown & restore saved user + all 6 weights
 const curYr = new Date().getFullYear();
 for (let y = curYr; y >= curYr - 3; y--) $("season").add(new Option(y, y));
 const saved = getSavedState();
 if (saved.user) $("user").value = saved.user;
 if (saved.season) $("season").value = saved.season;
 if (saved.repo) $("repoInput").value = saved.repo;
+
+const WEIGHT_IDS = ["wFc", "wSgf", "wSc", "wDd", "wDp", "wEcr"];
+const WEIGHT_LBLS = ["wFcLbl", "wSgfLbl", "wScLbl", "wDdLbl", "wDpLbl", "wEcrLbl"];
 const initW = getWeights();
-$("wFc").value = initW[0]; $("wDp").value = initW[1]; $("wEcr").value = initW[2];
+WEIGHT_IDS.forEach((id, idx) => { $(id).value = initW[idx] ?? 0; });
+
 const syncWeightLabels = () => {
-  $("wFcLbl").textContent = $("wFc").value + "%";
-  $("wDpLbl").textContent = $("wDp").value + "%";
-  $("wEcrLbl").textContent = $("wEcr").value + "%";
+  let tot = 0;
+  WEIGHT_IDS.forEach((id, idx) => {
+    const val = Number($(id).value);
+    tot += val;
+    $(WEIGHT_LBLS[idx]).textContent = val + "%";
+  });
+  if ($("weightTotalBadge")) {
+    $("weightTotalBadge").textContent = `Total: ${tot}%${tot !== 100 ? " (auto-normalized)" : ""}`;
+  }
 };
 syncWeightLabels();
-["wFc", "wDp", "wEcr"].forEach(id => $(id).oninput = syncWeightLabels);
+WEIGHT_IDS.forEach(id => $(id).oninput = syncWeightLabels);
 
 function activateTab(tabId) {
   const btn = document.querySelector(`.tab-btn[data-t="${tabId}"]`);
@@ -516,7 +550,7 @@ $("refreshMarketBtn").onclick = async () => {
 async function loadLeague(lg, forceRefresh = false) {
   S.lg = lg;
   saveState({ leagueId: lg.league_id });
-  $("status").textContent = `Loading ${lg.name} rosters, traded picks, trending adds & blended values...`;
+  $("status").textContent = `Loading ${lg.name} rosters, traded picks, trending adds & 6-source values...`;
 
   const [mktWrap, rosters, users, traded, drafts, trending] = await Promise.all([
     loadMarketWithFallback(lg, msg => $("status").textContent = msg, forceRefresh),
@@ -532,7 +566,7 @@ async function loadLeague(lg, forceRefresh = false) {
   S.rosters = rosters; S.users = users; S.traded = traded; S.drafts = drafts;
   S.trendingAdds = new Map((trending || []).map(x => [String(x.player_id), x.count]));
 
-  $("marketBadge").textContent = `Market synced ${new Date(mktWrap.snapTs).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`;
+  $("marketBadge").textContent = `6-Source Market synced ${new Date(mktWrap.snapTs).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`;
   $("cacheInfo").textContent = `· Player DB ${new Date(market.cacheTs).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`;
   $("refreshMarketBtn").hidden = false;
   $("refreshCache").hidden = false;
@@ -570,8 +604,12 @@ async function loadLeague(lg, forceRefresh = false) {
         age: m?.age || sp?.age || null,
         team: m?.team || sp?.team || "",
         fc: m?.fc || 0,
+        sgf: m?.sgf || null,
+        sc: m?.sc || null,
+        dd: m?.dd || null,
         dp: m?.dp || null,
         ecr: m?.ecr || null,
+        ecrSd: m?.ecrSd || null,
         v: m?.v || 0,
         trend: m?.trend || 0,
         pick: false,
@@ -597,7 +635,7 @@ async function loadLeague(lg, forceRefresh = false) {
               pos: "PICK",
               age: null,
               team: "",
-              fc: pv, dp: null, ecr: null, v: pv, trend: 0,
+              fc: pv, sgf: null, sc: null, dd: null, dp: null, ecr: null, v: pv, trend: 0,
               pick: true, year: yr, round: rd, tier
             });
           }
@@ -632,7 +670,7 @@ async function loadLeague(lg, forceRefresh = false) {
     };
   });
 
-  // Assign League-Wide Starter Rank & Contender/Rebuilder Archetype (#2)
+  // League-Wide Starter Rank & Contender/Rebuilder Archetype
   const sortedByStarters = [...S.teams].sort((a, b) => b.starterV - a.starterV);
   const nTeams = S.teams.length;
   S.teams.forEach(t => {
@@ -707,7 +745,7 @@ function renderAll() {
   renderAI();
 }
 
-// --- TAB 1: TRADE CALCULATOR & TARGETS (#1) ---
+// --- TAB 1: TRADE CALCULATOR & TARGETS ---
 function renderTradeTab() {
   const me = S.teams.find(t => t.rid === S.viewRid);
   $("rosterBadgeA").textContent = `(${me.name})`;
@@ -792,7 +830,6 @@ function renderTradeSides() {
   const yr3A = S.sideA.reduce((s, a) => s + (a.pick ? a.v : projV(a, 3)), 0);
   const yr3B = S.sideB.reduce((s, a) => s + (a.pick ? a.v : projV(a, 3)), 0);
 
-  // Calculate exact optimal starting lineup delta for Your Team
   const giveIds = new Set(S.sideA.map(x => x.id));
   const postPlayers = [...me.playersOnly.filter(p => !giveIds.has(p.id)), ...S.sideB.filter(x => !x.pick)];
   const postStarterV = calcOptimalStarters(postPlayers, S.lg.roster_positions).total;
@@ -817,7 +854,7 @@ function renderTradeSides() {
 
   if (!tot) {
     $("verdictText").textContent = "Select players or picks on both sides to evaluate";
-    $("verdictSub").textContent = "Includes stud consolidation adjustment and optimal starting lineup impact.";
+    $("verdictSub").textContent = "Includes stud consolidation adjustment and position-locked optimal starter delta.";
   } else {
     const diff = rawB - rawA;
     const pct = Math.round((Math.abs(diff) / Math.max(rawA, rawB)) * 100);
@@ -859,7 +896,6 @@ function renderSmartTargets() {
       const target = group[1];
       cards.push({ partner: t, target, tag: `Need: ${myNeed} Surplus` });
     }
-    // Also surface Buy-Low 30d value dips on rival rosters (#4)
     t.playersOnly.filter(x => x.v >= 2800 && x.trend <= -350 && (!x.age || x.age <= 27)).slice(0, 1).forEach(dip => {
       if (!cards.some(c => c.target.id === dip.id)) {
         cards.push({ partner: t, target: dip, tag: `📉 Buy-Low (${dip.trend} 30d)` });
@@ -954,7 +990,7 @@ $("scanTrades").onclick = () => {
   };
 };
 
-// --- TAB 3: ROSTER, TAXI & STASHES (#3 & #4) ---
+// --- TAB 3: ROSTER, TAXI & STASHES ---
 function renderRosterHub() {
   const me = S.teams.find(t => t.rid === S.viewRid);
   const pf = $("posFilter").value;
@@ -984,9 +1020,12 @@ function renderRosterHub() {
   $("rosterBody").innerHTML = list.map(a => {
     const [flag, lbl] = ageFlag(a);
     const curve = getPositionalCurve(a);
-    const badgeCls = flag === "sell" ? "bg-rose-500/15 text-rose-300" : flag === "buy" ? "bg-emerald-500/15 text-emerald-300" : "bg-slate-800 text-slate-400";
+    const badgeCls = flag === "sell" ? "bg-rose-500/15 text-rose-300" : flag === "buy" ? "bg-emerald-500/15 text-emerald-300" : flag === "vol" ? "bg-purple-500/15 text-purple-300" : "bg-slate-800 text-slate-400";
     const p3 = a.pick ? a.v : projV(a, 3);
     const subTag = a.onTaxi ? `<span class="ml-1 text-[10px] bg-amber-500/20 text-amber-300 px-1.5 py-0.5 rounded">TAXI</span>` : a.onIR ? `<span class="ml-1 text-[10px] bg-rose-500/20 text-rose-300 px-1.5 py-0.5 rounded">IR</span>` : "";
+    const srcBreakdown = a.pick
+      ? "Pick Curve"
+      : `${a.fc || "—"} / ${a.sgf || "—"} / ${a.sc || "—"} / ${a.dd || "—"} / ${a.dp || "—"} / ${a.ecr || "—"}`;
     return `
       <tr class="hover:bg-slate-800/40">
         <td class="py-2.5 px-3 font-semibold text-white">${esc(a.name)}${subTag}</td>
@@ -998,7 +1037,7 @@ function renderRosterHub() {
           </div>
         </td>
         <td class="py-2.5 px-2 font-mono font-bold text-white">${a.v.toLocaleString()}</td>
-        <td class="py-2.5 px-2 text-xs text-slate-500 hidden sm:table-cell">${a.pick ? "Pick Curve" : `${a.fc || "—"} / ${a.dp || "—"} / ${a.ecr || "—"}`}</td>
+        <td class="py-2.5 px-2 text-xs text-slate-500 hidden xl:table-cell font-mono">${srcBreakdown}</td>
         <td class="py-2.5 px-2 font-mono text-xs ${a.trend > 0 ? "text-emerald-400" : a.trend < 0 ? "text-rose-400" : "text-slate-500"}">${a.trend > 0 ? "+" : ""}${a.trend}</td>
         <td class="py-2.5 px-2 font-mono text-xs text-sky-300">${p3.toLocaleString()}</td>
         <td class="py-2.5 px-3"><span class="text-xs px-2 py-0.5 rounded font-medium ${badgeCls}">${lbl}</span></td>
@@ -1036,7 +1075,7 @@ function renderRosterHub() {
       <span class="font-mono font-bold text-emerald-400">${x.p.v.toLocaleString()}</span>
     </div>`).join("") || `<div class="text-xs text-slate-500">No high-value players found on rival taxi squads.</div>`;
 
-  // Market Inefficiency & Sleeper Trending Waiver Radar (#4)
+  // Market Inefficiency & Sleeper Trending Waiver Radar
   const rostered = new Set(S.rosters.flatMap(r => [...(r.players || []), ...(r.taxi || []), ...(r.reserve || [])]));
   const stPos = $("stashPos").value;
   const stMode = $("stashMode").value;
@@ -1047,7 +1086,7 @@ function renderRosterHub() {
     if (stPos !== "ALL" && sp.position !== stPos) continue;
     const m = S.market.bySid.get(sid);
     const val = m?.v || 0;
-    const trendCount = S.trendingAdds.get(String(sid)) || 0;
+    const trendCount = S.trendingAdds.get(String(sid)) || (m?.adds48h || 0);
     if (stMode === "TRENDING" && trendCount === 0) continue;
     if (stMode === "VALUE" && val < 300) continue;
 
@@ -1176,7 +1215,7 @@ async function renderDraftRoom() {
   $("draftBoard").innerHTML = leftHtml + rightHtml;
 }
 
-// --- TAB 6: TEAM AUDIT & CONTENDER/REBUILDER MATRIX (#2) ---
+// --- TAB 6: TEAM AUDIT & CONTENDER/REBUILDER MATRIX ---
 function renderAudit() {
   const me = S.teams.find(t => t.rid === S.viewRid);
   const rankedTotal = [...S.teams].sort((a, b) => b.totalV - a.totalV);
@@ -1184,7 +1223,7 @@ function renderAudit() {
 
   $("auditSummary").innerHTML = [
     ["Dynasty Rank", `#${totRank} / ${S.teams.length}`, `${me.totalV.toLocaleString()} total val`],
-    ["Starter Rank", `#${me.stRank} / ${S.teams.length}`, `${me.starterV.toLocaleString()} top-9 val`],
+    ["Starter Rank", `#${me.stRank} / ${S.teams.length}`, `${me.starterV.toLocaleString()} optimal starters`],
     ["Weighted Age", `${me.wAge} yrs`, `${me.pickV.toLocaleString()} pick capital`],
     ["Team Archetype", me.archetype.label, me.archetype.posture]
   ].map(c => `
@@ -1194,7 +1233,6 @@ function renderAudit() {
       <div class="text-xs text-emerald-400 mt-0.5">${c[2]}</div>
     </div>`).join("");
 
-  // League-wide Contender vs Rebuilder Matrix
   const matrixTeams = [...S.teams].sort((a, b) => a.stRank - b.stRank);
   $("matrixBody").innerHTML = matrixTeams.map(t => `
     <tr class="${t.rid === me.rid ? "bg-emerald-500/10" : "hover:bg-slate-800/40"}">
@@ -1231,7 +1269,7 @@ function renderAudit() {
   }).join("");
 }
 
-// --- TAB 7: AI ADVISOR & WEIGHTS ---
+// --- TAB 7: AI ADVISOR & 6-SOURCE WEIGHTS ---
 function renderAI() {
   $("genPrompt").onclick = () => {
     const me = S.teams.find(t => t.rid === S.viewRid);
@@ -1239,7 +1277,7 @@ function renderAI() {
       `Act as an expert Dynasty Fantasy Football GM. Analyze my roster and give 3 concrete trade & roster moves.`,
       `League: ${S.lg.name} (${S.fmt.teams} teams, ${S.fmt.numQbs === 2 ? "Superflex" : "1QB"}, ${S.fmt.ppr} PPR, TEP: ${S.fmt.tep})`,
       `My Team: ${me.name} (${me.wins}-${me.losses}) — Archetype: ${me.archetype.label}`,
-      `\nPlayers (Blended Value | Age | 30d Trend):`,
+      `\nPlayers (6-Source Blended Value | Age | 30d Trend):`,
       ...me.playersOnly.map(p => `- ${p.name} (${p.pos}, ${p.team}): ${p.v} | Age ${p.age ? Math.floor(p.age) : "?"} | Trend ${p.trend >= 0 ? "+" : ""}${p.trend}`),
       `\nDraft Picks:`,
       ...me.assets.filter(a => a.pick).map(p => `- ${p.name}: ${p.v}`)
@@ -1251,10 +1289,25 @@ function renderAI() {
     $("copyPrompt").textContent = "Copied!";
     setTimeout(() => $("copyPrompt").textContent = "Copy to Clipboard", 1500);
   };
-  $("applyWeights").onclick = () => {
-    setWeights([$("wFc").value, $("wDp").value, $("wEcr").value]);
+
+  const applyAndReload = (label = "Saved!") => {
+    const arr = WEIGHT_IDS.map(id => Number($(id).value));
+    setWeights(arr);
+    $("presetStatus").textContent = label;
+    setTimeout(() => { if ($("presetStatus")) $("presetStatus").textContent = ""; }, 2200);
     if (S.lg) loadLeague(S.lg, true);
   };
+
+  document.querySelectorAll(".preset-btn").forEach(btn => {
+    btn.onclick = () => {
+      const vals = btn.dataset.preset.split(",");
+      WEIGHT_IDS.forEach((id, idx) => { $(id).value = vals[idx] ?? 0; });
+      syncWeightLabels();
+      applyAndReload(`Applied ${btn.querySelector("div").textContent.trim()}!`);
+    };
+  });
+
+  $("applyWeights").onclick = () => applyAndReload("Recalculated!");
 }
 
 if ($("user").value) $("go").click();
