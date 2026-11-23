@@ -61,7 +61,7 @@
     <button data-t="tab-lineup" class="tab-btn px-3.5 py-2 text-xs sm:text-sm font-medium border-b-2 border-transparent text-slate-300 hover:text-white rounded-t-md transition cursor-pointer">⚡ Start/Sit &amp; Matchups</button>
     <button data-t="tab-draft" class="tab-btn px-3.5 py-2 text-xs sm:text-sm font-medium border-b-2 border-transparent text-slate-300 hover:text-white rounded-t-md transition cursor-pointer">🎓 Draft Room &amp; 2027 Board</button>
     <button data-t="tab-audit" class="tab-btn px-3.5 py-2 text-xs sm:text-sm font-medium border-b-2 border-transparent text-slate-300 hover:text-white rounded-t-md transition cursor-pointer">📊 Team Audit &amp; Matrix</button>
-    <button data-t="tab-news" class="tab-btn px-3.5 py-2 text-xs sm:text-sm font-medium border-b-2 border-transparent text-slate-300 hover:text-white rounded-t-md transition cursor-pointer">📰 NFL News &amp; X Feed</button>   
+    <button data-t="tab-news" class="tab-btn px-3.5 py-2 text-xs sm:text-sm font-medium border-b-2 border-transparent text-slate-300 hover:text-white rounded-t-md transition cursor-pointer">📰 NFL News &amp; X Feed</button>
     <button data-t="tab-ai" class="tab-btn px-3.5 py-2 text-xs sm:text-sm font-medium border-b-2 border-transparent text-slate-300 hover:text-white rounded-t-md transition cursor-pointer">🤖 AI Advisor &amp; 6-Source Weights</button>
   </div>
 </nav>
@@ -298,7 +298,6 @@
   </section>
 
   <!-- TAB 5: DRAFT ROOM & 2027 ROOKIE BOARD -->
- <!-- TAB 5: DRAFT ROOM & 2027 ROOKIE BOARD -->
   <section id="tab-draft" hidden class="pane space-y-6">
     <div class="bg-slate-900 border border-slate-800 rounded-xl p-5">
       <div class="flex flex-wrap items-center justify-between gap-3 mb-4">
@@ -331,8 +330,6 @@
     </div>
   </section>
 
-
-  
   <!-- TAB 6: TEAM AUDIT & CONTENDER/REBUILDER MATRIX -->
   <section id="tab-audit" hidden class="pane space-y-6">
     <div id="auditSummary" class="grid grid-cols-2 sm:grid-cols-4 gap-4"></div>
@@ -375,7 +372,6 @@
       </div>
     </div>
   </section>
-
 
   <!-- TAB 8: LIVE NFL NEWS & X FEED -->
   <section id="tab-news" hidden class="pane space-y-6">
@@ -1216,7 +1212,6 @@ function estimateWeeklyProj(p, sp, fmt) {
 
 async function fetchNflMatchupContext(season, week) {
   const ctx = { games: {}, defRank: {}, offRank: {}, loaded: false };
-  // Try explicit season+week first, then default week endpoint
   const sbUrls = [
     `https://site.api.espn.com/apis/site/v2/sports/football/nfl/scoreboard?dates=${season}&seasontype=2&week=${week}`,
     `https://site.api.espn.com/apis/site/v2/sports/football/nfl/scoreboard?seasontype=2&week=${week}`
@@ -1279,7 +1274,6 @@ function buildPlayerStartSitAnalysis(p, apiProjPts, ctx, sp) {
   const statusStr = String(p.playerStatus || sp?.status || "").toUpperCase().trim();
   const tm = normTm(p.team);
 
-  // 1. Hard-block IR / Out / Suspended / PUP / Inactive
   if (p.onIR || INACTIVE_STATUSES.has(inj) || statusStr === "INACTIVE") {
     const tag = inj || (p.onIR ? "IR" : "INACTIVE");
     return {
@@ -1305,7 +1299,6 @@ function buildPlayerStartSitAnalysis(p, apiProjPts, ctx, sp) {
     };
   }
 
-  // 2. Hard-block Bye Weeks when live schedule is loaded
   const gm = ctx.games[tm];
   if (ctx.loaded && !gm) {
     return {
@@ -1580,7 +1573,6 @@ const DRAFT_STATUS_META = {
 const ROOKIE_LIVE_KEY = "dd_rookie2027_live_v1";
 let collegeCache = { ts: 0, teams: {}, playerStats: {}, liveProfiles: {} };
 
-// Query ESPN's live NCAAF athlete search + news wire so school transfers & draft declarations update automatically
 async function resolveLiveProspectBio(name, fallbackSchool, fallbackCls, fallbackStatus, cfbNews) {
   const key = name.toLowerCase();
   let school = fallbackSchool;
@@ -1588,7 +1580,6 @@ async function resolveLiveProspectBio(name, fallbackSchool, fallbackCls, fallbac
   let status = fallbackStatus;
   let liveHeadline = "";
 
-  // 1. Check live ESPN NCAAF news headlines for draft declarations or return-to-school news
   const hit = (cfbNews || []).find(a => {
     const txt = `${a.headline || ""} ${a.description || ""}`.toLowerCase();
     return txt.includes(key);
@@ -1603,7 +1594,6 @@ async function resolveLiveProspectBio(name, fallbackSchool, fallbackCls, fallbac
     }
   }
 
-  // 2. Query ESPN NCAAF athlete search to verify current school (catches transfer portal moves) & eligibility year
   try {
     const res = await j(`https://site.web.api.espn.com/apis/common/v3/search?region=us&lang=en&query=${encodeURIComponent(name)}&limit=4&type=player`);
     const cfbHit = (res?.items || []).find(it => it.league === "college-football" && it.displayName?.toLowerCase() === key);
@@ -1611,7 +1601,6 @@ async function resolveLiveProspectBio(name, fallbackSchool, fallbackCls, fallbac
       if (cfbHit.teamRelationships?.[0]?.core?.location) {
         school = cfbHit.teamRelationships[0].core.location;
       } else if (cfbHit.subtitle) {
-        // Subtitle typically formatted like "Ohio State Buckeyes · WR"
         const parsedSchool = cfbHit.subtitle.split("·")[0].trim();
         if (parsedSchool && parsedSchool.length > 2) school = parsedSchool;
       }
@@ -1677,7 +1666,6 @@ async function fetchWeeklyCollegeUpdates(force = false) {
       });
     });
 
-    // Resolve live school, class year & draft declaration status in parallel batches
     const liveProfiles = {};
     const articles = cfbNewsRes?.articles || [];
     await Promise.all(ROOKIES_2027_BASE.map(async r => {
@@ -1791,7 +1779,6 @@ async function renderDraftRoom(force = false) {
   $("draftBoard").innerHTML = leftHtml + rightHtml;
 }
 
-  
 // --- TAB 6: TEAM AUDIT & CONTENDER/REBUILDER MATRIX ---
 function renderAudit() {
   const me = S.teams.find(t => t.rid === S.viewRid);
@@ -1846,49 +1833,6 @@ function renderAudit() {
   }).join("");
 }
 
-// --- TAB 7: AI ADVISOR & 6-SOURCE WEIGHTS ---
-function renderAI() {
-  $("genPrompt").onclick = () => {
-    const me = S.teams.find(t => t.rid === S.viewRid);
-    const lines = [
-      `Act as an expert Dynasty Fantasy Football GM. Analyze my roster and give 3 concrete trade & roster moves.`,
-      `League: ${S.lg.name} (${S.fmt.teams} teams, ${S.fmt.numQbs === 2 ? "Superflex" : "1QB"}, ${S.fmt.ppr} PPR, TEP: ${S.fmt.tep})`,
-      `My Team: ${me.name} (${me.wins}-${me.losses}) — Archetype: ${me.archetype.label}`,
-      `\nPlayers (6-Source Blended Value | Age | 30d Trend):`,
-      ...me.playersOnly.map(p => `- ${p.name} (${p.pos}, ${p.team}): ${p.v} | Age ${p.age ? Math.floor(p.age) : "?"} | Trend ${p.trend >= 0 ? "+" : ""}${p.trend}`),
-      `\nDraft Picks:`,
-      ...me.assets.filter(a => a.pick).map(p => `- ${p.name}: ${p.v}`)
-    ];
-    $("aiBox").value = lines.join("\n");
-  };
-  $("copyPrompt").onclick = () => {
-    navigator.clipboard?.writeText($("aiBox").value);
-    $("copyPrompt").textContent = "Copied!";
-    setTimeout(() => $("copyPrompt").textContent = "Copy to Clipboard", 1500);
-  };
-
-  const applyAndReload = (label = "Saved!") => {
-    const arr = WEIGHT_IDS.map(id => Number($(id).value));
-    setWeights(arr);
-    $("presetStatus").textContent = label;
-    setTimeout(() => { if ($("presetStatus")) $("presetStatus").textContent = ""; }, 2200);
-    if (S.lg) loadLeague(S.lg, true);
-  };
-
-  document.querySelectorAll(".preset-btn").forEach(btn => {
-    btn.onclick = () => {
-      const vals = btn.dataset.preset.split(",");
-      WEIGHT_IDS.forEach((id, idx) => { $(id).value = vals[idx] ?? 0; });
-      syncWeightLabels();
-      applyAndReload(`Applied ${btn.querySelector("div").textContent.trim()}!`);
-    };
-  });
-
-  $("applyWeights").onclick = () => applyAndReload("Recalculated!");
-}
-
-if ($("user").value) $("go").click();
-
 // --- TAB 8: LIVE NFL NEWS & X (TWITTER) INSIDER FEED ---
 let cachedArticles = [];
 let activeXHandle = "NFL";
@@ -1913,7 +1857,6 @@ async function loadXTimeline(handle) {
     </div>
     <div id="xPostsBody" class="space-y-2.5 p-2 text-xs text-slate-400">Loading latest @${esc(handle)} updates...</div>`;
 
-  // Fetch live insider posts via public RSS bridge so feed populates even when X blocks iframe embeds
   const rssMirrors = [
     `https://api.rss2json.com/v1/api.json?rss_url=${encodeURIComponent(`https://nitter.poast.org/${handle}/rss`)}`,
     `https://api.rss2json.com/v1/api.json?rss_url=${encodeURIComponent(`https://xcancel.com/${handle}/rss`)}`
@@ -1948,7 +1891,6 @@ async function loadXTimeline(handle) {
         </a>`;
     }).join("");
   } else {
-    // Fallback to official X timeline widget + direct insider links
     body.innerHTML = `
       <a class="twitter-timeline" data-theme="dark" data-height="490" data-chrome="noheader nofooter transparent" href="https://twitter.com/${encodeURIComponent(handle)}?ref_src=twsrc%5Etfw">
         View @${esc(handle)} on X ↗
@@ -2020,7 +1962,49 @@ async function renderNewsAndX(force = false) {
     $("newsFeedList").innerHTML = `<div class="text-xs text-rose-400 p-3">Could not load live NFL news: ${e.message}</div>`;
   }
 }
-  
+
+// --- TAB 7: AI ADVISOR & 6-SOURCE WEIGHTS ---
+function renderAI() {
+  $("genPrompt").onclick = () => {
+    const me = S.teams.find(t => t.rid === S.viewRid);
+    const lines = [
+      `Act as an expert Dynasty Fantasy Football GM. Analyze my roster and give 3 concrete trade & roster moves.`,
+      `League: ${S.lg.name} (${S.fmt.teams} teams, ${S.fmt.numQbs === 2 ? "Superflex" : "1QB"}, ${S.fmt.ppr} PPR, TEP: ${S.fmt.tep})`,
+      `My Team: ${me.name} (${me.wins}-${me.losses}) — Archetype: ${me.archetype.label}`,
+      `\nPlayers (6-Source Blended Value | Age | 30d Trend):`,
+      ...me.playersOnly.map(p => `- ${p.name} (${p.pos}, ${p.team}): ${p.v} | Age ${p.age ? Math.floor(p.age) : "?"} | Trend ${p.trend >= 0 ? "+" : ""}${p.trend}`),
+      `\nDraft Picks:`,
+      ...me.assets.filter(a => a.pick).map(p => `- ${p.name}: ${p.v}`)
+    ];
+    $("aiBox").value = lines.join("\n");
+  };
+  $("copyPrompt").onclick = () => {
+    navigator.clipboard?.writeText($("aiBox").value);
+    $("copyPrompt").textContent = "Copied!";
+    setTimeout(() => $("copyPrompt").textContent = "Copy to Clipboard", 1500);
+  };
+
+  const applyAndReload = (label = "Saved!") => {
+    const arr = WEIGHT_IDS.map(id => Number($(id).value));
+    setWeights(arr);
+    $("presetStatus").textContent = label;
+    setTimeout(() => { if ($("presetStatus")) $("presetStatus").textContent = ""; }, 2200);
+    if (S.lg) loadLeague(S.lg, true);
+  };
+
+  document.querySelectorAll(".preset-btn").forEach(btn => {
+    btn.onclick = () => {
+      const vals = btn.dataset.preset.split(",");
+      WEIGHT_IDS.forEach((id, idx) => { $(id).value = vals[idx] ?? 0; });
+      syncWeightLabels();
+      applyAndReload(`Applied ${btn.querySelector("div").textContent.trim()}!`);
+    };
+  });
+
+  $("applyWeights").onclick = () => applyAndReload("Recalculated!");
+}
+
+if ($("user").value) $("go").click();
 </script>
 </body>
 </html>
