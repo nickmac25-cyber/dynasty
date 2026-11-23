@@ -1112,11 +1112,19 @@ function renderRosterHub() {
 // --- TAB 4: START/SIT & MATCHUPS (LIVE OPPONENT & REASONING ENGINE) ---
 $("refreshLineup").onclick = renderLineup;
 
-const TEAM_NORM = { JAX: "JAC", WSH: "WAS" };
-const normTm = t => TEAM_NORM[t] || t || "";
+const TEAM_NORM = {
+  JAX: "JAC", WSH: "WAS", LA: "LAR",
+  NWE: "NE", NOR: "NO", SFO: "SF", TAM: "TB", KAN: "KC", GNB: "GB", LVR: "LV"
+};
+const normTm = t => {
+  const u = String(t || "").toUpperCase().trim();
+  return TEAM_NORM[u] || u;
+};
+
+const INACTIVE_STATUSES = new Set(["IR", "OUT", "PUP", "SUS", "COV", "NFI", "DNR"]);
 
 async function fetchNflMatchupContext(week) {
-  const ctx = { games: {}, defRank: {}, offRank: {} };
+  const ctx = { games: {}, defRank: {}, offRank: {}, loaded: false };
   try {
     const [sb, st] = await Promise.all([
       j(`https://site.api.espn.com/apis/site/v2/sports/football/nfl/scoreboard?seasontype=2&week=${week}`),
@@ -1129,10 +1137,11 @@ async function fetchNflMatchupContext(week) {
         const abbr = normTm(ent?.team?.abbreviation);
         const stats = Object.fromEntries((ent?.stats || []).map(s => [s.name, Number(s.value)]));
         if (abbr) {
+          const gp = Math.max(1, (stats.wins || 0) + (stats.losses || 0) + (stats.ties || 0));
           teamStats.push({
             abbr,
-            ppgFor: stats.avgPointsFor || (stats.pointsFor / Math.max(1, (stats.wins || 0) + (stats.losses || 0))) || 21.5,
-            ppgAgainst: stats.avgPointsAgainst || (stats.pointsAgainst / Math.max(1, (stats.wins || 0) + (stats.losses || 0))) || 21.5
+            ppgFor: stats.avgPointsFor || (stats.pointsFor / gp) || 21.5,
+            ppgAgainst: stats.avgPointsAgainst || (stats.pointsAgainst / gp) || 21.5
           });
         }
       });
@@ -1158,21 +1167,78 @@ async function fetchNflMatchupContext(week) {
       ctx.games[hAbbr] = { opp: aAbbr, home: true, ou, teamSpread: spread, implied: Number(((ou - spread) / 2).toFixed(1)) };
       ctx.games[aAbbr] = { opp: hAbbr, home: false, ou, teamSpread: -spread, implied: Number(((ou + spread) / 2).toFixed(1)) };
     });
+    ctx.loaded = Object.keys(ctx.games).length > 0;
   } catch (e) {
     console.warn("ESPN matchup fallback active:", e);
   }
   return ctx;
 }
 
-function buildPlayerStartSitAnalysis(p, basePts, ctx, sp) {
+function buildPlayerStartSitAnalysis(p, rawProjPts, ctx, sp) {
+  const inj = String(p.injury || sp?.injury_status || "").toUpperCase().trim();
   const tm = normTm(p.team);
+
+  // 1. Hard-block IR / Out / Suspended / PUP / Free Agents
+  if (p.onIR || INACTIVE_STATUSES.has(inj)) {
+    return {
+      eligible: false,
+      basePts: 0,
+      adjPts: 0,
+      badge: `🚫 ${inj || "IR"}`,
+      badgeCls: "bg-rose-500/20 text-rose-300 border border-rose-500/40",
+      reason: `Do Not Start: ${p.name} is ruled ${inj || "IR"}.`,
+      mult: 0
+    };
+  }
+
+  if (!tm || tm === "FA") {
+    return {
+      eligible: false,
+      basePts: 0,
+      adjPts: 0,
+      badge: "🚫 Free Agent",
+      badgeCls: "bg-slate-800 text-slate-400",
+      reason: `Do Not Start: ${p.name} is currently an NFL free agent.`,
+      mult: 0
+    };
+  }
+
+  // 2. Hard-block Bye Weeks when live schedule is loaded
   const gm = ctx.games[tm];
+  if (ctx.loaded && !gm) {
+    return {
+      eligible: false,
+      basePts: 0,
+      adjPts: 0,
+      badge: "🛑 BYE WEEK",
+      badgeCls: "bg-amber-500/20 text-amber-300 border border-amber-500/40",
+      reason: `Do Not Start: ${tm} is on BYE this week.`,
+      mult: 0
+    };
+  }
+
+  // 3. Only use real weekly projection (never dynasty trade value)
+  const basePts = Number((rawProjPts || 0).toFixed(1));
+  if (basePts <= 0.5) {
+    return {
+      eligible: false,
+      basePts: 0,
+      adjPts: 0,
+      badge: "⚠️ 0 Proj / Inactive",
+      badgeCls: "bg-slate-800 text-slate-400",
+      reason: `Bench: ${p.name} has 0.0 projected points this week.`,
+      mult: 0
+    };
+  }
+
   if (!gm) {
     return {
+      eligible: true,
+      basePts,
       adjPts: basePts,
-      badge: "BYE / TBD",
-      badgeCls: "bg-slate-800 text-slate-400",
-      reason: basePts > 0 ? `Projected ${basePts} pts on volume alone (no active NFL game listed for ${tm || "FA"}).` : `${p.name} is on BYE or inactive this week.`,
+      badge: `${tm} · Active`,
+      badgeCls: "bg-slate-800 text-slate-300",
+      reason: `Start ${p.name}: Projected for ${basePts} pts this week.`,
       mult: 1.0
     };
   }
@@ -1182,6 +1248,14 @@ function buildPlayerStartSitAnalysis(p, basePts, ctx, sp) {
   const off = ctx.offRank[tm] || { rank: 16, ppgFor: 21.8 };
   const reasons = [];
   let mult = 1.0;
+
+  if (inj === "DOUBTFUL") {
+    mult -= 0.35;
+    reasons.push(`listed Doubtful—high risk of sitting`);
+  } else if (inj === "QUESTIONABLE") {
+    mult -= 0.04;
+    reasons.push(`Questionable tag (monitor pregame inactives)`);
+  }
 
   if (def.rank >= 25) {
     mult += 0.09;
@@ -1226,20 +1300,21 @@ function buildPlayerStartSitAnalysis(p, basePts, ctx, sp) {
   const loc = gm.home ? `vs ${opp}` : `@ ${opp}`;
   let badge = `${loc} · Neutral`;
   let badgeCls = "bg-slate-800 text-slate-300";
-  if (mult >= 1.07) { badge = `🔥 ${loc} · Smash`; badgeCls = "bg-emerald-500/20 text-emerald-300 border border-emerald-500/40"; }
+  if (inj === "DOUBTFUL") { badge = `🚨 ${loc} · Doubtful`; badgeCls = "bg-rose-500/20 text-rose-300 border border-rose-500/40"; }
+  else if (mult >= 1.07) { badge = `🔥 ${loc} · Smash`; badgeCls = "bg-emerald-500/20 text-emerald-300 border border-emerald-500/40"; }
   else if (mult >= 1.03) { badge = `✅ ${loc} · Plus`; badgeCls = "bg-teal-500/15 text-teal-300"; }
   else if (mult <= 0.94) { badge = `⚠️ ${loc} · Tough`; badgeCls = "bg-rose-500/20 text-rose-300 border border-rose-500/40"; }
 
   const verb = mult >= 1.03 ? "Start" : mult <= 0.94 ? "Caution" : "Start";
   const reasonText = `${verb} ${p.name}: ${reasons.join("; ")}.`;
 
-  return { adjPts, badge, badgeCls, reason: reasonText, mult };
+  return { eligible: true, basePts, adjPts, badge, badgeCls, reason: reasonText, mult };
 }
 
 async function renderLineup() {
   const me = S.teams.find(t => t.rid === S.viewRid);
   const wk = $("wk").value;
-  $("lineupSlots").innerHTML = `<div class="text-xs text-slate-400">Analyzing Week ${wk} projections, Vegas totals &amp; opponent defenses...</div>`;
+  $("lineupSlots").innerHTML = `<div class="text-xs text-slate-400">Analyzing Week ${wk} projections, injury reports, bye weeks &amp; opponent defenses...</div>`;
   try {
     const [proj, ctx] = await Promise.all([
       j(`https://api.sleeper.com/projections/nfl/${S.lg.season}/${wk}?season_type=regular`),
@@ -1247,37 +1322,50 @@ async function renderLineup() {
     ]);
 
     const slots = (S.lg.roster_positions || []).filter(p => p !== "BN" && p !== "IR" && p !== "TAXI");
-    const elig = { QB: ["QB"], RB: ["RB"], WR: ["WR"], TE: ["TE"], FLEX: ["RB", "WR", "TE"], SUPER_FLEX: ["QB", "RB", "WR", "TE"], REC_FLEX: ["WR", "TE"] };
+    const elig = {
+      QB: ["QB"], RB: ["RB"], WR: ["WR"], TE: ["TE"],
+      FLEX: ["RB", "WR", "TE"], SUPER_FLEX: ["QB", "RB", "WR", "TE"],
+      REC_FLEX: ["WR", "TE"], WRRB_FLEX: ["RB", "WR"]
+    };
 
-    const pool = me.playersOnly.filter(p => !p.onTaxi && !p.onIR).map(p => {
+    const analyzed = me.playersOnly.filter(p => !p.onTaxi && !p.onIR).map(p => {
       const pr = proj[p.id]?.stats || {};
-      const basePts = Number((pr.pts_ppr || pr.pts_half_ppr || pr.pts_std || (p.v / 550)).toFixed(1));
+      const rawProjPts = Number(pr.pts_ppr ?? pr.pts_half_ppr ?? pr.pts_std ?? 0);
       const sp = S.market.pmap[p.id];
-      const analysis = buildPlayerStartSitAnalysis(p, basePts, ctx, sp);
-      return { ...p, basePts, ...analysis };
-    }).sort((a, b) => b.adjPts - a.adjPts);
+      const analysis = buildPlayerStartSitAnalysis(p, rawProjPts, ctx, sp);
+      return { ...p, ...analysis };
+    });
+
+    // Strictly exclude IR, Out, Doubtful/0-proj, and Bye-week players from starter pool
+    const activePool = analyzed.filter(p => p.eligible && p.adjPts > 0).sort((a, b) => b.adjPts - a.adjPts);
+    const inactivePool = analyzed.filter(p => !p.eligible || p.adjPts <= 0);
 
     const used = new Set();
     const chosen = slots.map(sl => {
       const allowed = elig[sl] || [sl];
-      const pick = pool.find(p => !used.has(p.id) && allowed.includes(p.pos));
+      const pick = activePool.find(p => !used.has(p.id) && allowed.includes(p.pos));
       if (pick) used.add(pick.id);
       return { slot: sl, player: pick };
     });
 
-    const bench = pool.filter(p => !used.has(p.id) && p.basePts > 0);
+    const bench = activePool.filter(p => !used.has(p.id));
     const curStarters = new Set(me.raw.starters || []);
+    const inactiveInLineup = me.playersOnly.filter(p => curStarters.has(p.id) && (!analyzed.find(x => x.id === p.id)?.eligible));
     const missedPts = chosen.filter(c => c.player && !curStarters.has(c.player.id)).length;
 
-    $("lineupAlert").innerHTML = missedPts
-      ? `<div class="bg-amber-500/15 border border-amber-500/40 text-amber-200 text-xs rounded-lg p-2.5">⚠️ <b>${missedPts} lineup upgrade(s)</b> recommended after factoring in projections + defensive matchups.</div>`
-      : `<div class="bg-emerald-500/15 border border-emerald-500/40 text-emerald-200 text-xs rounded-lg p-2.5">✅ Your current Sleeper starters match our matchup-adjusted optimal lineup.</div>`;
+    if (inactiveInLineup.length) {
+      $("lineupAlert").innerHTML = `<div class="bg-rose-500/15 border border-rose-500/40 text-rose-200 text-xs rounded-lg p-2.5">🚨 <b>Action Required:</b> You currently have <b>${inactiveInLineup.map(x => esc(x.name)).join(", ")}</b> in your Sleeper starting lineup, who is on BYE, Out, or IR!</div>`;
+    } else if (missedPts) {
+      $("lineupAlert").innerHTML = `<div class="bg-amber-500/15 border border-amber-500/40 text-amber-200 text-xs rounded-lg p-2.5">⚠️ <b>${missedPts} lineup upgrade(s)</b> recommended after factoring in projections + defensive matchups.</div>`;
+    } else {
+      $("lineupAlert").innerHTML = `<div class="bg-emerald-500/15 border border-emerald-500/40 text-emerald-200 text-xs rounded-lg p-2.5">✅ Your current Sleeper starters are active and match our matchup-adjusted optimal lineup.</div>`;
+    }
 
     $("lineupSlots").innerHTML = chosen.map(c => {
       const p = c.player;
-      if (!p) return `<div class="bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-xs text-slate-600">${c.slot}: Empty</div>`;
+      if (!p) return `<div class="bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-xs text-rose-400">${c.slot}: No healthy/active eligible player available</div>`;
       const alt = bench.find(b => (elig[c.slot] || [c.slot]).includes(b.pos));
-      const edgeNote = alt ? ` <span class="text-slate-500">(Edges bench option ${esc(alt.name)} [${alt.adjPts} adj pts])</span>` : "";
+      const edgeNote = alt ? ` <span class="text-slate-500">(Edges active bench option ${esc(alt.name)} [${alt.adjPts} adj pts])</span>` : "";
       return `
         <div class="bg-slate-950 border border-slate-800 rounded-lg p-3 space-y-1.5">
           <div class="flex flex-wrap items-center justify-between gap-2 text-sm">
@@ -1298,7 +1386,7 @@ async function renderLineup() {
         </div>`;
     }).join("");
 
-    const rankedMatchups = [...pool].filter(p => p.basePts >= 4).sort((a, b) => b.mult - a.mult);
+    const rankedMatchups = [...activePool].filter(p => p.basePts >= 4).sort((a, b) => b.mult - a.mult);
     const highlights = [...rankedMatchups.slice(0, 3), ...rankedMatchups.slice(-2).reverse()];
     $("matchupPreview").innerHTML = highlights.map(p => `
       <div class="bg-slate-950 border border-slate-800 rounded-lg p-2.5 space-y-1">
@@ -1309,19 +1397,22 @@ async function renderLineup() {
         <div class="text-[11px] text-slate-400">${esc(p.reason)}</div>
       </div>`).join("") || `<div class="text-slate-500">No active matchup data for this week.</div>`;
 
-    const flagged = me.playersOnly.filter(p => p.injury || p.onIR);
+    // Combine IR slot players + active-roster Out/IR/Bye players into the right-hand watch box
+    const flagged = [
+      ...me.playersOnly.filter(p => p.onIR).map(p => ({ ...p, statusBadge: "IR SLOT" })),
+      ...inactivePool.map(p => ({ ...p, statusBadge: p.badge.replace(/^[^\w]+/, "") }))
+    ];
     $("injuryWatch").innerHTML = flagged.length
       ? flagged.map(p => `
         <div class="bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 flex items-center justify-between">
           <div><span class="pill pos-${p.pos} mr-1">${p.pos}</span><b class="text-white">${esc(p.name)}</b> <span class="text-slate-500">${p.team}</span></div>
-          <span class="px-2 py-0.5 rounded font-bold bg-rose-500/20 text-rose-300">${esc(p.injury || "IR")}</span>
+          <span class="px-2 py-0.5 rounded font-bold bg-rose-500/20 text-rose-300">${esc(p.statusBadge)}</span>
         </div>`).join("")
-      : `<div class="text-slate-400 bg-slate-950 border border-slate-800 rounded-lg p-3">✅ No active injury flags on your roster.</div>`;
+      : `<div class="text-slate-400 bg-slate-950 border border-slate-800 rounded-lg p-3">✅ No active injury or bye-week flags on your roster.</div>`;
   } catch (e) {
     $("lineupSlots").innerHTML = `<div class="text-xs text-rose-400">Error loading projections: ${e.message}</div>`;
   }
 }
-
 // --- TAB 5: DRAFT ROOM & 2027 BOARD ---
 $("refreshDraft").onclick = renderDraftRoom;
 async function renderDraftRoom() {
