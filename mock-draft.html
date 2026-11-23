@@ -15,7 +15,7 @@
   <div class="max-w-7xl mx-auto flex flex-wrap items-center justify-between gap-3">
     <div>
       <h1 class="font-bold text-lg text-white">Rookie Mock Draft Simulator</h1>
-      <p class="text-xs text-slate-400">Real league pick ownership + team-needs AI auto-drafter + trade-up/down calculator.</p>
+      <p class="text-xs text-slate-400">Accurate pick ownership, standings/MaxPF slot projection &amp; trade-up/down calculator.</p>
     </div>
     <div class="flex flex-wrap items-center gap-2">
       <input id="user" placeholder="Sleeper username" class="bg-slate-950 border border-slate-700 rounded-lg px-3 py-1.5 text-sm text-white w-36 sm:w-44">
@@ -24,10 +24,13 @@
       <select id="league" hidden class="bg-slate-800 border border-slate-600 rounded-lg px-3 py-1.5 text-sm text-emerald-300 max-w-[210px] truncate"></select>
     </div>
   </div>
-  <div id="status" class="max-w-7xl mx-auto text-xs text-slate-400 mt-2">Ready.</div>
+  <div id="status" class="max-w-7xl mx-auto text-xs text-slate-400 mt-2">Ready. Click Sync League to load your league.</div>
 </header>
 
 <main id="main" hidden class="max-w-7xl w-full mx-auto px-4 py-6 space-y-5 flex-1">
+  <!-- Pick Status & Slot Accuracy Banner -->
+  <section id="seasonStatusBanner" class="bg-slate-900 border border-slate-800 rounded-xl p-3.5 flex flex-wrap items-center justify-between gap-3 text-xs"></section>
+
   <!-- Controls Bar -->
   <section class="bg-slate-900 border border-slate-800 rounded-xl p-4 flex flex-wrap items-center justify-between gap-3">
     <div class="flex flex-wrap items-center gap-3 text-xs">
@@ -41,6 +44,13 @@
           <option value="5">5 Rounds</option>
         </select>
       </label>
+      <label class="text-slate-400">Slot Basis:
+        <select id="slotBasis" class="ml-1 bg-slate-950 border border-slate-700 rounded-lg px-2.5 py-1.5 text-white font-semibold">
+          <option value="maxpf_standings" selected>Standings + MaxPF / Points (Most Accurate)</option>
+          <option value="record">Record &amp; PF Only</option>
+          <option value="roster_val">Dynasty Roster Value</option>
+        </select>
+      </label>
       <label class="text-slate-400">AI Logic:
         <select id="aiMode" class="ml-1 bg-slate-950 border border-slate-700 rounded-lg px-2.5 py-1.5 text-white font-semibold">
           <option value="hybrid" selected>Balanced (70% Value / 30% Team Need)</option>
@@ -49,7 +59,7 @@
         </select>
       </label>
       <label class="flex items-center gap-1.5 text-slate-300 cursor-pointer ml-1">
-        <input id="autoSim" type="checkbox" checked class="accent-emerald-500"> Auto-sim CPU picks
+        <input id="autoSim" type="checkbox" class="accent-emerald-500"> Auto-sim CPU picks
       </label>
     </div>
 
@@ -82,10 +92,10 @@
       <div id="boardList" class="space-y-1.5 max-h-[560px] overflow-y-auto pr-1"></div>
     </section>
 
-    <!-- Center: Live Draft Board -->
+    <!-- Center: Live Draft Board & Ownership Audit -->
     <section class="lg:col-span-4 bg-slate-900 border border-slate-800 rounded-xl p-4 flex flex-col">
       <div class="flex items-center justify-between mb-3">
-        <h2 class="text-sm font-bold text-white">Draft Board &amp; Pick Order</h2>
+        <h2 class="text-sm font-bold text-white">Draft Board &amp; Pick Ownership</h2>
         <span id="progressBadge" class="text-[11px] text-slate-400 font-mono">0 / 0</span>
       </div>
       <div id="draftBoard" class="space-y-1.5 max-h-[600px] overflow-y-auto pr-1"></div>
@@ -129,7 +139,7 @@ const saved = getSavedState();
 if (saved.user) $("user").value = saved.user;
 if (saved.season) $("season").value = saved.season;
 
-// Deep 60-player 2027 class + 2028 devy class so full 4-5 round mocks never run out of prospects
+// Deep 60-player 2027 class + 24-player 2028 devy class so full 4-5 round mocks never run out of prospects
 const PROSPECT_CLASSES = {
   "2027": [
     { name: "Jeremiah Smith", pos: "WR", school: "Ohio State", v1qb: 9400, vsf: 9200 },
@@ -226,8 +236,10 @@ let state = {
   uid: null,
   myRid: null,
   market: null,
-  teams: [],
+  rawTeams: [],
   tradedPicks: [],
+  leagueComplete: false,
+  asOfDate: new Date().toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }),
   slots: [],
   pool: [],
   cursor: 0,
@@ -261,10 +273,30 @@ $("go").onclick = async () => {
   }
 };
 
+// Resolve traded_picks chains accurately (handles A -> B -> C multi-hop pick trades)
+function resolvePickOwner(origRid, round, yr, tradedPicks) {
+  let currentOwner = Number(origRid);
+  const visited = new Set([currentOwner]);
+  const relevant = tradedPicks.filter(p =>
+    String(p.season) === String(yr) &&
+    Number(p.round) === Number(round) &&
+    Number(p.roster_id) === Number(origRid)
+  );
+  // In Sleeper traded_picks, each row represents a transfer of roster_id's pick to owner_id
+  for (const tr of relevant) {
+    const nextOwner = Number(tr.owner_id);
+    if (nextOwner && !visited.has(nextOwner)) {
+      currentOwner = nextOwner;
+      visited.add(nextOwner);
+    }
+  }
+  return currentOwner;
+}
+
 async function initDraft(lg, uid) {
   clearTimeout(state.simTimer);
   saveState({ leagueId: lg.league_id });
-  $("status").textContent = "Syncing rosters, traded picks & live rookie values...";
+  $("status").textContent = "Syncing rosters, traded picks, standings & live rookie values...";
 
   const [market, rosters, users, tradedPicks] = await Promise.all([
     loadMarket(lg, msg => $("status").textContent = msg),
@@ -274,12 +306,15 @@ async function initDraft(lg, uid) {
   ]);
 
   const tname = rid => {
-    const r = rosters.find(x => x.roster_id === rid);
+    const r = rosters.find(x => Number(x.roster_id) === Number(rid));
     const u = users.find(x => x.user_id === r?.owner_id);
     return u?.metadata?.team_name || u?.display_name || "Team " + rid;
   };
 
-  // Build roster strength & positional needs for AI drafting
+  // Detect whether the league season is still in-season / regular season / playoffs vs completed
+  const statusStr = String(lg.status || "").toLowerCase();
+  const leagueComplete = statusStr === "complete" || statusStr === "completed";
+
   const teams = rosters.map(r => {
     const players = (r.players || []).map(id => {
       const m = market.bySid.get(id);
@@ -291,13 +326,30 @@ async function initDraft(lg, uid) {
 
     const byPos = {};
     POS.forEach(p => byPos[p] = players.filter(x => x.pos === p));
-    const wins = r.settings?.wins || 0;
-    const fpts = (r.settings?.fpts || 0) + (r.settings?.fpts_decimal || 0) / 100;
+    const wins = Number(r.settings?.wins || 0);
+    const losses = Number(r.settings?.losses || 0);
+    const ties = Number(r.settings?.ties || 0);
+    const fpts = Number(r.settings?.fpts || 0) + Number(r.settings?.fpts_decimal || 0) / 100;
+    const fptsAgainst = Number(r.settings?.fpts_against || 0) + Number(r.settings?.fpts_against_decimal || 0) / 100;
+    const pmax = Number(r.settings?.ppts || r.settings?.max_pf || 0) + Number(r.settings?.ppts_decimal || 0) / 100;
     const totalVal = players.reduce((s, x) => s + x.v, 0);
-    return { rid: r.roster_id, ownerId: r.owner_id, name: tname(r.roster_id), players, byPos, wins, fpts, totalVal };
+
+    return {
+      rid: Number(r.roster_id),
+      ownerId: r.owner_id,
+      name: tname(r.roster_id),
+      players,
+      byPos,
+      wins,
+      losses,
+      ties,
+      fpts,
+      fptsAgainst,
+      pmax,
+      totalVal
+    };
   });
 
-  // Compute league median starter value per position to score positional need (0.7 to 1.35x)
   const med = {};
   POS.forEach(p => {
     const scores = teams.map(t => t.byPos[p].slice(0, 2).reduce((s, x) => s + x.v, 0)).sort((a, b) => a - b);
@@ -313,20 +365,36 @@ async function initDraft(lg, uid) {
     });
   });
 
-  // Order teams worst-to-best (reverse standings / MaxPF proxy) for realistic rookie draft order
-  const draftOrder = teams.slice().sort((a, b) => (a.wins - b.wins) || (a.fpts - b.fpts) || (a.totalVal - b.totalVal));
-
   const me = teams.find(t => t.ownerId === uid) || teams[0];
   state.lg = lg;
   state.uid = uid;
   state.myRid = me.rid;
   state.market = market;
-  state.teams = draftOrder;
+  state.rawTeams = teams;
   state.tradedPicks = tradedPicks;
+  state.leagueComplete = leagueComplete;
 
   buildBoardAndPool();
   $("main").hidden = false;
   $("status").textContent = `Ready · ${lg.name} (${market.isSF ? "Superflex" : "1QB"}) · ${state.pool.length} rookies loaded.`;
+}
+
+function getOrderedDraftTeams() {
+  const basis = $("slotBasis").value;
+  const teams = state.rawTeams.slice();
+  if (basis === "roster_val") {
+    return teams.sort((a, b) => a.totalVal - b.totalVal || a.fpts - b.fpts);
+  }
+  if (basis === "record") {
+    return teams.sort((a, b) => (a.wins - b.wins) || (a.fpts - b.fpts) || (a.totalVal - b.totalVal));
+  }
+  // Default: Standings + MaxPF (ppts if available, else PF + roster bench cushion)
+  return teams.sort((a, b) => {
+    if (a.wins !== b.wins) return a.wins - b.wins;
+    const maxA = a.pmax > 0 ? a.pmax : (a.fpts + a.totalVal * 0.002);
+    const maxB = b.pmax > 0 ? b.pmax : (b.fpts + b.totalVal * 0.002);
+    return maxA - maxB;
+  });
 }
 
 function buildBoardAndPool() {
@@ -334,7 +402,9 @@ function buildBoardAndPool() {
   const yr = String($("draftYr").value);
   const rounds = Number($("numRounds").value);
   const isSF = state.market.isSF;
-  const nTeams = state.teams.length;
+  const draftOrder = getOrderedDraftTeams();
+  state.teams = draftOrder;
+  const nTeams = draftOrder.length;
 
   let rawRookies = (state.market.raw?.rookies || []).filter(r => String(r.draft_year) === yr);
   if (state.market.raw?.consensus) {
@@ -370,24 +440,28 @@ function buildBoardAndPool() {
 
   const slots = [];
   for (let rd = 1; rd <= rounds; rd++) {
-    state.teams.forEach((origTeam, idx) => {
-      const tr = state.tradedPicks.find(p => String(p.season) === yr && Number(p.round) === rd && Number(p.roster_id) === origTeam.rid);
-      const ownerRid = tr ? Number(tr.owner_id) : origTeam.rid;
-      const ownerTeam = state.teams.find(t => t.rid === ownerRid) || origTeam;
+    draftOrder.forEach((origTeam, idx) => {
+      const ownerRid = resolvePickOwner(origTeam.rid, rd, yr, state.tradedPicks);
+      const ownerTeam = draftOrder.find(t => t.rid === ownerRid) || origTeam;
       const tier = idx < Math.ceil(nTeams / 3) ? "Early" : idx < Math.ceil((2 * nTeams) / 3) ? "Mid" : "Late";
       const pickVal = state.market.pickValue(yr, rd, tier);
+      const slotOfficial = state.leagueComplete && String(yr) === String($("season").value);
 
       slots.push({
         index: slots.length,
         round: rd,
         pickInRound: idx + 1,
+        slotNumber: idx + 1,
         label: `${rd}.${String(idx + 1).padStart(2, "0")}`,
         origRid: origTeam.rid,
         origName: origTeam.name,
+        origRecord: `${origTeam.wins}-${origTeam.losses}${origTeam.ties ? "-" + origTeam.ties : ""}`,
+        origPF: origTeam.fpts.toFixed(1),
         ownerRid,
         ownerName: ownerTeam.name,
         isMine: ownerRid === state.myRid,
         isTraded: ownerRid !== origTeam.rid,
+        isOfficialSlot: slotOfficial,
         pickVal,
         player: null
       });
@@ -398,7 +472,7 @@ function buildBoardAndPool() {
   state.cursor = 0;
   populateTradeDropdowns();
   renderAll();
-  maybeScheduleCpu();
+  if ($("autoSim").checked) maybeScheduleCpu();
 }
 
 function chooseCpuPick(slot) {
@@ -435,7 +509,7 @@ function makePick(playerId) {
   slot.player = player;
   state.cursor++;
   renderAll();
-  maybeScheduleCpu();
+  if ($("autoSim").checked) maybeScheduleCpu();
 }
 
 function stepCpu() {
@@ -531,7 +605,7 @@ function updateTradeCalc() {
       tgSlot.ownerRid = tmpRid; tgSlot.ownerName = tmpName; tgSlot.isMine = tmpMine; tgSlot.isTraded = true;
       populateTradeDropdowns();
       renderAll();
-      maybeScheduleCpu();
+      if ($("autoSim").checked) maybeScheduleCpu();
     };
   }
 }
@@ -539,7 +613,27 @@ function updateTradeCalc() {
 function renderAll() {
   const curSlot = state.slots[state.cursor];
   const isUserClock = Boolean(curSlot && curSlot.isMine);
+  const tradedCount = state.slots.filter(s => s.isTraded).length;
 
+  // 0. Season Status & Accuracy Banner
+  const modeBadge = state.leagueComplete
+    ? `<span class="px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 font-bold">FINAL STANDINGS</span>`
+    : `<span class="px-2 py-0.5 rounded bg-amber-500/20 text-amber-300 border border-amber-500/30 font-bold">IN-PROGRESS · STANDINGS AS OF ${state.asOfDate.toUpperCase()}</span>`;
+
+  $("seasonStatusBanner").innerHTML = `
+    <div class="flex flex-wrap items-center gap-2">
+      ${modeBadge}
+      <span class="text-slate-300">
+        ${state.leagueComplete
+          ? "Season complete — pick slots reflect final league standings."
+          : "Season is not over yet — pick slots are projected using current standings/MaxPF as of today and can shift as remaining games play out."}
+      </span>
+    </div>
+    <div class="text-slate-400 font-mono">
+      Traded Picks Applied: <b class="text-amber-300">${tradedCount}</b>
+    </div>`;
+
+  // 1. On The Clock Banner
   if (!curSlot) {
     $("clockBanner").innerHTML = `
       <div>
@@ -558,13 +652,17 @@ function renderAll() {
           </span>
           <span class="font-mono text-xs text-slate-400">Pick ${curSlot.label} (Est. Value: ${curSlot.pickVal.toLocaleString()})</span>
         </div>
-        <div class="text-base font-bold text-white mt-1">${esc(curSlot.ownerName)} ${curSlot.isTraded ? `<span class="text-xs font-normal text-slate-400">(via ${esc(curSlot.origName)})</span>` : ""}</div>
+        <div class="text-base font-bold text-white mt-1">
+          ${esc(curSlot.ownerName)}
+          ${curSlot.isTraded ? `<span class="text-xs font-normal text-amber-300 ml-1">(via ${esc(curSlot.origName)} · ${curSlot.origRecord}, ${curSlot.origPF} PF)</span>` : `<span class="text-xs font-normal text-slate-400 ml-1">(${curSlot.origRecord}, ${curSlot.origPF} PF)</span>`}
+        </div>
       </div>
       <div class="text-xs text-slate-300">
         Team Top Needs: <b class="text-amber-300">${topNeeds}</b>
       </div>`;
   }
 
+  // 2. Rookie Big Board
   const q = state.search.toLowerCase();
   const avail = state.pool.filter(p => !p.drafted && (state.posFilter === "ALL" || p.pos === state.posFilter) && (!q || p.name.toLowerCase().includes(q)));
   $("boardList").innerHTML = avail.map((p) => {
@@ -588,6 +686,7 @@ function renderAll() {
       </div>`;
   }).join("") || `<div class="text-xs text-slate-500 py-6 text-center">No available rookies match your filter.</div>`;
 
+  // 3. Draft Board & Ownership Audit
   $("progressBadge").textContent = `${state.cursor} / ${state.slots.length} Picks`;
   $("draftBoard").innerHTML = state.slots.map(s => {
     const active = s.index === state.cursor;
@@ -599,19 +698,20 @@ function renderAll() {
     return `
       <div class="rounded-lg border px-3 py-2 flex items-center justify-between gap-2 text-xs ${rowCls}">
         <div class="min-w-0">
-          <div class="flex items-center gap-1.5">
+          <div class="flex items-center gap-1.5 flex-wrap">
             <span class="font-mono font-bold text-slate-300">${s.label}</span>
-            <span class="font-semibold truncate ${s.isMine ? "text-indigo-300" : "text-slate-300"}">${esc(s.ownerName)}</span>
-            ${s.isTraded ? `<span class="text-[10px] text-amber-400" title="Acquired from ${esc(s.origName)}">⇄</span>` : ""}
+            <span class="font-semibold truncate ${s.isMine ? "text-indigo-300" : "text-slate-200"}">${esc(s.ownerName)}</span>
+            ${s.isTraded ? `<span class="px-1.5 py-0.2 rounded bg-amber-500/15 text-amber-300 text-[10px]" title="Original slot: ${esc(s.origName)} (${s.origRecord}, ${s.origPF} PF)">⇄ via ${esc(s.origName)}</span>` : `<span class="text-[10px] text-slate-500">(${s.origRecord})</span>`}
           </div>
           ${s.player
             ? `<div class="mt-0.5 flex items-center gap-1.5"><span class="px-1 rounded text-[10px] font-bold ${POS_BADGE[s.player.pos]}">${s.player.pos}</span><b class="text-white">${esc(s.player.name)}</b></div>`
-            : `<div class="text-[11px] text-slate-500 mt-0.5">${active ? "On the clock..." : "Upcoming"}</div>`}
+            : `<div class="text-[11px] text-slate-500 mt-0.5">${active ? "On the clock..." : (s.isOfficialSlot ? "Official slot" : "Projected slot (live standings)")}</div>`}
         </div>
         <span class="font-mono text-[11px] text-slate-500 shrink-0">${s.player ? s.player.val.toLocaleString() : s.pickVal.toLocaleString()}</span>
       </div>`;
   }).join("");
 
+  // 4. My Needs & Draft Haul
   const me = state.teams.find(t => t.rid === state.myRid);
   if (me) {
     $("myNeedsSummary").innerHTML = POS.map(p => {
@@ -635,11 +735,12 @@ function renderAll() {
 
 $("draftYr").onchange = buildBoardAndPool;
 $("numRounds").onchange = buildBoardAndPool;
+$("slotBasis").onchange = buildBoardAndPool;
 $("btnStep").onclick = () => { clearTimeout(state.simTimer); stepCpu(); };
 $("btnSimToMe").onclick = simToMyPick;
 $("btnUndo").onclick = undoPick;
 $("btnReset").onclick = buildBoardAndPool;
-$("autoSim").onchange = maybeScheduleCpu;
+$("autoSim").onchange = () => { if ($("autoSim").checked) maybeScheduleCpu(); else clearTimeout(state.simTimer); };
 $("tradeMyPick").onchange = updateTradeCalc;
 $("tradeTargetPick").onchange = updateTradeCalc;
 $("searchBox").oninput = e => { state.search = e.target.value; renderAll(); };
@@ -656,7 +757,7 @@ document.querySelectorAll(".pos-btn").forEach(btn => {
   };
 });
 
-if ($("user").value) $("go").click();
+// Intentionally does NOT auto-start on page load until the user clicks Sync League
 </script>
 </body>
 </html>
