@@ -1888,6 +1888,139 @@ function renderAI() {
 }
 
 if ($("user").value) $("go").click();
+
+// --- TAB 8: LIVE NFL NEWS & X (TWITTER) INSIDER FEED ---
+let cachedArticles = [];
+let activeXHandle = "NFL";
+
+$("refreshNews").onclick = () => renderNewsAndX(true);
+$("newsFilter").onchange = () => paintNewsList();
+
+async function loadXTimeline(handle) {
+  activeXHandle = handle;
+  document.querySelectorAll(".x-handle-btn").forEach(btn => {
+    const isSel = btn.dataset.handle === handle;
+    btn.className = isSel
+      ? "x-handle-btn bg-emerald-600 text-white text-xs font-semibold px-2.5 py-1 rounded-lg cursor-pointer"
+      : "x-handle-btn bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold px-2.5 py-1 rounded-lg cursor-pointer";
+  });
+
+  const wrap = $("xEmbedWrap");
+  wrap.innerHTML = `
+    <div class="flex items-center justify-between px-3 py-2 border-b border-slate-800 mb-2 text-xs">
+      <span class="font-bold text-white">Live Feed: <span class="text-emerald-400">@${esc(handle)}</span></span>
+      <a href="https://x.com/${encodeURIComponent(handle)}" target="_blank" rel="noopener noreferrer" class="bg-sky-500/20 text-sky-300 border border-sky-500/40 px-2.5 py-1 rounded font-semibold hover:bg-sky-500/30">Open @${esc(handle)} on X ↗</a>
+    </div>
+    <div id="xPostsBody" class="space-y-2.5 p-2 text-xs text-slate-400">Loading latest @${esc(handle)} updates...</div>`;
+
+  // Fetch live insider posts via public RSS bridge so feed populates even when X blocks iframe embeds
+  const rssMirrors = [
+    `https://api.rss2json.com/v1/api.json?rss_url=${encodeURIComponent(`https://nitter.poast.org/${handle}/rss`)}`,
+    `https://api.rss2json.com/v1/api.json?rss_url=${encodeURIComponent(`https://xcancel.com/${handle}/rss`)}`
+  ];
+
+  let items = [];
+  for (const url of rssMirrors) {
+    try {
+      const res = await j(url);
+      if (res?.status === "ok" && res.items?.length) {
+        items = res.items;
+        break;
+      }
+    } catch (e) {}
+  }
+
+  const body = $("xPostsBody");
+  if (!body) return;
+
+  if (items.length) {
+    body.innerHTML = items.slice(0, 15).map(it => {
+      const cleanTxt = (it.description || it.title || "").replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim();
+      const dt = it.pubDate ? new Date(it.pubDate).toLocaleString([], { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" }) : "";
+      const xUrl = (it.link || "").replace(/^https?:\/\/[^/]+/, "https://x.com");
+      return `
+        <a href="${esc(xUrl)}" target="_blank" rel="noopener noreferrer" class="block bg-slate-900 hover:bg-slate-800/80 border border-slate-800 rounded-lg p-3 transition">
+          <div class="flex items-center justify-between text-[11px] mb-1">
+            <span class="font-bold text-sky-400">@${esc(handle)}</span>
+            <span class="text-slate-500">${dt}</span>
+          </div>
+          <p class="text-xs text-slate-200 leading-relaxed">${esc(cleanTxt.slice(0, 280))}${cleanTxt.length > 280 ? "…" : ""}</p>
+        </a>`;
+    }).join("");
+  } else {
+    // Fallback to official X timeline widget + direct insider links
+    body.innerHTML = `
+      <a class="twitter-timeline" data-theme="dark" data-height="490" data-chrome="noheader nofooter transparent" href="https://twitter.com/${encodeURIComponent(handle)}?ref_src=twsrc%5Etfw">
+        View @${esc(handle)} on X ↗
+      </a>`;
+    if (!window.twttr) {
+      const s = document.createElement("script");
+      s.src = "https://platform.twitter.com/widgets.js";
+      s.async = true;
+      document.body.appendChild(s);
+    } else if (window.twttr.widgets) {
+      window.twttr.widgets.load(body);
+    }
+  }
+}
+
+document.querySelectorAll(".x-handle-btn").forEach(btn => {
+  btn.onclick = () => loadXTimeline(btn.dataset.handle);
+});
+
+function paintNewsList() {
+  const mode = $("newsFilter").value;
+  const me = S.teams.find(t => t.rid === S.viewRid);
+  const myNames = (me?.playersOnly || []).map(p => p.name.toLowerCase()).filter(n => n.length > 4);
+
+  const filtered = cachedArticles.filter(art => {
+    const blob = `${art.headline || ""} ${art.description || ""}`.toLowerCase();
+    const mentionsMe = myNames.some(n => blob.includes(n));
+    if (mode === "MY_ROSTER") return mentionsMe;
+    if (mode === "INJURY") return /(injur|ir|out|questionable|doubtful|concussion|knee|hamstring|ankle|surgery|practice)/i.test(blob);
+    if (mode === "MOVES") return /(trade|sign|waive|release|claim|activate|elevate|contract|deal)/i.test(blob);
+    return true;
+  });
+
+  $("newsFeedList").innerHTML = filtered.map(art => {
+    const blob = `${art.headline || ""} ${art.description || ""}`.toLowerCase();
+    const matchedPlayer = myNames.find(n => blob.includes(n));
+    const pub = art.published ? new Date(art.published).toLocaleString([], { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" }) : "";
+    const link = art.links?.web?.href || "#";
+    const img = art.images?.[0]?.url || "";
+    return `
+      <a href="${esc(link)}" target="_blank" rel="noopener noreferrer" class="block bg-slate-950 hover:bg-slate-800/70 border ${matchedPlayer ? "border-emerald-500/50" : "border-slate-800"} rounded-xl p-3.5 transition">
+        <div class="flex gap-3">
+          ${img ? `<img src="${esc(img)}" alt="" class="w-20 h-16 object-cover rounded-lg shrink-0 bg-slate-900">` : ""}
+          <div class="flex-1 min-w-0">
+            <div class="flex flex-wrap items-center gap-2 text-[11px] text-slate-400 mb-1">
+              <span>${pub}</span>
+              ${matchedPlayer ? `<span class="bg-emerald-500/20 text-emerald-300 px-2 py-0.5 rounded font-bold uppercase">⭐ On Your Roster</span>` : ""}
+            </div>
+            <h4 class="text-sm font-bold text-white leading-snug">${esc(art.headline)}</h4>
+            <p class="text-xs text-slate-400 mt-1 line-clamp-2">${esc(art.description || "")}</p>
+          </div>
+        </div>
+      </a>`;
+  }).join("") || `<div class="text-xs text-slate-500 p-4 text-center">No articles match that filter right now.</div>`;
+}
+
+async function renderNewsAndX(force = false) {
+  loadXTimeline(activeXHandle);
+  if (!force && cachedArticles.length) {
+    paintNewsList();
+    return;
+  }
+  $("newsFeedList").innerHTML = `<div class="text-xs text-slate-400 p-3">Fetching live NFL breaking news...</div>`;
+  try {
+    const data = await j(`https://site.api.espn.com/apis/site/v2/sports/football/nfl/news?limit=40`);
+    cachedArticles = data?.articles || [];
+    paintNewsList();
+  } catch (e) {
+    $("newsFeedList").innerHTML = `<div class="text-xs text-rose-400 p-3">Could not load live NFL news: ${e.message}</div>`;
+  }
+}
+  
 </script>
 </body>
 </html>
