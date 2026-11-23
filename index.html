@@ -1149,54 +1149,63 @@ function estimateWeeklyProj(p, sp, fmt) {
   return Number(Math.max(1.5, Math.min(28.5, pts)).toFixed(1));
 }
 
-async function fetchNflMatchupContext(week) {
+async function fetchNflMatchupContext(season, week) {
   const ctx = { games: {}, defRank: {}, offRank: {}, loaded: false };
-  try {
-    const [sb, st] = await Promise.all([
-      j(`https://site.api.espn.com/apis/site/v2/sports/football/nfl/scoreboard?seasontype=2&week=${week}`),
-      j(`https://site.api.espn.com/apis/site/v2/sports/football/nfl/standings`)
-    ]);
+  // Try explicit season+week first, then default week endpoint
+  const sbUrls = [
+    `https://site.api.espn.com/apis/site/v2/sports/football/nfl/scoreboard?dates=${season}&seasontype=2&week=${week}`,
+    `https://site.api.espn.com/apis/site/v2/sports/football/nfl/scoreboard?seasontype=2&week=${week}`
+  ];
 
-    const teamStats = [];
-    (st?.children || []).forEach(conf => {
-      (conf?.standings?.entries || []).forEach(ent => {
-        const abbr = normTm(ent?.team?.abbreviation);
-        const stats = Object.fromEntries((ent?.stats || []).map(s => [s.name, Number(s.value)]));
-        if (abbr) {
-          const gp = Math.max(1, (stats.wins || 0) + (stats.losses || 0) + (stats.ties || 0));
-          teamStats.push({
-            abbr,
-            ppgFor: stats.avgPointsFor || (stats.pointsFor / gp) || 21.5,
-            ppgAgainst: stats.avgPointsAgainst || (stats.pointsAgainst / gp) || 21.5
-          });
-        }
-      });
-    });
-
-    const byDef = [...teamStats].sort((a, b) => a.ppgAgainst - b.ppgAgainst);
-    const byOff = [...teamStats].sort((a, b) => b.ppgFor - a.ppgFor);
-    byDef.forEach((t, i) => { ctx.defRank[t.abbr] = { rank: i + 1, ppgAgainst: Number(t.ppgAgainst.toFixed(1)) }; });
-    byOff.forEach((t, i) => { ctx.offRank[t.abbr] = { rank: i + 1, ppgFor: Number(t.ppgFor.toFixed(1)) }; });
-
-    (sb?.events || []).forEach(ev => {
-      const comp = ev?.competitions?.[0];
-      const teams = comp?.competitors || [];
-      if (teams.length !== 2) return;
-      const home = teams.find(x => x.homeAway === "home") || teams[0];
-      const away = teams.find(x => x.homeAway === "away") || teams[1];
-      const hAbbr = normTm(home?.team?.abbreviation);
-      const aAbbr = normTm(away?.team?.abbreviation);
-      const odds = comp?.odds?.[0] || {};
-      const ou = Number(odds.overUnder) || 44.5;
-      const spread = Number(odds.spread) || 0;
-
-      ctx.games[hAbbr] = { opp: aAbbr, home: true, ou, teamSpread: spread, implied: Number(((ou - spread) / 2).toFixed(1)) };
-      ctx.games[aAbbr] = { opp: hAbbr, home: false, ou, teamSpread: -spread, implied: Number(((ou + spread) / 2).toFixed(1)) };
-    });
-    ctx.loaded = Object.keys(ctx.games).length > 0;
-  } catch (e) {
-    console.warn("ESPN matchup fallback active:", e);
+  let sb = null;
+  for (const url of sbUrls) {
+    try {
+      const res = await j(url);
+      if (res?.events?.length) { sb = res; break; }
+    } catch (e) {}
   }
+
+  const st = await j(`https://site.api.espn.com/apis/site/v2/sports/football/nfl/standings?season=${season}`)
+    .catch(() => j(`https://site.api.espn.com/apis/site/v2/sports/football/nfl/standings`).catch(() => null));
+
+  const teamStats = [];
+  (st?.children || []).forEach(conf => {
+    (conf?.standings?.entries || []).forEach(ent => {
+      const abbr = normTm(ent?.team?.abbreviation);
+      const stats = Object.fromEntries((ent?.stats || []).map(s => [s.name, Number(s.value)]));
+      if (abbr) {
+        const gp = Math.max(1, (stats.wins || 0) + (stats.losses || 0) + (stats.ties || 0));
+        teamStats.push({
+          abbr,
+          ppgFor: stats.avgPointsFor || (stats.pointsFor / gp) || 21.5,
+          ppgAgainst: stats.avgPointsAgainst || (stats.pointsAgainst / gp) || 21.5
+        });
+      }
+    });
+  });
+
+  const byDef = [...teamStats].sort((a, b) => a.ppgAgainst - b.ppgAgainst);
+  const byOff = [...teamStats].sort((a, b) => b.ppgFor - a.ppgFor);
+  byDef.forEach((t, i) => { ctx.defRank[t.abbr] = { rank: i + 1, ppgAgainst: Number(t.ppgAgainst.toFixed(1)) }; });
+  byOff.forEach((t, i) => { ctx.offRank[t.abbr] = { rank: i + 1, ppgFor: Number(t.ppgFor.toFixed(1)) }; });
+
+  (sb?.events || []).forEach(ev => {
+    const comp = ev?.competitions?.[0];
+    const teams = comp?.competitors || [];
+    if (teams.length !== 2) return;
+    const home = teams.find(x => x.homeAway === "home") || teams[0];
+    const away = teams.find(x => x.homeAway === "away") || teams[1];
+    const hAbbr = normTm(home?.team?.abbreviation);
+    const aAbbr = normTm(away?.team?.abbreviation);
+    const odds = comp?.odds?.[0] || {};
+    const ou = Number(odds.overUnder) || 44.5;
+    const spread = Number(odds.spread) || 0;
+
+    ctx.games[hAbbr] = { opp: aAbbr, home: true, ou, teamSpread: spread, implied: Number(((ou - spread) / 2).toFixed(1)) };
+    ctx.games[aAbbr] = { opp: hAbbr, home: false, ou, teamSpread: -spread, implied: Number(((ou + spread) / 2).toFixed(1)) };
+  });
+
+  ctx.loaded = Object.keys(ctx.games).length >= 10;
   return ctx;
 }
 
@@ -1205,6 +1214,7 @@ function buildPlayerStartSitAnalysis(p, apiProjPts, ctx, sp) {
   const statusStr = String(p.playerStatus || sp?.status || "").toUpperCase().trim();
   const tm = normTm(p.team);
 
+  // 1. Hard-block IR / Out / Suspended / PUP / Inactive
   if (p.onIR || INACTIVE_STATUSES.has(inj) || statusStr === "INACTIVE") {
     const tag = inj || (p.onIR ? "IR" : "INACTIVE");
     return {
@@ -1230,13 +1240,14 @@ function buildPlayerStartSitAnalysis(p, apiProjPts, ctx, sp) {
     };
   }
 
+  // 2. Hard-block Bye Weeks when live schedule is loaded
   const gm = ctx.games[tm];
   if (ctx.loaded && !gm) {
     return {
       eligible: false,
       basePts: 0,
       adjPts: 0,
-      badge: "🛑 BYE WEEK",
+      badge: `🛑 ${tm} BYE`,
       badgeCls: "bg-amber-500/20 text-amber-300 border border-amber-500/40",
       reason: `Do Not Start: ${tm} is on BYE this week.`,
       mult: 0
@@ -1261,9 +1272,9 @@ function buildPlayerStartSitAnalysis(p, apiProjPts, ctx, sp) {
       eligible: true,
       basePts,
       adjPts: basePts,
-      badge: `${tm} · Active`,
+      badge: `${tm} · Schedule Pending`,
       badgeCls: "bg-slate-800 text-slate-300",
-      reason: `Start ${p.name}: Projected for ${basePts} pts this week.`,
+      reason: `Start ${p.name}: Projected for ${basePts} pts (live opponent schedule unavailable).`,
       mult: 1.0
     };
   }
@@ -1343,10 +1354,10 @@ async function renderLineup() {
   try {
     const [proj, ctx] = await Promise.all([
       j(`https://api.sleeper.app/projections/nfl/${S.lg.season}/${wk}?season_type=regular`).catch(() => ({})),
-      fetchNflMatchupContext(wk)
+      fetchNflMatchupContext(S.lg.season, wk)
     ]);
 
-    const slots = (S.lg.roster_positions || []).filter(p => p !== "BN" && p !== "IR" && p !== "TAXI");
+    const slots = (S.lg.roster_positions || []).filter(p => POS.includes(p) || p.includes("FLEX"));
     const elig = {
       QB: ["QB"], RB: ["RB"], WR: ["WR"], TE: ["TE"],
       FLEX: ["RB", "WR", "TE"], SUPER_FLEX: ["QB", "RB", "WR", "TE"],
@@ -1377,7 +1388,9 @@ async function renderLineup() {
     const inactiveInLineup = me.playersOnly.filter(p => curStarters.has(p.id) && (!analyzed.find(x => x.id === p.id)?.eligible));
     const missedPts = chosen.filter(c => c.player && !curStarters.has(c.player.id)).length;
 
-    if (inactiveInLineup.length) {
+    if (!ctx.loaded) {
+      $("lineupAlert").innerHTML = `<div class="bg-amber-500/15 border border-amber-500/40 text-amber-200 text-xs rounded-lg p-2.5">⚠️ Live ESPN NFL schedule could not be reached for Week ${wk}—bye-week filtering is paused until schedule data loads.</div>`;
+    } else if (inactiveInLineup.length) {
       $("lineupAlert").innerHTML = `<div class="bg-rose-500/15 border border-rose-500/40 text-rose-200 text-xs rounded-lg p-2.5">🚨 <b>Action Required:</b> You currently have <b>${inactiveInLineup.map(x => esc(x.name)).join(", ")}</b> in your Sleeper starting lineup, who is on BYE, Out, or IR!</div>`;
     } else if (missedPts) {
       $("lineupAlert").innerHTML = `<div class="bg-amber-500/15 border border-amber-500/40 text-amber-200 text-xs rounded-lg p-2.5">⚠️ <b>${missedPts} lineup upgrade(s)</b> recommended after factoring in projections + defensive matchups.</div>`;
