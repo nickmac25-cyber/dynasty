@@ -1,267 +1,111 @@
-<!DOCTYPE html>
-<html lang="en" class="dark">
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Rookie Mock Draft Simulator · Dynasty Desk Pro</title>
-<script src="https://cdn.tailwindcss.com"></script>
-<script>tailwind.config = { darkMode: 'class', theme: { extend: { colors: { slate: { 850: '#151e2e', 900: '#0f172a', 950: '#090d16' } } } } }</script>
-</head>
-<body class="bg-slate-950 text-slate-100 font-sans antialiased min-h-screen flex flex-col">
-<script src="dynasty-core.js"></script>
-<script src="dynasty-nav.js"></script>
+# Expand FALLBACK_PROSPECTS to a full 60-player 2027 dynasty rookie class (enough for a 5-round 12-team mock)
+# and also include 2028 early devy prospects so multi-year mocks work smoothly.
 
-<header class="bg-slate-900 border-b border-slate-800 px-4 py-3">
-  <div class="max-w-7xl mx-auto flex flex-wrap items-center justify-between gap-3">
-    <div>
-      <h1 class="font-bold text-lg text-white">Rookie Mock Draft Simulator</h1>
-      <p class="text-xs text-slate-400">Real league pick ownership + team-needs AI auto-drafter + trade-up/down calculator.</p>
-    </div>
-    <div class="flex flex-wrap items-center gap-2">
-      <input id="user" placeholder="Sleeper username" class="bg-slate-950 border border-slate-700 rounded-lg px-3 py-1.5 text-sm text-white w-36 sm:w-44">
-      <select id="season" class="bg-slate-950 border border-slate-700 rounded-lg px-2.5 py-1.5 text-sm text-white"></select>
-      <button id="go" class="bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-medium px-4 py-1.5 rounded-lg cursor-pointer">Sync League</button>
-      <select id="league" hidden class="bg-slate-800 border border-slate-600 rounded-lg px-3 py-1.5 text-sm text-emerald-300 max-w-[210px] truncate"></select>
-    </div>
-  </div>
-  <div id="status" class="max-w-7xl mx-auto text-xs text-slate-400 mt-2">Ready.</div>
-</header>
+with open("mock-draft.html", "r", encoding="utf-8") as f:
+    code = f.read()
 
-<main id="main" hidden class="max-w-7xl w-full mx-auto px-4 py-6 space-y-5 flex-1">
-  <!-- Controls Bar -->
-  <section class="bg-slate-900 border border-slate-800 rounded-xl p-4 flex flex-wrap items-center justify-between gap-3">
-    <div class="flex flex-wrap items-center gap-3 text-xs">
-      <label class="text-slate-400">Draft Year:
-        <select id="draftYr" class="ml-1 bg-slate-950 border border-slate-700 rounded-lg px-2.5 py-1.5 text-white font-semibold"></select>
-      </label>
-      <label class="text-slate-400">Rounds:
-        <select id="numRounds" class="ml-1 bg-slate-950 border border-slate-700 rounded-lg px-2.5 py-1.5 text-white font-semibold">
-          <option value="3">3 Rounds</option>
-          <option value="4" selected>4 Rounds</option>
-          <option value="5">5 Rounds</option>
-        </select>
-      </label>
-      <label class="text-slate-400">AI Logic:
-        <select id="aiMode" class="ml-1 bg-slate-950 border border-slate-700 rounded-lg px-2.5 py-1.5 text-white font-semibold">
-          <option value="hybrid" selected>Balanced (70% Value / 30% Team Need)</option>
-          <option value="bpa">Best Player Available (100% Market Value)</option>
-          <option value="need">Heavy Team Need (50% Value / 50% Need)</option>
-        </select>
-      </label>
-      <label class="flex items-center gap-1.5 text-slate-300 cursor-pointer ml-1">
-        <input id="autoSim" type="checkbox" checked class="accent-emerald-500"> Auto-sim CPU picks
-      </label>
-    </div>
+old_block_start = code.index("// Fallback class if market-data.json has fewer rookies for the selected year")
+old_block_end = code.index("let state = {")
 
-    <div class="flex flex-wrap items-center gap-2">
-      <button id="btnStep" class="bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold px-3 py-1.5 rounded-lg border border-slate-700 cursor-pointer">Sim Next Pick</button>
-      <button id="btnSimToMe" class="bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold px-3 py-1.5 rounded-lg cursor-pointer">Sim to My Pick</button>
-      <button id="btnUndo" class="bg-slate-800 hover:bg-slate-700 text-amber-300 text-xs font-semibold px-3 py-1.5 rounded-lg border border-slate-700 cursor-pointer">↩ Undo</button>
-      <button id="btnReset" class="bg-rose-600/20 hover:bg-rose-600 text-rose-300 hover:text-white border border-rose-500/40 text-xs font-semibold px-3 py-1.5 rounded-lg cursor-pointer">Reset Draft</button>
-    </div>
-  </section>
-
-  <!-- On The Clock Banner -->
-  <section id="clockBanner" class="bg-slate-900 border border-slate-800 rounded-xl p-4 flex flex-wrap items-center justify-between gap-4"></section>
-
-  <!-- Main 3-Column Draft Room -->
-  <div class="grid grid-cols-1 lg:grid-cols-12 gap-5">
-    <!-- Left: Rookie Big Board -->
-    <section class="lg:col-span-5 bg-slate-900 border border-slate-800 rounded-xl p-4 flex flex-col">
-      <div class="flex flex-wrap items-center justify-between gap-2 mb-3">
-        <h2 class="text-sm font-bold text-white">Rookie Big Board</h2>
-        <div class="flex gap-1" id="posFilters">
-          <button data-pos="ALL" class="pos-btn px-2 py-1 rounded text-[11px] font-bold bg-emerald-600 text-white cursor-pointer">ALL</button>
-          <button data-pos="QB" class="pos-btn px-2 py-1 rounded text-[11px] font-bold bg-slate-950 text-slate-400 border border-slate-800 cursor-pointer">QB</button>
-          <button data-pos="RB" class="pos-btn px-2 py-1 rounded text-[11px] font-bold bg-slate-950 text-slate-400 border border-slate-800 cursor-pointer">RB</button>
-          <button data-pos="WR" class="pos-btn px-2 py-1 rounded text-[11px] font-bold bg-slate-950 text-slate-400 border border-slate-800 cursor-pointer">WR</button>
-          <button data-pos="TE" class="pos-btn px-2 py-1 rounded text-[11px] font-bold bg-slate-950 text-slate-400 border border-slate-800 cursor-pointer">TE</button>
-        </div>
-      </div>
-      <input id="searchBox" placeholder="Filter prospect name..." class="bg-slate-950 border border-slate-700 rounded-lg px-3 py-1.5 text-xs text-white mb-3">
-      <div id="boardList" class="space-y-1.5 max-h-[560px] overflow-y-auto pr-1"></div>
-    </section>
-
-    <!-- Center: Live Draft Board -->
-    <section class="lg:col-span-4 bg-slate-900 border border-slate-800 rounded-xl p-4 flex flex-col">
-      <div class="flex items-center justify-between mb-3">
-        <h2 class="text-sm font-bold text-white">Draft Board &amp; Pick Order</h2>
-        <span id="progressBadge" class="text-[11px] text-slate-400 font-mono">0 / 0</span>
-      </div>
-      <div id="draftBoard" class="space-y-1.5 max-h-[600px] overflow-y-auto pr-1"></div>
-    </section>
-
-    <!-- Right: Team Needs & Trade Desk -->
-    <section class="lg:col-span-3 space-y-5">
-      <div class="bg-slate-900 border border-slate-800 rounded-xl p-4">
-        <h2 class="text-sm font-bold text-white mb-1">Your Picks &amp; Recap</h2>
-        <p class="text-[11px] text-slate-400 mb-3">Live haul &amp; positional needs profile.</p>
-        <div id="myNeedsSummary" class="grid grid-cols-4 gap-1.5 mb-3 text-center"></div>
-        <div id="myHaul" class="space-y-1.5 text-xs"></div>
-      </div>
-
-      <div class="bg-slate-900 border border-slate-800 rounded-xl p-4">
-        <h2 class="text-sm font-bold text-white mb-1">Pick Trade-Up / Down Desk</h2>
-        <p class="text-[11px] text-slate-400 mb-3">Compare live pick values to move up or down on the clock.</p>
-        <div class="space-y-2 text-xs">
-          <label class="block text-slate-400">Your Pick to Move:
-            <select id="tradeMyPick" class="mt-1 w-full bg-slate-950 border border-slate-700 rounded-lg px-2.5 py-1.5 text-white"></select>
-          </label>
-          <label class="block text-slate-400">Target Pick:
-            <select id="tradeTargetPick" class="mt-1 w-full bg-slate-950 border border-slate-700 rounded-lg px-2.5 py-1.5 text-white"></select>
-          </label>
-          <div id="tradeCalcBox" class="bg-slate-950 border border-slate-800 rounded-lg p-3 mt-2"></div>
-        </div>
-      </div>
-    </section>
-  </div>
-</main>
-
-<script>
-const $ = id => document.getElementById(id);
-const { SL, POS, esc, j, getSavedState, saveState, loadMarket, resolveUserAndLeagues } = DD;
-
-const curYr = new Date().getFullYear();
-for (let y = curYr; y >= curYr - 3; y--) $("season").add(new Option(y, y));
-for (let y = curYr; y <= curYr + 2; y++) $("draftYr").add(new Option(y, y));
-
-const saved = getSavedState();
-if (saved.user) $("user").value = saved.user;
-if (saved.season) $("season").value = saved.season;
-
-// Fallback class if market-data.json has fewer rookies for the selected year
-const FALLBACK_PROSPECTS = [
-  { name: "Arch Manning", pos: "QB", school: "Texas", v1qb: 6800, vsf: 9200 },
-  { name: "Jeremiah Smith", pos: "WR", school: "Ohio State", v1qb: 9100, vsf: 8900 },
-  { name: "Ryan Williams", pos: "WR", school: "Alabama", v1qb: 8200, vsf: 8000 },
-  { name: "Nico Iamaleava", pos: "QB", school: "Tennessee", v1qb: 5600, vsf: 7800 },
-  { name: "Dylan Raiola", pos: "QB", school: "Nebraska", v1qb: 5400, vsf: 7500 },
-  { name: "TJ Moore", pos: "WR", school: "Clemson", v1qb: 6400, vsf: 6200 },
-  { name: "Cam Coleman", pos: "WR", school: "Auburn", v1qb: 6300, vsf: 6100 },
-  { name: "Nate Frazier", pos: "RB", school: "Georgia", v1qb: 6100, vsf: 5900 },
-  { name: "Jadan Baugh", pos: "RB", school: "Florida", v1qb: 5800, vsf: 5600 },
-  { name: "LaNorris Sellers", pos: "QB", school: "South Carolina", v1qb: 5100, vsf: 7200 },
-  { name: "DJ Lagway", pos: "QB", school: "Florida", v1qb: 5300, vsf: 7400 },
-  { name: "Bryant Wesco Jr", pos: "WR", school: "Clemson", v1qb: 5700, vsf: 5500 }
-];
-
-let state = {
-  lg: null,
-  uid: null,
-  myRid: null,
-  market: null,
-  teams: [],
-  tradedPicks: [],
-  slots: [],
-  pool: [],
-  cursor: 0,
-  posFilter: "ALL",
-  search: "",
-  simTimer: null
+new_prospects_block = """// Deep 60-player 2027 class + 2028 devy class so full 4-5 round mocks never run out of prospects
+const PROSPECT_CLASSES = {
+  "2027": [
+    { name: "Jeremiah Smith", pos: "WR", school: "Ohio State", v1qb: 9400, vsf: 9200 },
+    { name: "Charlie Becker", pos: "WR", school: "Indiana", v1qb: 7900, vsf: 7700 },
+    { name: "Drew Mestemaker", pos: "QB", school: "Oklahoma State", v1qb: 5900, vsf: 8800 },
+    { name: "Jadan Baugh", pos: "RB", school: "Florida", v1qb: 7600, vsf: 7400 },
+    { name: "Darian Mensah", pos: "QB", school: "Miami (FL)", v1qb: 5600, vsf: 8400 },
+    { name: "Nick Marsh", pos: "WR", school: "Indiana", v1qb: 7300, vsf: 7100 },
+    { name: "KJ Duff", pos: "WR", school: "Rutgers", v1qb: 7000, vsf: 6800 },
+    { name: "Nate Frazier", pos: "RB", school: "Georgia", v1qb: 6900, vsf: 6700 },
+    { name: "Ryan Coleman-Williams", pos: "WR", school: "Alabama", v1qb: 6800, vsf: 6600 },
+    { name: "Cam Coleman", pos: "WR", school: "Texas", v1qb: 6700, vsf: 6500 },
+    { name: "Dante Moore", pos: "QB", school: "Oregon", v1qb: 5100, vsf: 8100 },
+    { name: "CJ Carr", pos: "QB", school: "Notre Dame", v1qb: 5000, vsf: 7900 },
+    { name: "Kewan Lacy", pos: "RB", school: "Ole Miss", v1qb: 6400, vsf: 6200 },
+    { name: "Trey'Dez Green", pos: "TE", school: "LSU", v1qb: 6200, vsf: 6100 },
+    { name: "Jamari Johnson", pos: "TE", school: "Oregon", v1qb: 6000, vsf: 5900 },
+    { name: "Trinidad Chambliss", pos: "QB", school: "Ole Miss", v1qb: 4700, vsf: 7500 },
+    { name: "Arch Manning", pos: "QB", school: "Texas", v1qb: 4600, vsf: 7400 },
+    { name: "Ahmad Hardy", pos: "RB", school: "Missouri", v1qb: 5800, vsf: 5600 },
+    { name: "Isaac Brown", pos: "RB", school: "Louisville", v1qb: 5600, vsf: 5400 },
+    { name: "Julian Sayin", pos: "QB", school: "Ohio State", v1qb: 4400, vsf: 7100 },
+    { name: "Wyatt Young", pos: "WR", school: "Oklahoma State", v1qb: 5400, vsf: 5200 },
+    { name: "Reed Harris", pos: "WR", school: "Arizona State", v1qb: 5200, vsf: 5000 },
+    { name: "Deuce Alexander", pos: "WR", school: "Ole Miss", v1qb: 5000, vsf: 4800 },
+    { name: "Dylan Riley", pos: "RB", school: "Boise State", v1qb: 4900, vsf: 4700 },
+    { name: "Bryant Wesco Jr.", pos: "WR", school: "Clemson", v1qb: 4800, vsf: 4600 },
+    { name: "Ryan Wingo", pos: "WR", school: "Texas", v1qb: 4700, vsf: 4500 },
+    { name: "Sam Leavitt", pos: "QB", school: "LSU", v1qb: 3900, vsf: 6400 },
+    { name: "Luke Reynolds", pos: "TE", school: "Virginia Tech", v1qb: 4500, vsf: 4400 },
+    { name: "Mario Craver", pos: "WR", school: "Texas A&M", v1qb: 4400, vsf: 4200 },
+    { name: "Jackson Harris", pos: "WR", school: "LSU", v1qb: 4300, vsf: 4100 },
+    { name: "Amare Thomas", pos: "WR", school: "Houston", v1qb: 4200, vsf: 4000 },
+    { name: "Wayshawn Parker", pos: "RB", school: "Utah", v1qb: 4100, vsf: 3900 },
+    { name: "LaNorris Sellers", pos: "QB", school: "South Carolina", v1qb: 3600, vsf: 5900 },
+    { name: "Jayden Maiava", pos: "QB", school: "USC", v1qb: 3500, vsf: 5700 },
+    { name: "Mark Fletcher Jr.", pos: "RB", school: "Miami (FL)", v1qb: 3950, vsf: 3800 },
+    { name: "Jamal Roberts", pos: "RB", school: "Missouri", v1qb: 3850, vsf: 3700 },
+    { name: "Antwan Raymond", pos: "RB", school: "Rutgers", v1qb: 3750, vsf: 3600 },
+    { name: "LJ Martin", pos: "RB", school: "BYU", v1qb: 3650, vsf: 3500 },
+    { name: "Fluff Bothwell", pos: "RB", school: "Mississippi State", v1qb: 3550, vsf: 3400 },
+    { name: "Hollywood Smothers", pos: "RB", school: "Texas", v1qb: 3450, vsf: 3300 },
+    { name: "Junior Sherrill", pos: "WR", school: "Vanderbilt", v1qb: 3400, vsf: 3250 },
+    { name: "TJ Moore", pos: "WR", school: "Clemson", v1qb: 3300, vsf: 3150 },
+    { name: "Brendan Sorsby", pos: "QB", school: "Texas Tech", v1qb: 3000, vsf: 4900 },
+    { name: "Austin Simmons", pos: "QB", school: "Missouri", v1qb: 2900, vsf: 4700 },
+    { name: "Justice Haynes", pos: "RB", school: "Georgia Tech", v1qb: 3150, vsf: 3000 },
+    { name: "Jahiem White", pos: "RB", school: "North Texas", v1qb: 3050, vsf: 2900 },
+    { name: "J'Koby Williams", pos: "RB", school: "Texas Tech", v1qb: 2950, vsf: 2800 },
+    { name: "DeSean Bishop", pos: "RB", school: "Tennessee", v1qb: 2850, vsf: 2700 },
+    { name: "Terrance Carter Jr.", pos: "TE", school: "Texas Tech", v1qb: 2800, vsf: 2700 },
+    { name: "Griffin Wilde", pos: "WR", school: "Northwestern", v1qb: 2700, vsf: 2550 },
+    { name: "Collin Dixon", pos: "WR", school: "Illinois", v1qb: 2600, vsf: 2450 },
+    { name: "Braylon Staley", pos: "WR", school: "Tennessee", v1qb: 2500, vsf: 2350 },
+    { name: "Duce Robinson", pos: "WR", school: "Florida State", v1qb: 2400, vsf: 2250 },
+    { name: "Cam Cook", pos: "RB", school: "West Virginia", v1qb: 2300, vsf: 2200 },
+    { name: "Quintrevion Wisner", pos: "RB", school: "Florida State", v1qb: 2200, vsf: 2100 },
+    { name: "Conner Weigman", pos: "QB", school: "Houston", v1qb: 2000, vsf: 3400 },
+    { name: "DJ Lagway", pos: "QB", school: "Florida", v1qb: 1950, vsf: 3300 },
+    { name: "Nico Iamaleava", pos: "QB", school: "UCLA", v1qb: 1900, vsf: 3200 },
+    { name: "Dylan Raiola", pos: "QB", school: "Nebraska", v1qb: 1850, vsf: 3100 },
+    { name: "Omarion Miller", pos: "WR", school: "Colorado", v1qb: 1800, vsf: 1700 }
+  ],
+  "2028": [
+    { name: "Bryce Underwood", pos: "QB", school: "Michigan", v1qb: 6200, vsf: 9300 },
+    { name: "Dakorien Moore", pos: "WR", school: "Oregon", v1qb: 8600, vsf: 8400 },
+    { name: "Malachi Toney", pos: "WR", school: "Miami (FL)", v1qb: 8100, vsf: 7900 },
+    { name: "Harlem Berry", pos: "RB", school: "LSU", v1qb: 7500, vsf: 7300 },
+    { name: "Kaliq Lockett", pos: "WR", school: "Texas", v1qb: 7200, vsf: 7000 },
+    { name: "Keelon Russell", pos: "QB", school: "Alabama", v1qb: 5400, vsf: 8300 },
+    { name: "Jaime Ffrench", pos: "WR", school: "Texas", v1qb: 6900, vsf: 6700 },
+    { name: "Bo Jackson", pos: "RB", school: "Ohio State", v1qb: 6700, vsf: 6500 },
+    { name: "Tavien St. Clair", pos: "QB", school: "Ohio State", v1qb: 5000, vsf: 7800 },
+    { name: "Caleb Cunningham", pos: "WR", school: "Ole Miss", v1qb: 6500, vsf: 6300 },
+    { name: "Quincy Porter", pos: "WR", school: "Ohio State", v1qb: 6300, vsf: 6100 },
+    { name: "Gideon Davidson", pos: "RB", school: "Clemson", v1qb: 6100, vsf: 5900 },
+    { name: "Linkon Cure", pos: "TE", school: "Kansas State", v1qb: 5900, vsf: 5800 },
+    { name: "Elyiss Williams", pos: "TE", school: "Georgia", v1qb: 5700, vsf: 5600 },
+    { name: "Husan Longstreet", pos: "QB", school: "USC", v1qb: 4600, vsf: 7200 },
+    { name: "Ousmane Kromah", pos: "RB", school: "Florida State", v1qb: 5500, vsf: 5300 },
+    { name: "Vernell Brown III", pos: "WR", school: "Florida", v1qb: 5400, vsf: 5200 },
+    { name: "Dallas Wilson", pos: "WR", school: "Florida", v1qb: 5300, vsf: 5100 },
+    { name: "Jordon Davison", pos: "RB", school: "Oregon", v1qb: 5200, vsf: 5000 },
+    { name: "Julian Lewis", pos: "QB", school: "Colorado", v1qb: 4300, vsf: 6800 },
+    { name: "Talyn Taylor", pos: "WR", school: "Georgia", v1qb: 5000, vsf: 4800 },
+    { name: "Jerome Myles", pos: "WR", school: "Texas A&M", v1qb: 4900, vsf: 4700 },
+    { name: "Marquise Davis", pos: "RB", school: "Missouri", v1qb: 4800, vsf: 4600 },
+    { name: "Deuce Knight", pos: "QB", school: "Auburn", v1qb: 4000, vsf: 6400 }
+  ]
 };
 
-const POS_BADGE = {
-  QB: "bg-rose-500/15 text-rose-300 border-rose-500/30",
-  RB: "bg-emerald-500/15 text-emerald-300 border-emerald-500/30",
-  WR: "bg-sky-500/15 text-sky-300 border-sky-500/30",
-  TE: "bg-amber-500/15 text-amber-300 border-amber-500/30"
-};
+"""
 
-$("go").onclick = async () => {
-  try {
-    const uname = $("user").value.trim();
-    if (!uname) return $("status").textContent = "Enter a Sleeper username.";
-    saveState({ user: uname, season: $("season").value });
-    $("status").textContent = "Resolving leagues...";
-    const { user, leagues } = await resolveUserAndLeagues(uname, $("season").value);
-    const sel = $("league"); sel.innerHTML = ""; sel.hidden = false;
-    leagues.forEach((l, i) => sel.add(new Option(l.name, i)));
-    const idx = leagues.findIndex(l => String(l.league_id) === String(saved.leagueId));
-    if (idx >= 0) sel.value = idx;
-    sel.onchange = () => initDraft(leagues[sel.value], user.user_id);
-    await initDraft(leagues[sel.value || 0], user.user_id);
-  } catch (e) {
-    $("status").textContent = "Error: " + e.message;
-  }
-};
+code = code[:old_block_start] + new_prospects_block + code[old_block_end:]
 
-async function initDraft(lg, uid) {
-  clearTimeout(state.simTimer);
-  saveState({ leagueId: lg.league_id });
-  $("status").textContent = "Syncing rosters, traded picks & live rookie values...";
-
-  const [market, rosters, users, tradedPicks] = await Promise.all([
-    loadMarket(lg, msg => $("status").textContent = msg),
-    j(`${SL}/league/${lg.league_id}/rosters`),
-    j(`${SL}/league/${lg.league_id}/users`),
-    j(`${SL}/league/${lg.league_id}/traded_picks`).catch(() => [])
-  ]);
-
-  const tname = rid => {
-    const r = rosters.find(x => x.roster_id === rid);
-    const u = users.find(x => x.user_id === r?.owner_id);
-    return u?.metadata?.team_name || u?.display_name || "Team " + rid;
-  };
-
-  // Build roster strength & positional needs for AI drafting
-  const teams = rosters.map(r => {
-    const players = (r.players || []).map(id => {
-      const m = market.bySid.get(id);
-      const sp = market.pmap[id];
-      const pos = m?.pos || sp?.position;
-      if (!POS.includes(pos)) return null;
-      return { id, name: m?.name || sp?.full_name || id, pos, v: m?.v || 0 };
-    }).filter(Boolean).sort((a, b) => b.v - a.v);
-
-    const byPos = {};
-    POS.forEach(p => byPos[p] = players.filter(x => x.pos === p));
-    const wins = r.settings?.wins || 0;
-    const fpts = (r.settings?.fpts || 0) + (r.settings?.fpts_decimal || 0) / 100;
-    const totalVal = players.reduce((s, x) => s + x.v, 0);
-    return { rid: r.roster_id, ownerId: r.owner_id, name: tname(r.roster_id), players, byPos, wins, fpts, totalVal };
-  });
-
-  // Compute league median starter value per position to score positional need (0.7 to 1.35x)
-  const med = {};
-  POS.forEach(p => {
-    const scores = teams.map(t => t.byPos[p].slice(0, 2).reduce((s, x) => s + x.v, 0)).sort((a, b) => a - b);
-    med[p] = scores[Math.floor(scores.length / 2)] || 1;
-  });
-
-  teams.forEach(t => {
-    t.needMult = {};
-    POS.forEach(p => {
-      const score = t.byPos[p].slice(0, 2).reduce((s, x) => s + x.v, 0);
-      const ratio = score / med[p];
-      // Lower ratio = bigger need = higher multiplier
-      t.needMult[p] = Math.max(0.75, Math.min(1.35, 1.35 - (ratio * 0.3)));
-    });
-  });
-
-  // Order teams worst-to-best (reverse standings / MaxPF proxy) for realistic rookie draft order
-  const draftOrder = teams.slice().sort((a, b) => (a.wins - b.wins) || (a.fpts - b.fpts) || (a.totalVal - b.totalVal));
-
-  const me = teams.find(t => t.ownerId === uid) || teams[0];
-  state.lg = lg;
-  state.uid = uid;
-  state.myRid = me.rid;
-  state.market = market;
-  state.teams = draftOrder;
-  state.tradedPicks = tradedPicks;
-
-  buildBoardAndPool();
-  $("main").hidden = false;
-  $("status").textContent = `Ready · ${lg.name} (${market.isSF ? "Superflex" : "1QB"}) · ${state.pool.length} rookies loaded.`;
-}
-
-function buildBoardAndPool() {
-  clearTimeout(state.simTimer);
-  const yr = String($("draftYr").value);
-  const rounds = Number($("numRounds").value);
-  const isSF = state.market.isSF;
-  const nTeams = state.teams.length;
-
-  // Build rookie pool from market-data.json rookies or consensus filtered by draft_year
+# Also update buildBoardAndPool() to merge market-data.json rookies WITH PROSPECT_CLASSES[yr]
+# so even if market-data.json only has 20-30 rookies for a future year, the board always fills out to 60+ players!
+old_pool_logic = """  // Build rookie pool from market-data.json rookies or consensus filtered by draft_year
   let rawRookies = (state.market.raw?.rookies || []).filter(r => String(r.draft_year) === yr);
   if (rawRookies.length < 24 && state.market.raw?.consensus) {
     const fromCons = Object.values(state.market.raw.consensus).filter(c => String(c.draft_year) === yr && POS.includes(c.pos));
@@ -269,318 +113,33 @@ function buildBoardAndPool() {
   }
   if (rawRookies.length < 12) {
     rawRookies = FALLBACK_PROSPECTS.map(p => ({ ...p, draft_year: Number(yr) }));
-  }
+  }"""
 
-  state.pool = rawRookies.map((r, idx) => {
-    const val = isSF ? (r.vsf || r.v1qb || 0) : (r.v1qb || r.vsf || 0);
-    return {
-      id: `rookie_${idx}_${r.name}`,
-      name: r.name,
-      pos: r.pos,
-      team: r.team || r.school || "NCAA",
-      val,
-      drafted: false
-    };
-  }).filter(x => x.val > 0).sort((a, b) => b.val - a.val);
-
-  // Build pick slots applying real Sleeper traded_picks ownership
-  const slots = [];
-  for (let rd = 1; rd <= rounds; rd++) {
-    state.teams.forEach((origTeam, idx) => {
-      const tr = state.tradedPicks.find(p => String(p.season) === yr && Number(p.round) === rd && Number(p.roster_id) === origTeam.rid);
-      const ownerRid = tr ? Number(tr.owner_id) : origTeam.rid;
-      const ownerTeam = state.teams.find(t => t.rid === ownerRid) || origTeam;
-      const pickNum = (rd - 1) * nTeams + (idx + 1);
-      const tier = idx < Math.ceil(nTeams / 3) ? "Early" : idx < Math.ceil((2 * nTeams) / 3) ? "Mid" : "Late";
-      const pickVal = state.market.pickValue(yr, rd, tier);
-
-      slots.push({
-        index: slots.length,
-        round: rd,
-        pickInRound: idx + 1,
-        label: `${rd}.${String(idx + 1).padStart(2, "0")}`,
-        origRid: origTeam.rid,
-        origName: origTeam.name,
-        ownerRid,
-        ownerName: ownerTeam.name,
-        isMine: ownerRid === state.myRid,
-        isTraded: ownerRid !== origTeam.rid,
-        pickVal,
-        player: null
-      });
+new_pool_logic = """  // Build rookie pool from market-data.json rookies/consensus AND top up with PROSPECT_CLASSES[yr] up to 60+ prospects
+  let rawRookies = (state.market.raw?.rookies || []).filter(r => String(r.draft_year) === yr);
+  if (state.market.raw?.consensus) {
+    const seen = new Set(rawRookies.map(r => r.name.toLowerCase().replace(/[^a-z]/g, "")));
+    Object.values(state.market.raw.consensus).forEach(c => {
+      if (String(c.draft_year) === yr && POS.includes(c.pos)) {
+        const k = c.name.toLowerCase().replace(/[^a-z]/g, "");
+        if (!seen.has(k)) { seen.add(k); rawRookies.push(c); }
+      }
     });
   }
-
-  state.slots = slots;
-  state.cursor = 0;
-  populateTradeDropdowns();
-  renderAll();
-  maybeScheduleCpu();
-}
-
-function chooseCpuPick(slot) {
-  const avail = state.pool.filter(p => !p.drafted);
-  if (!avail.length) return null;
-  const team = state.teams.find(t => t.rid === slot.ownerRid);
-  const mode = $("aiMode").value;
-
-  // Track what positions this team has already drafted in this mock to prevent 3 QBs in a row
-  const alreadyDrafted = state.slots.filter(s => s.player && s.ownerRid === slot.ownerRid).map(s => s.player.pos);
-
-  const scored = avail.slice(0, 15).map(p => {
-    let mult = 1.0;
-    if (mode !== "bpa" && team) {
-      const need = team.needMult[p.pos] || 1.0;
-      const weight = mode === "need" ? 1.0 : 0.6;
-      mult = 1 + (need - 1) * weight;
-      const samePosCount = alreadyDrafted.filter(x => x === p.pos).length;
-      if (samePosCount >= 1) mult *= (p.pos === "QB" ? 0.65 : 0.85);
+  const classFallback = PROSPECT_CLASSES[yr] || PROSPECT_CLASSES["2027"];
+  const existingKeys = new Set(rawRookies.map(r => r.name.toLowerCase().replace(/[^a-z]/g, "")));
+  classFallback.forEach(p => {
+    const k = p.name.toLowerCase().replace(/[^a-z]/g, "");
+    if (!existingKeys.has(k)) {
+      existingKeys.add(k);
+      rawRookies.push({ ...p, draft_year: Number(yr) });
     }
-    // Slight organic variance (+/- 3%) so mocks aren't robotic clones
-    const jitter = 0.97 + Math.random() * 0.06;
-    return { p, score: p.val * mult * jitter };
-  }).sort((a, b) => b.score - a.score);
+  });"""
 
-  return scored[0].p;
-}
+assert old_pool_logic in code, "Could not find old_pool_logic"
+code = code.replace(old_pool_logic, new_pool_logic, 1)
 
-function makePick(playerId) {
-  const slot = state.slots[state.cursor];
-  if (!slot) return;
-  const player = state.pool.find(p => p.id === playerId && !p.drafted);
-  if (!player) return;
+with open("mock-draft.html", "w", encoding="utf-8") as f:
+    f.write(code)
 
-  player.drafted = true;
-  slot.player = player;
-  state.cursor++;
-  renderAll();
-  maybeScheduleCpu();
-}
-
-function stepCpu() {
-  const slot = state.slots[state.cursor];
-  if (!slot) return;
-  const pick = chooseCpuPick(slot);
-  if (pick) makePick(pick.id);
-}
-
-function maybeScheduleCpu() {
-  clearTimeout(state.simTimer);
-  const slot = state.slots[state.cursor];
-  if (!slot) return;
-  if (!slot.isMine && $("autoSim").checked) {
-    state.simTimer = setTimeout(stepCpu, 280);
-  }
-}
-
-function simToMyPick() {
-  clearTimeout(state.simTimer);
-  while (state.cursor < state.slots.length && !state.slots[state.cursor].isMine) {
-    const slot = state.slots[state.cursor];
-    const pick = chooseCpuPick(slot);
-    if (!pick) break;
-    pick.drafted = true;
-    slot.player = pick;
-    state.cursor++;
-  }
-  renderAll();
-}
-
-function undoPick() {
-  clearTimeout(state.simTimer);
-  $("autoSim").checked = false;
-  if (state.cursor <= 0) return;
-  state.cursor--;
-  const slot = state.slots[state.cursor];
-  if (slot.player) {
-    slot.player.drafted = false;
-    slot.player = null;
-  }
-  renderAll();
-}
-
-function populateTradeDropdowns() {
-  const mySel = $("tradeMyPick");
-  const tgSel = $("tradeTargetPick");
-  mySel.innerHTML = "";
-  tgSel.innerHTML = "";
-
-  state.slots.forEach(s => {
-    const opt = new Option(`${s.label} (${s.ownerName}) · ${s.pickVal.toLocaleString()}`, s.index);
-    if (s.isMine) mySel.add(opt);
-    else tgSel.add(opt);
-  });
-  updateTradeCalc();
-}
-
-function updateTradeCalc() {
-  const myIdx = Number($("tradeMyPick").value);
-  const tgIdx = Number($("tradeTargetPick").value);
-  const mySlot = state.slots[myIdx];
-  const tgSlot = state.slots[tgIdx];
-  if (!mySlot || !tgSlot) {
-    $("tradeCalcBox").innerHTML = `<span class="text-slate-500">Select two picks to compare trade value.</span>`;
-    return;
-  }
-  const diff = mySlot.pickVal - tgSlot.pickVal;
-  const movingUp = tgSlot.index < mySlot.index;
-  const gap = Math.abs(diff);
-  const verdict = gap <= 350
-    ? `<span class="text-emerald-400 font-bold">Even Swap</span>`
-    : movingUp
-      ? `<span class="text-amber-300 font-bold">Add ~${gap.toLocaleString()} value to move up</span>`
-      : `<span class="text-sky-300 font-bold">Ask for ~${gap.toLocaleString()} extra to move down</span>`;
-
-  $("tradeCalcBox").innerHTML = `
-    <div class="flex justify-between text-[11px] text-slate-400">
-      <span>Your ${mySlot.label}: <b class="text-white">${mySlot.pickVal.toLocaleString()}</b></span>
-      <span>Target ${tgSlot.label}: <b class="text-white">${tgSlot.pickVal.toLocaleString()}</b></span>
-    </div>
-    <div class="mt-2 pt-2 border-t border-slate-800 text-xs flex items-center justify-between">
-      <span>${verdict}</span>
-      <button id="btnExecSwap" class="bg-emerald-600/20 hover:bg-emerald-600 text-emerald-300 hover:text-white border border-emerald-500/40 px-2 py-1 rounded text-[11px] font-semibold cursor-pointer">Simulate Swap</button>
-    </div>`;
-
-  const swapBtn = $("btnExecSwap");
-  if (swapBtn) {
-    swapBtn.onclick = () => {
-      if (mySlot.player || tgSlot.player) return alert("Can only swap unmade picks.");
-      const tmpRid = mySlot.ownerRid, tmpName = mySlot.ownerName, tmpMine = mySlot.isMine;
-      mySlot.ownerRid = tgSlot.ownerRid; mySlot.ownerName = tgSlot.ownerName; mySlot.isMine = tgSlot.isMine; mySlot.isTraded = true;
-      tgSlot.ownerRid = tmpRid; tgSlot.ownerName = tmpName; tgSlot.isMine = tmpMine; tgSlot.isTraded = true;
-      populateTradeDropdowns();
-      renderAll();
-      maybeScheduleCpu();
-    };
-  }
-}
-
-function renderAll() {
-  const curSlot = state.slots[state.cursor];
-  const isUserClock = Boolean(curSlot && curSlot.isMine);
-
-  // 1. On The Clock Banner
-  if (!curSlot) {
-    $("clockBanner").innerHTML = `
-      <div>
-        <div class="text-xs font-bold uppercase tracking-wider text-emerald-400">Draft Complete</div>
-        <div class="text-base font-bold text-white mt-0.5">All ${state.slots.length} picks are in! Review your haul on the right or click Reset Draft.</div>
-      </div>`;
-  } else {
-    const team = state.teams.find(t => t.rid === curSlot.ownerRid);
-    const topNeeds = team ? POS.slice().sort((a, b) => team.needMult[b] - team.needMult[a]).slice(0, 2).join(", ") : "—";
-    $("clockBanner").className = `rounded-xl p-4 flex flex-wrap items-center justify-between gap-4 border ${isUserClock ? "bg-emerald-950/40 border-emerald-500/60" : "bg-slate-900 border-slate-800"}`;
-    $("clockBanner").innerHTML = `
-      <div>
-        <div class="flex items-center gap-2">
-          <span class="px-2 py-0.5 rounded text-[11px] font-bold ${isUserClock ? "bg-emerald-500 text-slate-950" : "bg-slate-800 text-slate-300"}">
-            ${isUserClock ? "🫵 YOU ARE ON THE CLOCK" : "⏳ CPU ON THE CLOCK"}
-          </span>
-          <span class="font-mono text-xs text-slate-400">Pick ${curSlot.label} (Est. Value: ${curSlot.pickVal.toLocaleString()})</span>
-        </div>
-        <div class="text-base font-bold text-white mt-1">${esc(curSlot.ownerName)} ${curSlot.isTraded ? `<span class="text-xs font-normal text-slate-400">(via ${esc(curSlot.origName)})</span>` : ""}</div>
-      </div>
-      <div class="text-xs text-slate-300">
-        Team Top Needs: <b class="text-amber-300">${topNeeds}</b>
-      </div>`;
-  }
-
-  // 2. Rookie Big Board
-  const q = state.search.toLowerCase();
-  const avail = state.pool.filter(p => !p.drafted && (state.posFilter === "ALL" || p.pos === state.posFilter) && (!q || p.name.toLowerCase().includes(q)));
-  $("boardList").innerHTML = avail.map((p, i) => {
-    const rank = state.pool.indexOf(p) + 1;
-    return `
-      <div class="bg-slate-950 border border-slate-800 hover:border-slate-700 rounded-lg px-3 py-2 flex items-center justify-between gap-2 text-xs">
-        <div class="flex items-center gap-2.5 min-w-0">
-          <span class="font-mono text-[11px] text-slate-500 w-5">#${rank}</span>
-          <span class="px-1.5 py-0.5 rounded border text-[10px] font-bold ${POS_BADGE[p.pos] || ""}">${p.pos}</span>
-          <div class="truncate">
-            <div class="font-bold text-white truncate">${esc(p.name)}</div>
-            <div class="text-[11px] text-slate-500">${esc(p.team)}</div>
-          </div>
-        </div>
-        <div class="flex items-center gap-2 shrink-0">
-          <span class="font-mono text-slate-300 font-semibold">${p.val.toLocaleString()}</span>
-          <button onclick="makePick('${p.id.replace(/'/g, "\'")}')" ${!curSlot ? "disabled" : ""} class="px-2.5 py-1 rounded font-bold text-[11px] cursor-pointer ${isUserClock ? "bg-emerald-600 hover:bg-emerald-500 text-white" : "bg-slate-800 hover:bg-slate-700 text-slate-300"}">
-            Draft
-          </button>
-        </div>
-      </div>`;
-  }).join("") || `<div class="text-xs text-slate-500 py-6 text-center">No available rookies match your filter.</div>`;
-
-  // 3. Draft Board
-  $("progressBadge").textContent = `${state.cursor} / ${state.slots.length} Picks`;
-  $("draftBoard").innerHTML = state.slots.map(s => {
-    const active = s.index === state.cursor;
-    const rowCls = active
-      ? "border-emerald-500 bg-emerald-500/10"
-      : s.isMine
-        ? "border-indigo-500/40 bg-indigo-950/20"
-        : "border-slate-800 bg-slate-950";
-    return `
-      <div class="rounded-lg border px-3 py-2 flex items-center justify-between gap-2 text-xs ${rowCls}">
-        <div class="min-w-0">
-          <div class="flex items-center gap-1.5">
-            <span class="font-mono font-bold text-slate-300">${s.label}</span>
-            <span class="font-semibold truncate ${s.isMine ? "text-indigo-300" : "text-slate-300"}">${esc(s.ownerName)}</span>
-            ${s.isTraded ? `<span class="text-[10px] text-amber-400" title="Acquired from ${esc(s.origName)}">⇄</span>` : ""}
-          </div>
-          ${s.player
-            ? `<div class="mt-0.5 flex items-center gap-1.5"><span class="px-1 rounded text-[10px] font-bold ${POS_BADGE[s.player.pos]}">${s.player.pos}</span><b class="text-white">${esc(s.player.name)}</b></div>`
-            : `<div class="text-[11px] text-slate-500 mt-0.5">${active ? "On the clock..." : "Upcoming"}</div>`}
-        </div>
-        <span class="font-mono text-[11px] text-slate-500 shrink-0">${s.player ? s.player.val.toLocaleString() : s.pickVal.toLocaleString()}</span>
-      </div>`;
-  }).join("");
-
-  // 4. My Needs & Draft Haul
-  const me = state.teams.find(t => t.rid === state.myRid);
-  if (me) {
-    $("myNeedsSummary").innerHTML = POS.map(p => {
-      const m = me.needMult[p] || 1;
-      const label = m >= 1.12 ? "NEED" : m <= 0.92 ? "DEEP" : "OK";
-      const cls = label === "NEED" ? "text-rose-400 border-rose-500/30 bg-rose-500/10" : label === "DEEP" ? "text-emerald-400 border-emerald-500/30 bg-emerald-500/10" : "text-slate-300 border-slate-800 bg-slate-950";
-      return `<div class="rounded border p-1.5 ${cls}"><div class="text-[10px] font-bold">${p}</div><div class="text-[10px]">${label}</div></div>`;
-    }).join("");
-  }
-
-  const mySlots = state.slots.filter(s => s.isMine);
-  $("myHaul").innerHTML = mySlots.map(s => `
-    <div class="bg-slate-950 border border-slate-800 rounded-lg px-2.5 py-2 flex items-center justify-between">
-      <div>
-        <span class="font-mono text-slate-400 mr-1.5">${s.label}</span>
-        ${s.player ? `<b class="text-white">${esc(s.player.name)}</b> <span class="text-[10px] text-slate-400">(${s.player.pos})</span>` : `<span class="text-slate-500 italic">Pending</span>`}
-      </div>
-      <span class="font-mono text-[11px] text-emerald-400">${s.player ? s.player.val.toLocaleString() : s.pickVal.toLocaleString()}</span>
-    </div>`).join("") || `<div class="text-slate-500">You own 0 picks in this draft year.</div>`;
-}
-
-// Event Bindings
-$("draftYr").onchange = buildBoardAndPool;
-$("numRounds").onchange = buildBoardAndPool;
-$("btnStep").onclick = () => { clearTimeout(state.simTimer); stepCpu(); };
-$("btnSimToMe").onclick = simToMyPick;
-$("btnUndo").onclick = undoPick;
-$("btnReset").onclick = buildBoardAndPool;
-$("autoSim").onchange = maybeScheduleCpu;
-$("tradeMyPick").onchange = updateTradeCalc;
-$("tradeTargetPick").onchange = updateTradeCalc;
-$("searchBox").oninput = e => { state.search = e.target.value; renderAll(); };
-
-document.querySelectorAll(".pos-btn").forEach(btn => {
-  btn.onclick = () => {
-    state.posFilter = btn.dataset.pos;
-    document.querySelectorAll(".pos-btn").forEach(b => {
-      b.className = b === btn
-        ? "pos-btn px-2 py-1 rounded text-[11px] font-bold bg-emerald-600 text-white cursor-pointer"
-        : "pos-btn px-2 py-1 rounded text-[11px] font-bold bg-slate-950 text-slate-400 border border-slate-800 cursor-pointer";
-    });
-    renderAll();
-  };
-});
-
-if ($("user").value) $("go").click();
-</script>
-</body>
-</html>
+print("Updated mock-draft.html with 60-player 2027 class + 24-player 2028 class and merge logic.")
