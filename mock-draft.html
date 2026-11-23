@@ -443,7 +443,10 @@ function buildBoardAndPool() {
       const ownerRid = resolvePickOwner(origTeam.rid, rd, yr, state.tradedPicks);
       const ownerTeam = draftOrder.find(t => t.rid === ownerRid) || origTeam;
       const tier = idx < Math.ceil(nTeams / 3) ? "Early" : idx < Math.ceil((2 * nTeams) / 3) ? "Mid" : "Late";
-      const pickVal = state.market.pickValue(yr, rd, tier);
+      const rawPickVal = state.market?.pickValue ? state.market.pickValue(yr, rd, tier) : 0;
+      const baseByRd = { 1: { Early: 7200, Mid: 5600, Late: 4300 }, 2: { Early: 3200, Mid: 2500, Late: 1950 }, 3: { Early: 1500, Mid: 1150, Late: 900 }, 4: { Early: 700, Mid: 520, Late: 400 }, 5: { Early: 350, Mid: 250, Late: 180 } };
+      const yrDiscount = Number(yr) > curYr ? Math.pow(0.88, Number(yr) - curYr) : 1;
+      const pickVal = rawPickVal > 0 ? rawPickVal : Math.round(((baseByRd[rd] && baseByRd[rd][tier]) || 300) * yrDiscount);
       const slotOfficial = state.leagueComplete && String(yr) === String($("season").value);
 
       slots.push({
@@ -633,7 +636,8 @@ function renderAll() {
     </div>
     <div class="w-full text-[11px] text-slate-400 border-t border-slate-800/80 pt-2 mt-1 flex flex-wrap gap-x-4 gap-y-1">
       <span>My Roster ID: <b class="text-slate-200">#${state.myRid}</b></span>
-      <span>Traded ${esc($("draftYr").value)} Picks in Sleeper API: <b class="text-slate-200">${state.tradedPicks.filter(p => String(p.season) === String($("draftYr").value)).map(p => `R${p.round} orig#${p.roster_id}→#${p.owner_id}`).join(" | ") || "None returned"}</b></span>
+      <span>Matched ${esc($("draftYr").value)} Traded Picks: <b class="text-amber-300">${state.tradedPicks.filter(p => String(p.season) === String($("draftYr").value)).map(p => `R${p.round} orig#${p.roster_id}→#${p.owner_id}`).join(" | ") || "None for " + esc($("draftYr").value)}</b></span>
+      <span>All Traded Picks in Sleeper API: <b class="text-slate-300">${state.tradedPicks.map(p => `[${p.season}] R${p.round} #${p.roster_id}→#${p.owner_id}`).join(" | ") || "Empty"}</b></span>
     </div>`;
 
   // 1. On The Clock Banner
