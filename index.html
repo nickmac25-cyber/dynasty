@@ -213,7 +213,6 @@
       </div>
     </div>
 
-    <!-- Taxi Squad Optimizer & League Poach Targets -->
     <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
       <div class="bg-slate-900 border border-slate-800 rounded-xl p-4">
         <div class="flex items-center justify-between mb-3">
@@ -237,7 +236,6 @@
       </div>
     </div>
 
-    <!-- Waiver & Market Inefficiency Radar -->
     <div class="bg-slate-900 border border-slate-800 rounded-xl p-4">
       <div class="flex flex-wrap items-center justify-between gap-3 mb-3">
         <div>
@@ -270,7 +268,7 @@
         <div class="flex flex-wrap items-center justify-between gap-2 mb-3">
           <div>
             <h2 class="text-lg font-bold text-white">Contextual Start/Sit &amp; Matchup Optimizer</h2>
-            <p id="weekSub" class="text-xs text-slate-400">Blends Sleeper projections with live NFL opponent defense ranks, Vegas totals &amp; game-script reasoning.</p>
+            <p id="weekSub" class="text-xs text-slate-400">Filters out IR, Out &amp; Bye weeks; adjusts active starters by opponent defense rank, Vegas O/U &amp; game script.</p>
           </div>
           <div class="flex items-center gap-2">
             <label class="text-xs text-slate-400">Week</label>
@@ -290,8 +288,8 @@
         </div>
 
         <div class="bg-slate-900 border border-slate-800 rounded-xl p-4">
-          <h3 class="font-bold text-white mb-1">🏥 Roster Injury &amp; Status Watch</h3>
-          <p class="text-xs text-slate-400 mb-3">Live Sleeper injury designations for your active squad.</p>
+          <h3 class="font-bold text-white mb-1">🏥 Roster Injury &amp; Bye-Week Watch</h3>
+          <p class="text-xs text-slate-400 mb-3">Players automatically excluded from your starting lineup this week.</p>
           <div id="injuryWatch" class="space-y-2 text-xs"></div>
         </div>
       </div>
@@ -442,7 +440,7 @@ const $ = id => document.getElementById(id);
 const { SL, POS, CLIFF, esc, j, getWeights, setWeights, getSavedState, saveState, loadMarket, calcOptimalStarters, projV, ageFlag, studAdj } = DD;
 
 let S = {
-  uid: null, leagues: [], lg: null, fmt: null,
+  uid: null, leagues: [], lg: null, fmt: null, nflState: null,
   rosters: [], users: [], traded: [], drafts: [], trendingAdds: new Map(),
   market: null, teams: [], myRid: null, viewRid: null,
   sideA: [], sideB: []
@@ -520,7 +518,11 @@ $("go").onclick = async () => {
     if (!uname) return $("status").textContent = "Please enter a Sleeper username.";
     saveState({ user: uname, season: $("season").value });
     $("status").textContent = "Fetching Sleeper profile & dynasty leagues...";
-    const u = await j(`${SL}/user/${encodeURIComponent(uname)}`);
+    const [u, st] = await Promise.all([
+      j(`${SL}/user/${encodeURIComponent(uname)}`),
+      j(`${SL}/state/nfl`).catch(() => null)
+    ]);
+    S.nflState = st;
     if (!u || !u.user_id) throw new Error("Sleeper username not found.");
     S.uid = u.user_id;
     const ls = await j(`${SL}/user/${u.user_id}/leagues/nfl/${$("season").value}`);
@@ -614,7 +616,8 @@ async function loadLeague(lg, forceRefresh = false) {
         onTaxi: taxiSet.has(id),
         onIR: irSet.has(id),
         yearsExp: sp?.years_exp ?? 99,
-        injury: sp?.injury_status || null
+        injury: sp?.injury_status || null,
+        playerStatus: sp?.status || "Active"
       });
     });
 
@@ -700,7 +703,8 @@ async function loadLeague(lg, forceRefresh = false) {
 
   const wkSel = $("wk"); wkSel.innerHTML = "";
   for (let w = 1; w <= 18; w++) wkSel.add(new Option(`Week ${w}`, w));
-  wkSel.value = lg.settings?.leg || 12;
+  const liveWk = S.nflState?.display_week || S.nflState?.week || lg.settings?.leg || 12;
+  wkSel.value = Math.min(18, Math.max(1, Number(liveWk)));
 
   $("tabs").hidden = false;
   $("app").hidden = false;
@@ -1123,7 +1127,6 @@ const normTm = t => {
 
 const INACTIVE_STATUSES = new Set(["IR", "OUT", "PUP", "SUS", "COV", "NFI", "DNR"]);
 
-// Position-calibrated weekly PPR projection curve from 6-source dynasty value + depth chart
 function estimateWeeklyProj(p, sp, fmt) {
   const v = Math.max(0, p.v || 0);
   if (v < 300 && (sp?.depth_chart_order || 9) > 3) return 0;
@@ -1131,7 +1134,6 @@ function estimateWeeklyProj(p, sp, fmt) {
   const ppr = fmt?.ppr ?? 1;
   const tep = fmt?.tep ?? 0;
 
-  // Normalize SF QB inflation back to 1QB baseline before converting to weekly fantasy points
   const normV = (p.pos === "QB" && isSF) ? v * 0.72 : v;
   const baseByPos = {
     QB: 11.5 + Math.pow(normV / 1000, 0.88) * 1.45,
@@ -1200,17 +1202,18 @@ async function fetchNflMatchupContext(week) {
 
 function buildPlayerStartSitAnalysis(p, apiProjPts, ctx, sp) {
   const inj = String(p.injury || sp?.injury_status || "").toUpperCase().trim();
+  const statusStr = String(p.playerStatus || sp?.status || "").toUpperCase().trim();
   const tm = normTm(p.team);
 
-  // 1. Hard-block IR / Out / Suspended / PUP / Free Agents
-  if (p.onIR || INACTIVE_STATUSES.has(inj)) {
+  if (p.onIR || INACTIVE_STATUSES.has(inj) || statusStr === "INACTIVE") {
+    const tag = inj || (p.onIR ? "IR" : "INACTIVE");
     return {
       eligible: false,
       basePts: 0,
       adjPts: 0,
-      badge: `🚫 ${inj || "IR"}`,
+      badge: `🚫 ${tag}`,
       badgeCls: "bg-rose-500/20 text-rose-300 border border-rose-500/40",
-      reason: `Do Not Start: ${p.name} is ruled ${inj || "IR"}.`,
+      reason: `Do Not Start: ${p.name} is ruled ${tag}.`,
       mult: 0
     };
   }
@@ -1227,7 +1230,6 @@ function buildPlayerStartSitAnalysis(p, apiProjPts, ctx, sp) {
     };
   }
 
-  // 2. Hard-block Bye Weeks when live schedule is loaded
   const gm = ctx.games[tm];
   if (ctx.loaded && !gm) {
     return {
@@ -1241,7 +1243,6 @@ function buildPlayerStartSitAnalysis(p, apiProjPts, ctx, sp) {
     };
   }
 
-  // 3. Use Sleeper projection if returned; otherwise use calibrated market + depth-chart projection
   const basePts = apiProjPts > 0.5 ? Number(apiProjPts.toFixed(1)) : estimateWeeklyProj(p, sp, S.fmt);
   if (basePts <= 0.5) {
     return {
@@ -1341,7 +1342,7 @@ async function renderLineup() {
   $("lineupSlots").innerHTML = `<div class="text-xs text-slate-400">Analyzing Week ${wk} projections, injury reports, bye weeks &amp; opponent defenses...</div>`;
   try {
     const [proj, ctx] = await Promise.all([
-      j(`https://api.sleeper.com/projections/nfl/${S.lg.season}/${wk}?season_type=regular`).catch(() => ({})),
+      j(`https://api.sleeper.app/projections/nfl/${S.lg.season}/${wk}?season_type=regular`).catch(() => ({})),
       fetchNflMatchupContext(wk)
     ]);
 
@@ -1435,7 +1436,6 @@ async function renderLineup() {
     $("lineupSlots").innerHTML = `<div class="text-xs text-rose-400">Error loading projections: ${e.message}</div>`;
   }
 }
-
 
 // --- TAB 5: DRAFT ROOM & 2027 BOARD ---
 $("refreshDraft").onclick = renderDraftRoom;
