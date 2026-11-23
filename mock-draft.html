@@ -39,8 +39,8 @@
       </label>
       <label class="text-slate-400">Rounds:
         <select id="numRounds" class="ml-1 bg-slate-950 border border-slate-700 rounded-lg px-2.5 py-1.5 text-white font-semibold">
-          <option value="3">3 Rounds</option>
-          <option value="4" selected>4 Rounds</option>
+          <option value="3" selected>3 Rounds</option>
+          <option value="4">4 Rounds</option>
           <option value="5">5 Rounds</option>
         </select>
       </label>
@@ -275,17 +275,42 @@ $("go").onclick = async () => {
 
 // Resolve traded_picks accurately for a given original roster_id, round, and season/draft year
 function resolvePickOwner(origRid, round, yr, tradedPicks) {
+  const orig = Number(origRid);
   const matches = (tradedPicks || []).filter(p =>
     String(p.season) === String(yr) &&
     Number(p.round) === Number(round) &&
-    Number(p.roster_id) === Number(origRid)
+    Number(p.roster_id) === orig
   );
-  if (!matches.length) return Number(origRid);
-  // If multiple entries exist for the same pick, follow chain or take the last non-null owner_id
-  let currentOwner = Number(origRid);
-  for (const tr of matches) {
-    if (tr.owner_id !== null && tr.owner_id !== undefined) {
-      currentOwner = Number(tr.owner_id);
+  if (!matches.length) return orig;
+
+  // Trace multi-hop transfers cleanly:
+  // Start at orig. In each pass, if a trade has previous_owner_id matching currentOwner, advance.
+  // Also if trades appear in chronological order without previous_owner_id, advance if owner_id != currentOwner.
+  let currentOwner = orig;
+  const used = new Set();
+  let progressed = true;
+  while (progressed) {
+    progressed = false;
+    for (let i = 0; i < matches.length; i++) {
+      if (used.has(i)) continue;
+      const tr = matches[i];
+      const nextOwner = Number(tr.owner_id);
+      const prevOwner = tr.previous_owner_id !== undefined && tr.previous_owner_id !== null ? Number(tr.previous_owner_id) : null;
+      if (!nextOwner || nextOwner === currentOwner) {
+        used.add(i);
+        continue;
+      }
+      if (prevOwner !== null) {
+        if (prevOwner === currentOwner) {
+          currentOwner = nextOwner;
+          used.add(i);
+          progressed = true;
+        }
+      } else {
+        currentOwner = nextOwner;
+        used.add(i);
+        progressed = true;
+      }
     }
   }
   return currentOwner;
@@ -373,6 +398,14 @@ async function initDraft(lg, uid) {
   state.tradedPicks = tradedPicks;
   state.leagueComplete = leagueComplete;
 
+  const lgRounds = Number(lg.settings?.draft_rounds);
+  if (lgRounds >= 3 && lgRounds <= 5) {
+    $("numRounds").value = String(lgRounds);
+  }
+  const nextYr = String(Number($("season").value || curYr) + 1);
+  if ([...$("draftYr").options].some(o => o.value === nextYr)) {
+    $("draftYr").value = nextYr;
+  }
   buildBoardAndPool();
   $("main").hidden = false;
   $("status").textContent = `Ready · ${lg.name} (${market.isSF ? "Superflex" : "1QB"}) · ${state.pool.length} rookies loaded.`;
