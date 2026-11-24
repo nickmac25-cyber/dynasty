@@ -29,7 +29,7 @@
     <div class="flex items-center gap-2.5">
       <div>
         <h1 class="font-bold text-base tracking-tight text-white">Command Center</h1>
-        <p id="metaSub" class="text-xs text-slate-400">6-Source Market · Trade Calculator · Roster, Taxi &amp; Stashes · Start/Sit</p>
+        <p id="metaSub" class="text-xs text-slate-400">Blended Market · Trade Calculator · Roster, Taxi &amp; Stashes · Start/Sit</p>
       </div>
     </div>
 
@@ -44,15 +44,13 @@
   <div class="max-w-7xl mx-auto mt-2 flex flex-wrap items-center justify-between gap-2 text-xs">
     <div id="status" class="text-slate-400">Enter your Sleeper username to sync your dynasty league.</div>
     <div class="flex items-center gap-3">
-      <span id="marketBadge" class="text-slate-400"></span>
       <span id="cacheInfo" class="text-slate-500"></span>
-      <button id="refreshMarketBtn" hidden class="text-sky-400 hover:underline cursor-pointer">Refresh Market</button>
       <button id="refreshCache" hidden class="text-emerald-400 hover:underline cursor-pointer">Refresh Player DB</button>
     </div>
   </div>
 </header>
 
-<!-- Navigation Tabs -->
+<!-- Navigation Tabs (7 Streamlined Tabs) -->
 <nav id="tabs" hidden class="bg-slate-900/95 border-b border-slate-800 px-4 overflow-x-auto">
   <div class="max-w-7xl mx-auto flex space-x-1 min-w-max py-1">
     <button data-t="tab-trade" class="tab-btn active px-3.5 py-2 text-xs sm:text-sm font-medium border-b-2 border-transparent text-slate-300 hover:text-white rounded-t-md transition cursor-pointer">⚖️ Trade &amp; Targets</button>
@@ -60,9 +58,8 @@
     <button data-t="tab-roster" class="tab-btn px-3.5 py-2 text-xs sm:text-sm font-medium border-b-2 border-transparent text-slate-300 hover:text-white rounded-t-md transition cursor-pointer">📋 Roster, Taxi &amp; Stashes</button>
     <button data-t="tab-lineup" class="tab-btn px-3.5 py-2 text-xs sm:text-sm font-medium border-b-2 border-transparent text-slate-300 hover:text-white rounded-t-md transition cursor-pointer">⚡ Start/Sit &amp; Matchups</button>
     <button data-t="tab-draft" class="tab-btn px-3.5 py-2 text-xs sm:text-sm font-medium border-b-2 border-transparent text-slate-300 hover:text-white rounded-t-md transition cursor-pointer">🎓 Draft Room &amp; 2027 Board</button>
-    <button data-t="tab-audit" class="tab-btn px-3.5 py-2 text-xs sm:text-sm font-medium border-b-2 border-transparent text-slate-300 hover:text-white rounded-t-md transition cursor-pointer">📊 Team Audit &amp; Matrix</button>
-    <button data-t="tab-news" class="tab-btn px-3.5 py-2 text-xs sm:text-sm font-medium border-b-2 border-transparent text-slate-300 hover:text-white rounded-t-md transition cursor-pointer">📰 NFL News &amp; X Feed</button>
-    <button data-t="tab-ai" class="tab-btn px-3.5 py-2 text-xs sm:text-sm font-medium border-b-2 border-transparent text-slate-300 hover:text-white rounded-t-md transition cursor-pointer">🤖 AI Advisor &amp; 6-Source Weights</button>
+    <button data-t="tab-audit" class="tab-btn px-3.5 py-2 text-xs sm:text-sm font-medium border-b-2 border-transparent text-slate-300 hover:text-white rounded-t-md transition cursor-pointer">📊 Team Audit &amp; Rankings</button>
+    <button data-t="tab-ai" class="tab-btn px-3.5 py-2 text-xs sm:text-sm font-medium border-b-2 border-transparent text-slate-300 hover:text-white rounded-t-md transition cursor-pointer">🤖 AI Advisor &amp; Weights</button>
   </div>
 </nav>
 
@@ -76,10 +73,8 @@
         <div>
           <span class="text-xs uppercase tracking-wider text-slate-400 font-semibold">Live Trade Analysis</span>
           <h2 id="verdictText" class="text-lg sm:text-xl font-bold text-white mt-0.5">Select players or picks on both sides to evaluate</h2>
-          <p id="verdictSub" class="text-xs text-slate-400 mt-0.5">Includes stud consolidation adjustment and position-locked optimal starter delta.</p>
         </div>
         <div class="flex items-center gap-2">
-          <button id="swapSides" class="text-xs bg-slate-800 hover:bg-slate-700 text-slate-200 px-3 py-1.5 rounded-lg border border-slate-700 transition cursor-pointer" title="Swap sides">⇄ Swap</button>
           <button id="clearTrade" class="text-xs bg-slate-800 hover:bg-slate-700 text-slate-300 px-3 py-1.5 rounded-lg border border-slate-700 transition cursor-pointer">Clear Sides</button>
           <button id="copyOffer" class="text-xs bg-emerald-600/20 hover:bg-emerald-600/30 text-emerald-300 border border-emerald-500/40 px-3 py-1.5 rounded-lg transition cursor-pointer">Copy Trade Pitch</button>
         </div>
@@ -90,7 +85,7 @@
         <div id="barB" class="bg-emerald-500 transition-all duration-300" style="width:50%"></div>
       </div>
 
-      <div class="grid grid-cols-2 sm:grid-cols-5 gap-3 text-center pt-1">
+      <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 text-center pt-1">
         <div class="bg-slate-950/70 rounded-lg p-2.5 border border-slate-800/80">
           <div class="text-xs text-slate-400">You Give (Raw)</div>
           <div id="totA" class="text-lg font-bold text-rose-400">0</div>
@@ -104,10 +99,6 @@
           <div id="adjEdge" class="text-lg font-bold text-white">0</div>
         </div>
         <div class="bg-slate-950/70 rounded-lg p-2.5 border border-slate-800/80">
-          <div class="text-xs text-slate-400">Starter Lineup Delta</div>
-          <div id="lineupDelta" class="text-lg font-bold text-amber-400">0</div>
-        </div>
-        <div class="col-span-2 sm:col-span-1 bg-slate-950/70 rounded-lg p-2.5 border border-slate-800/80">
           <div class="text-xs text-slate-400">3-Yr Dynasty Delta</div>
           <div id="yr3Edge" class="text-lg font-bold text-sky-400">0</div>
         </div>
@@ -142,8 +133,8 @@
     <div class="bg-slate-900 border border-slate-800 rounded-xl p-4">
       <div class="flex flex-wrap items-center justify-between gap-2 mb-3">
         <div>
-          <h3 class="font-semibold text-white">🎯 Smart Trade Targets &amp; Buy-Low Dips Across Your League</h3>
-          <p class="text-xs text-slate-400">Matches your weakest starting slots with rival positional surplus and flags rostered players whose 30d value dipped.</p>
+          <h3 class="font-semibold text-white">🎯 Smart Trade Targets Across Your League</h3>
+          <p class="text-xs text-slate-400">Matches your weakest starting slots with rivals who have surplus depth at that position.</p>
         </div>
       </div>
       <div id="targets" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3"></div>
@@ -169,20 +160,16 @@
     <div id="finderResults" class="grid grid-cols-1 md:grid-cols-2 gap-4"></div>
   </section>
 
-  <!-- TAB 3: ROSTER, TAXI & STASHES -->
+  <!-- TAB 3: ROSTER, TAXI & STASHES (Unified Hub) -->
   <section id="tab-roster" hidden class="pane space-y-6">
+    <!-- Top: Full Roster & Picks -->
     <div class="bg-slate-900 border border-slate-800 rounded-xl p-4">
       <div class="flex flex-wrap items-center justify-between gap-3 mb-4">
         <div>
-          <h2 class="text-lg font-bold text-white">Full Roster Valuation &amp; Positional Age-Curve Warnings</h2>
-          <p class="text-xs text-slate-400">RB Cliff: 26+ · WR Cliff: 29+ · TE Cliff: 30+ · QB Cliff: 34+ · 6-Source Market Breakdown.</p>
+          <h2 class="text-lg font-bold text-white">Full Roster Valuation &amp; Age Cliff Signals</h2>
+          <p class="text-xs text-slate-400">Blended market value, 30-day trend, 3-year projected value, and buy/sell age windows.</p>
         </div>
         <div class="flex flex-wrap items-center gap-2">
-          <select id="cliffFilter" class="bg-slate-950 border border-slate-700 rounded-lg px-2.5 py-1.5 text-xs text-white">
-            <option value="ALL">All Age Windows</option>
-            <option value="CLIFF">⚠️ Cliff / Caution Only</option>
-            <option value="PEAK">🟢 Ascending / Peak Only</option>
-          </select>
           <select id="posFilter" class="bg-slate-950 border border-slate-700 rounded-lg px-2.5 py-1.5 text-xs text-white">
             <option value="ALL">All Positions</option>
             <option value="QB">QB</option><option value="RB">RB</option><option value="WR">WR</option><option value="TE">TE</option><option value="PICK">Picks</option>
@@ -201,9 +188,9 @@
             <tr class="border-b border-slate-800 text-xs text-slate-400 uppercase">
               <th class="py-2.5 px-3">Asset</th>
               <th class="py-2.5 px-2">Pos</th>
-              <th class="py-2.5 px-2">Age &amp; Curve</th>
+              <th class="py-2.5 px-2">Age</th>
               <th class="py-2.5 px-2">Blended</th>
-              <th class="py-2.5 px-2 hidden xl:table-cell">FC / SGF / SC / DD / DP / ECR</th>
+              <th class="py-2.5 px-2 hidden sm:table-cell">FC / DP / ECR</th>
               <th class="py-2.5 px-2">30d Trend</th>
               <th class="py-2.5 px-2">3-Yr Proj</th>
               <th class="py-2.5 px-3">Dynasty Signal</th>
@@ -214,6 +201,7 @@
       </div>
     </div>
 
+    <!-- Middle: Taxi Squad Optimizer & League Poach Targets (merged from taxi-optimizer.html) -->
     <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
       <div class="bg-slate-900 border border-slate-800 rounded-xl p-4">
         <div class="flex items-center justify-between mb-3">
@@ -237,17 +225,20 @@
       </div>
     </div>
 
+    <!-- Bottom: Waiver & Free Agent Stash Engine (merged from waiver-stashes.html) -->
     <div class="bg-slate-900 border border-slate-800 rounded-xl p-4">
       <div class="flex flex-wrap items-center justify-between gap-3 mb-3">
         <div>
-          <h3 class="font-bold text-white">💎 Market Inefficiency &amp; Waiver Stash Radar</h3>
-          <p class="text-xs text-slate-400">Cross-references unrostered players against live Sleeper 24h trending adds, 6-source blended value, RB2 handcuffs, and IR stashes.</p>
+          <h3 class="font-bold text-white">💎 Waiver Wire &amp; Deep Dynasty Stash Radar</h3>
+          <p class="text-xs text-slate-400">Unrostered players ranked by blended dynasty value, youth upside, backup RB handcuff boost, and IR stash eligibility.</p>
         </div>
         <div class="flex items-center gap-2">
-          <select id="stashMode" class="bg-slate-950 border border-slate-700 rounded-lg px-2.5 py-1.5 text-xs text-white">
-            <option value="ALL">All Waiver Inefficiencies</option>
-            <option value="TRENDING">🔥 Hot Sleeper Trending Adds</option>
-            <option value="VALUE">💰 Top Blended Value Unrostered</option>
+          <select id="stashAngle" class="bg-slate-950 border border-slate-700 rounded-lg px-2.5 py-1.5 text-xs text-white">
+            <option value="ALL">All Angles</option>
+            <option value="opp">Path / Opportunity</option>
+            <option value="youth">Young Upside (&le;23)</option>
+            <option value="injury">IR / Injury</option>
+            <option value="handcuff">My RB Handcuffs</option>
           </select>
           <select id="stashPos" class="bg-slate-950 border border-slate-700 rounded-lg px-2.5 py-1.5 text-xs text-white">
             <option value="ALL">All Positions</option>
@@ -268,31 +259,26 @@
       <div class="lg:col-span-2 bg-slate-900 border border-slate-800 rounded-xl p-4">
         <div class="flex flex-wrap items-center justify-between gap-2 mb-3">
           <div>
-            <h2 class="text-lg font-bold text-white">Contextual Start/Sit &amp; Matchup Optimizer</h2>
-            <p id="weekSub" class="text-xs text-slate-400">Filters out IR, Out &amp; Bye weeks; adjusts active starters by opponent defense rank, Vegas O/U &amp; game script.</p>
+            <h2 class="text-lg font-bold text-white">Optimal Lineup &amp; Matchup Analyzer</h2>
+            <p id="weekSub" class="text-xs text-slate-400">Uses live Sleeper weekly projections + defensive matchup scheme splits.</p>
           </div>
           <div class="flex items-center gap-2">
             <label class="text-xs text-slate-400">Week</label>
             <select id="wk" class="bg-slate-950 border border-slate-700 rounded-lg px-2.5 py-1 text-xs text-white"></select>
-            <button id="refreshLineup" class="bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-medium px-3 py-1 rounded-lg cursor-pointer">Analyze Week</button>
+            <button id="refreshLineup" class="bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-medium px-3 py-1 rounded-lg cursor-pointer">Update</button>
           </div>
         </div>
         <div id="lineupAlert" class="mb-3"></div>
-        <div id="lineupSlots" class="space-y-2.5"></div>
+        <div id="lineupSlots" class="space-y-2"></div>
       </div>
 
-      <div class="space-y-6">
-        <div class="bg-slate-900 border border-slate-800 rounded-xl p-4">
-          <h3 class="font-bold text-white mb-1">🔥 Best &amp; Worst Roster Matchups</h3>
-          <p class="text-xs text-slate-400 mb-3">Auto-synced from live NFL team defensive points allowed &amp; Vegas game environments.</p>
-          <div id="matchupPreview" class="space-y-2 text-xs"></div>
-        </div>
-
-        <div class="bg-slate-900 border border-slate-800 rounded-xl p-4">
-          <h3 class="font-bold text-white mb-1">🏥 Roster Injury &amp; Bye-Week Watch</h3>
-          <p class="text-xs text-slate-400 mb-3">Players automatically excluded from your starting lineup this week.</p>
-          <div id="injuryWatch" class="space-y-2 text-xs"></div>
-        </div>
+      <div class="bg-slate-900 border border-slate-800 rounded-xl p-4 flex flex-col">
+        <h3 class="font-bold text-white mb-1">🛡️ Defensive Scheme Matchup Data</h3>
+        <p class="text-xs text-slate-400 mb-3">Loads <code class="text-emerald-400">matchups.json</code> from your GitHub repo or manual override.</p>
+        <input id="repoInput" placeholder="owner/repo (e.g. ntmcaleer/dynasty)" class="bg-slate-950 border border-slate-700 rounded-lg px-3 py-1.5 text-xs text-white mb-2">
+        <button id="loadGh" class="bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-medium px-3 py-1.5 rounded-lg border border-slate-700 mb-3 cursor-pointer">Fetch matchups.json from GitHub</button>
+        <div id="ghStatus" class="text-xs text-slate-400 mb-2"></div>
+        <div id="matchupPreview" class="space-y-1.5 overflow-y-auto max-h-72 text-xs"></div>
       </div>
     </div>
   </section>
@@ -303,62 +289,22 @@
       <div class="flex flex-wrap items-center justify-between gap-3 mb-4">
         <div>
           <h2 class="text-lg font-bold text-white">Live Sleeper Draft Tracker &amp; 2027 Rookie Big Board</h2>
-          <p id="rookie2027Sub" class="text-xs text-slate-400">Real 2027 draft class with weekly college production updates &amp; draft eligibility status badges.</p>
+          <p class="text-xs text-slate-400">Tracks active/completed Sleeper rookie drafts alongside our unified 50-prospect 2027 class ranking.</p>
         </div>
-        <div class="flex flex-wrap items-center gap-2">
-          <select id="rookieStatusFilter" class="bg-slate-950 border border-slate-700 rounded-lg px-2.5 py-1.5 text-xs text-white">
-            <option value="ALL">All Draft Statuses</option>
-            <option value="CONFIRMED">🟢 Confirmed Entering</option>
-            <option value="SR_OUT">🎓 SR · No Eligibility Left</option>
-            <option value="PRESUMED">🟡 Presumed Draft</option>
-            <option value="RISK">🟠 Return-to-School Risk</option>
-          </select>
-          <select id="rookiePosFilter" class="bg-slate-950 border border-slate-700 rounded-lg px-2.5 py-1.5 text-xs text-white">
-            <option value="ALL">All Positions</option>
-            <option value="QB">QB</option>
-            <option value="RB">RB</option>
-            <option value="WR">WR</option>
-            <option value="TE">TE</option>
-          </select>
+        <div class="flex items-center gap-2">
           <select id="draftSel" class="bg-slate-950 border border-slate-700 rounded-lg px-3 py-1.5 text-xs text-white"></select>
-          <button id="refreshDraft" class="bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold px-3 py-1.5 rounded-lg cursor-pointer">Sync College Stats</button>
-          <a href="mock-draft.html" class="bg-slate-800 hover:bg-slate-700 text-emerald-300 border border-slate-700 text-xs font-semibold px-3 py-1.5 rounded-lg">2027 Mock Sim →</a>
+          <button id="refreshDraft" class="bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold px-3 py-1.5 rounded-lg cursor-pointer">Sync Draft</button>
+          <a href="mock-draft.html" class="bg-slate-800 hover:bg-slate-700 text-emerald-300 border border-slate-700 text-xs font-semibold px-3 py-1.5 rounded-lg">Launch 2027 Mock Sim →</a>
         </div>
       </div>
       <div id="draftSummary" class="text-xs text-slate-400 mb-3"></div>
-      <div id="draftBoard" class="grid grid-cols-1 lg:grid-cols-12 gap-6"></div>
+      <div id="draftBoard" class="grid grid-cols-1 lg:grid-cols-2 gap-6"></div>
     </div>
   </section>
 
-  <!-- TAB 6: TEAM AUDIT & CONTENDER/REBUILDER MATRIX -->
+  <!-- TAB 6: TEAM AUDIT & POWER RANKINGS -->
   <section id="tab-audit" hidden class="pane space-y-6">
     <div id="auditSummary" class="grid grid-cols-2 sm:grid-cols-4 gap-4"></div>
-
-    <div class="bg-slate-900 border border-slate-800 rounded-xl p-4">
-      <div class="flex flex-wrap items-center justify-between gap-2 mb-3">
-        <div>
-          <h3 class="font-bold text-white">🧭 Contender vs. Rebuilder Matrix</h3>
-          <p class="text-xs text-slate-400">Classifies every franchise by Starter Strength, Value-Weighted Age, and Future Draft Capital to reveal natural trade partners.</p>
-        </div>
-      </div>
-      <div class="overflow-x-auto">
-        <table class="w-full text-left border-collapse text-xs sm:text-sm">
-          <thead>
-            <tr class="border-b border-slate-800 text-xs text-slate-400 uppercase">
-              <th class="py-2.5 px-3">Franchise</th>
-              <th class="py-2.5 px-2">Archetype</th>
-              <th class="py-2.5 px-2">Record</th>
-              <th class="py-2.5 px-2">Starter Val (Rank)</th>
-              <th class="py-2.5 px-2">Weighted Age</th>
-              <th class="py-2.5 px-2">Pick Capital</th>
-              <th class="py-2.5 px-3">Strategic Posture</th>
-            </tr>
-          </thead>
-          <tbody id="matrixBody" class="divide-y divide-slate-800/70"></tbody>
-        </table>
-      </div>
-    </div>
-
     <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
       <div class="bg-slate-900 border border-slate-800 rounded-xl p-4">
         <h3 class="font-bold text-white mb-1">🏆 League Power Rankings</h3>
@@ -373,52 +319,7 @@
     </div>
   </section>
 
-  <!-- TAB 8: LIVE NFL NEWS & X FEED -->
-  <section id="tab-news" hidden class="pane space-y-6">
-    <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
-      <!-- Left 7 Cols: Live Breaking NFL & Dynasty News Wire -->
-      <div class="lg:col-span-7 bg-slate-900 border border-slate-800 rounded-xl p-5 space-y-4">
-        <div class="flex flex-wrap items-center justify-between gap-2">
-          <div>
-            <h2 class="text-lg font-bold text-white">📰 Live NFL Breaking News Wire</h2>
-            <p class="text-xs text-slate-400">Real-time NFL reports, injury updates &amp; roster transactions cross-referenced with your Sleeper roster.</p>
-          </div>
-          <div class="flex items-center gap-2">
-            <select id="newsFilter" class="bg-slate-950 border border-slate-700 rounded-lg px-2.5 py-1.5 text-xs text-white">
-              <option value="ALL">All NFL News</option>
-              <option value="MY_ROSTER">⭐ Mentions My Players</option>
-              <option value="INJURY">🏥 Injuries &amp; Status</option>
-              <option value="MOVES">🔁 Trades &amp; Signings</option>
-            </select>
-            <button id="refreshNews" class="bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold px-3 py-1.5 rounded-lg cursor-pointer">Refresh</button>
-          </div>
-        </div>
-        <div id="newsFeedList" class="space-y-3 max-h-[680px] overflow-y-auto pr-1"></div>
-      </div>
-
-      <!-- Right 5 Cols: NFL Newsmakers X (Twitter) Live Feed -->
-      <div class="lg:col-span-5 bg-slate-900 border border-slate-800 rounded-xl p-5 space-y-3">
-        <div>
-          <h2 class="text-lg font-bold text-white">𝕏 NFL Insiders &amp; Official Feed</h2>
-          <p class="text-xs text-slate-400">Switch between top NFL insiders or open their live X timelines directly.</p>
-        </div>
-
-        <div id="xInsiderBtns" class="flex flex-wrap gap-1.5">
-          <button type="button" data-handle="NFL" class="x-handle-btn bg-emerald-600 text-white text-xs font-semibold px-2.5 py-1 rounded-lg cursor-pointer">@NFL</button>
-          <button type="button" data-handle="AdamSchefter" class="x-handle-btn bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold px-2.5 py-1 rounded-lg cursor-pointer">@AdamSchefter</button>
-          <button type="button" data-handle="RapSheet" class="x-handle-btn bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold px-2.5 py-1 rounded-lg cursor-pointer">@RapSheet</button>
-          <button type="button" data-handle="TomPelissero" class="x-handle-btn bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold px-2.5 py-1 rounded-lg cursor-pointer">@TomPelissero</button>
-          <button type="button" data-handle="FieldYates" class="x-handle-btn bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold px-2.5 py-1 rounded-lg cursor-pointer">@FieldYates</button>
-          <button type="button" data-handle="Schultz_Report" class="x-handle-btn bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold px-2.5 py-1 rounded-lg cursor-pointer">@Schultz_Report</button>
-          <button type="button" data-handle="SleeperNFL" class="x-handle-btn bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold px-2.5 py-1 rounded-lg cursor-pointer">@SleeperNFL</button>
-        </div>
-
-        <div id="xEmbedWrap" class="bg-slate-950 border border-slate-800 rounded-xl p-2 min-h-[560px] overflow-y-auto"></div>
-      </div>
-    </div>
-  </section>
-
-  <!-- TAB 7: AI ADVISOR & 6-SOURCE SETTINGS -->
+  <!-- TAB 7: AI ADVISOR & SETTINGS -->
   <section id="tab-ai" hidden class="pane space-y-6">
     <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
       <div class="bg-slate-900 border border-slate-800 rounded-xl p-5">
@@ -428,68 +329,29 @@
           <button id="genPrompt" class="bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold px-4 py-2 rounded-lg cursor-pointer">Generate Full Prompt</button>
           <button id="copyPrompt" class="bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold px-4 py-2 rounded-lg border border-slate-700 cursor-pointer">Copy to Clipboard</button>
         </div>
-        <textarea id="aiBox" rows="16" class="w-full bg-slate-950 border border-slate-800 rounded-lg p-3 text-xs font-mono text-slate-300 focus:outline-none focus:border-emerald-500"></textarea>
+        <textarea id="aiBox" rows="12" class="w-full bg-slate-950 border border-slate-800 rounded-lg p-3 text-xs font-mono text-slate-300 focus:outline-none focus:border-emerald-500"></textarea>
       </div>
 
       <div class="bg-slate-900 border border-slate-800 rounded-xl p-5 space-y-4">
-        <div class="flex flex-wrap items-start justify-between gap-2">
-          <div>
-            <h2 class="text-lg font-bold text-white mb-1">⚖️ 6-Source Market Weights</h2>
-            <p class="text-xs text-slate-400">Pick a strategy preset or fine-tune all 6 sources manually. Saved across every page.</p>
-          </div>
-          <span id="weightTotalBadge" class="text-xs font-mono bg-slate-800 text-emerald-400 px-2.5 py-1 rounded border border-slate-700">Total: 100%</span>
+        <div>
+          <h2 class="text-lg font-bold text-white mb-1">⚖️ Global Market Source Weights</h2>
+          <p class="text-xs text-slate-400">Saved automatically and applied across every page in Dynasty Desk Pro.</p>
         </div>
-
-        <div class="grid grid-cols-2 gap-2 pt-1">
-          <button type="button" data-preset="25,25,15,15,10,10" class="preset-btn text-left bg-slate-950 hover:bg-slate-800 border border-slate-800 hover:border-emerald-500/50 rounded-lg p-2.5 transition cursor-pointer">
-            <div class="text-xs font-bold text-white">⚖️ Balanced 6-Source</div>
-            <div class="text-[11px] text-slate-400">25·25·15·15·10·10 (Default)</div>
-          </button>
-          <button type="button" data-preset="45,25,10,10,5,5" class="preset-btn text-left bg-slate-950 hover:bg-slate-800 border border-slate-800 hover:border-emerald-500/50 rounded-lg p-2.5 transition cursor-pointer">
-            <div class="text-xs font-bold text-emerald-400">📈 Live Trade Market</div>
-            <div class="text-[11px] text-slate-400">Heavy FantasyCalc &amp; SGF</div>
-          </button>
-          <button type="button" data-preset="15,15,15,10,15,30" class="preset-btn text-left bg-slate-950 hover:bg-slate-800 border border-slate-800 hover:border-amber-500/50 rounded-lg p-2.5 transition cursor-pointer">
-            <div class="text-xs font-bold text-amber-400">🧠 Expert ECR &amp; Consensus</div>
-            <div class="text-[11px] text-slate-400">Heavy FantasyPros &amp; DP</div>
-          </button>
-          <button type="button" data-preset="15,25,35,15,5,5" class="preset-btn text-left bg-slate-950 hover:bg-slate-800 border border-slate-800 hover:border-sky-500/50 rounded-lg p-2.5 transition cursor-pointer">
-            <div class="text-xs font-bold text-sky-400">🎛️ League-Settings Custom</div>
-            <div class="text-[11px] text-slate-400">Heavy StatChasers &amp; SGF</div>
-          </button>
-        </div>
-
-        <div class="space-y-3 pt-1">
+        <div class="space-y-3">
           <div>
-            <div class="flex justify-between text-xs mb-1"><span>1. FantasyCalc (Live Completed Trades)</span><span id="wFcLbl" class="font-bold text-emerald-400">25%</span></div>
-            <input id="wFc" type="range" min="0" max="100" value="25" class="w-full accent-emerald-500">
+            <div class="flex justify-between text-xs mb-1"><span>FantasyCalc (Live Market Trades)</span><span id="wFcLbl" class="font-bold text-emerald-400">40%</span></div>
+            <input id="wFc" type="range" min="0" max="100" value="40" class="w-full accent-emerald-500">
           </div>
           <div>
-            <div class="flex justify-between text-xs mb-1"><span>2. StatsGuyFantasy (Format &amp; TEP Adjusted)</span><span id="wSgfLbl" class="font-bold text-teal-400">25%</span></div>
-            <input id="wSgf" type="range" min="0" max="100" value="25" class="w-full accent-teal-500">
+            <div class="flex justify-between text-xs mb-1"><span>DynastyProcess (Crowdsourced Consensus)</span><span id="wDpLbl" class="font-bold text-sky-400">30%</span></div>
+            <input id="wDp" type="range" min="0" max="100" value="30" class="w-full accent-sky-500">
           </div>
           <div>
-            <div class="flex justify-between text-xs mb-1"><span>3. StatChasers (Bench &amp; Scoring Curve)</span><span id="wScLbl" class="font-bold text-cyan-400">15%</span></div>
-            <input id="wSc" type="range" min="0" max="100" value="15" class="w-full accent-cyan-500">
-          </div>
-          <div>
-            <div class="flex justify-between text-xs mb-1"><span>4. DynastyDealer (Player Value Model)</span><span id="wDdLbl" class="font-bold text-indigo-400">15%</span></div>
-            <input id="wDd" type="range" min="0" max="100" value="15" class="w-full accent-indigo-500">
-          </div>
-          <div>
-            <div class="flex justify-between text-xs mb-1"><span>5. DynastyProcess (Crowdsourced Consensus)</span><span id="wDpLbl" class="font-bold text-sky-400">10%</span></div>
-            <input id="wDp" type="range" min="0" max="100" value="10" class="w-full accent-sky-500">
-          </div>
-          <div>
-            <div class="flex justify-between text-xs mb-1"><span>6. FantasyPros Dynasty ECR Curve</span><span id="wEcrLbl" class="font-bold text-amber-400">10%</span></div>
-            <input id="wEcr" type="range" min="0" max="100" value="10" class="w-full accent-amber-500">
+            <div class="flex justify-between text-xs mb-1"><span>FantasyPros Dynasty ECR Curve</span><span id="wEcrLbl" class="font-bold text-amber-400">30%</span></div>
+            <input id="wEcr" type="range" min="0" max="100" value="30" class="w-full accent-amber-500">
           </div>
         </div>
-
-        <div class="flex items-center gap-2 pt-1">
-          <button id="applyWeights" class="bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold px-4 py-2 rounded-lg cursor-pointer">Recalculate Suite Values</button>
-          <span id="presetStatus" class="text-xs text-slate-400"></span>
-        </div>
+        <button id="applyWeights" class="bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold px-4 py-2 rounded-lg cursor-pointer">Recalculate Suite Values</button>
       </div>
     </div>
   </section>
@@ -497,69 +359,33 @@
 
 <script>
 const $ = id => document.getElementById(id);
-const { SL, POS, CLIFF, esc, j, getWeights, setWeights, getSavedState, saveState, loadMarket, calcOptimalStarters, projV, ageFlag, studAdj } = DD;
+const { SL, POS, ROOKIES_2027, esc, j, getWeights, setWeights, getSavedState, saveState, loadMarket, projV, ageFlag, studAdj } = DD;
 
 let S = {
-  uid: null, leagues: [], lg: null, fmt: null, nflState: null,
-  rosters: [], users: [], traded: [], drafts: [], trendingAdds: new Map(),
+  uid: null, leagues: [], lg: null, fmt: null,
+  rosters: [], users: [], traded: [], drafts: [],
   market: null, teams: [], myRid: null, viewRid: null,
-  sideA: [], sideB: []
+  sideA: [], sideB: [], matchups: null, liveDraftId: null
 };
 
-function getPositionalCurve(a) {
-  if (a.pick || !a.age) return { tier: "PICK", label: "Future Capital", cls: "text-purple-300 bg-purple-500/15", isCliff: false, isPeak: true };
-  const age = Math.floor(a.age);
-  const pos = a.pos;
-  const cliff = CLIFF[pos] || 30;
-  if (age >= cliff) {
-    return { tier: "CLIFF", label: `🚨 ${pos} Age Cliff (${cliff}+)`, cls: "text-rose-300 bg-rose-500/20 border border-rose-500/40", isCliff: true, isPeak: false };
-  }
-  if (age >= cliff - 1) {
-    return { tier: "CAUTION", label: `⚠️ ${pos} Caution (${cliff - 1})`, cls: "text-amber-300 bg-amber-500/20", isCliff: true, isPeak: false };
-  }
-  return { tier: "PEAK", label: `🟢 ${pos} Prime (≤${cliff - 2})`, cls: "text-emerald-300 bg-emerald-500/15", isCliff: false, isPeak: true };
-}
-
-const SNAP_KEY = "dd_market_snapshot_v2";
-async function loadMarketWithFallback(lg, onStatus, forceRefresh = false) {
-  const cacheKey = `${SNAP_KEY}_${lg.league_id}_${getWeights().join("-")}`;
-  try {
-    if (forceRefresh) localStorage.removeItem(cacheKey);
-    const market = await loadMarket(lg, onStatus);
-    try { localStorage.setItem(cacheKey, JSON.stringify({ ts: Date.now(), allCount: market.all.length })); } catch (e) {}
-    return { market, snapTs: Date.now() };
-  } catch (err) {
-    const fallbackMarket = await loadMarket(lg, onStatus).catch(() => null);
-    if (fallbackMarket) return { market: fallbackMarket, snapTs: Date.now() };
-    throw err;
-  }
-}
-
+// Init season dropdown & restore saved user/weights
 const curYr = new Date().getFullYear();
 for (let y = curYr; y >= curYr - 3; y--) $("season").add(new Option(y, y));
 const saved = getSavedState();
 if (saved.user) $("user").value = saved.user;
 if (saved.season) $("season").value = saved.season;
-
-const WEIGHT_IDS = ["wFc", "wSgf", "wSc", "wDd", "wDp", "wEcr"];
-const WEIGHT_LBLS = ["wFcLbl", "wSgfLbl", "wScLbl", "wDdLbl", "wDpLbl", "wEcrLbl"];
+if (saved.repo) $("repoInput").value = saved.repo;
 const initW = getWeights();
-WEIGHT_IDS.forEach((id, idx) => { $(id).value = initW[idx] ?? 0; });
-
+$("wFc").value = initW[0]; $("wDp").value = initW[1]; $("wEcr").value = initW[2];
 const syncWeightLabels = () => {
-  let tot = 0;
-  WEIGHT_IDS.forEach((id, idx) => {
-    const val = Number($(id).value);
-    tot += val;
-    $(WEIGHT_LBLS[idx]).textContent = val + "%";
-  });
-  if ($("weightTotalBadge")) {
-    $("weightTotalBadge").textContent = `Total: ${tot}%${tot !== 100 ? " (auto-normalized)" : ""}`;
-  }
+  $("wFcLbl").textContent = $("wFc").value + "%";
+  $("wDpLbl").textContent = $("wDp").value + "%";
+  $("wEcrLbl").textContent = $("wEcr").value + "%";
 };
 syncWeightLabels();
-WEIGHT_IDS.forEach(id => $(id).oninput = syncWeightLabels);
+["wFc", "wDp", "wEcr"].forEach(id => $(id).oninput = syncWeightLabels);
 
+// Tab switcher + hash navigation support
 function activateTab(tabId) {
   const btn = document.querySelector(`.tab-btn[data-t="${tabId}"]`);
   if (!btn) return;
@@ -569,7 +395,6 @@ function activateTab(tabId) {
   $(tabId).hidden = false;
   if (tabId === "tab-lineup") renderLineup();
   if (tabId === "tab-draft") renderDraftRoom();
-  if (tabId === "tab-news") renderNewsAndX();
 }
 document.querySelectorAll(".tab-btn").forEach(b => b.onclick = () => activateTab(b.dataset.t));
 
@@ -579,11 +404,7 @@ $("go").onclick = async () => {
     if (!uname) return $("status").textContent = "Please enter a Sleeper username.";
     saveState({ user: uname, season: $("season").value });
     $("status").textContent = "Fetching Sleeper profile & dynasty leagues...";
-    const [u, st] = await Promise.all([
-      j(`${SL}/user/${encodeURIComponent(uname)}`),
-      j(`${SL}/state/nfl`).catch(() => null)
-    ]);
-    S.nflState = st;
+    const u = await j(`${SL}/user/${encodeURIComponent(uname)}`);
     if (!u || !u.user_id) throw new Error("Sleeper username not found.");
     S.uid = u.user_id;
     const ls = await j(`${SL}/user/${u.user_id}/leagues/nfl/${$("season").value}`);
@@ -601,35 +422,25 @@ $("go").onclick = async () => {
 $("refreshCache").onclick = async () => {
   $("status").textContent = "Refreshing 24h Sleeper player database...";
   await DD.getPlayers(true, msg => $("status").textContent = msg);
-  if (S.lg) await loadLeague(S.lg, true);
+  if (S.lg) await loadLeague(S.lg);
 };
 
-$("refreshMarketBtn").onclick = async () => {
-  if (S.lg) await loadLeague(S.lg, true);
-};
-
-async function loadLeague(lg, forceRefresh = false) {
+async function loadLeague(lg) {
   S.lg = lg;
   saveState({ leagueId: lg.league_id });
-  $("status").textContent = `Loading ${lg.name} rosters, traded picks, trending adds & 6-source values...`;
+  $("status").textContent = `Loading ${lg.name} rosters, traded picks & blended values...`;
 
-  const [mktWrap, rosters, users, traded, drafts, trending] = await Promise.all([
-    loadMarketWithFallback(lg, msg => $("status").textContent = msg, forceRefresh),
+  const [market, rosters, users, traded, drafts] = await Promise.all([
+    loadMarket(lg, msg => $("status").textContent = msg),
     j(`${SL}/league/${lg.league_id}/rosters`),
     j(`${SL}/league/${lg.league_id}/users`),
     j(`${SL}/league/${lg.league_id}/traded_picks`),
-    j(`${SL}/league/${lg.league_id}/drafts`).catch(() => []),
-    j(`${SL}/players/nfl/trending/add?lookback_hours=24&limit=100`).catch(() => [])
+    j(`${SL}/league/${lg.league_id}/drafts`).catch(() => [])
   ]);
 
-  const market = mktWrap.market;
   S.market = market; S.fmt = market.fmt;
   S.rosters = rosters; S.users = users; S.traded = traded; S.drafts = drafts;
-  S.trendingAdds = new Map((trending || []).map(x => [String(x.player_id), x.count]));
-
-  $("marketBadge").textContent = `6-Source Market synced ${new Date(mktWrap.snapTs).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`;
-  $("cacheInfo").textContent = `· Player DB ${new Date(market.cacheTs).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`;
-  $("refreshMarketBtn").hidden = false;
+  $("cacheInfo").textContent = `Player DB cached ${new Date(market.cacheTs).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`;
   $("refreshCache").hidden = false;
 
   const tname = rid => {
@@ -638,6 +449,7 @@ async function loadLeague(lg, forceRefresh = false) {
     return u?.metadata?.team_name || u?.display_name || "Team " + rid;
   };
 
+  // Order teams worst-to-best to estimate pick tiers
   const ordered = [...rosters].sort((a, b) => (a.settings.wins - b.settings.wins) || (a.settings.fpts - b.settings.fpts));
   const tierForRid = rid => {
     const idx = ordered.findIndex(r => r.roster_id === rid);
@@ -665,23 +477,19 @@ async function loadLeague(lg, forceRefresh = false) {
         age: m?.age || sp?.age || null,
         team: m?.team || sp?.team || "",
         fc: m?.fc || 0,
-        sgf: m?.sgf || null,
-        sc: m?.sc || null,
-        dd: m?.dd || null,
         dp: m?.dp || null,
         ecr: m?.ecr || null,
-        ecrSd: m?.ecrSd || null,
         v: m?.v || 0,
         trend: m?.trend || 0,
         pick: false,
         onTaxi: taxiSet.has(id),
         onIR: irSet.has(id),
         yearsExp: sp?.years_exp ?? 99,
-        injury: sp?.injury_status || null,
-        playerStatus: sp?.status || "Active"
+        injury: sp?.injury_status || null
       });
     });
 
+    // Build exact owned draft picks
     years.forEach(yr => {
       for (let rd = 1; rd <= 4; rd++) {
         rosters.forEach(orig => {
@@ -697,7 +505,7 @@ async function loadLeague(lg, forceRefresh = false) {
               pos: "PICK",
               age: null,
               team: "",
-              fc: pv, sgf: null, sc: null, dd: null, dp: null, ecr: null, v: pv, trend: 0,
+              fc: pv, dp: null, ecr: null, v: pv, trend: 0,
               pick: true, year: yr, round: rd, tier
             });
           }
@@ -707,13 +515,8 @@ async function loadLeague(lg, forceRefresh = false) {
 
     assets.sort((a, b) => b.v - a.v);
     const playersOnly = assets.filter(a => !a.pick);
-    const picksOnly = assets.filter(a => a.pick);
     const totalV = assets.reduce((s, a) => s + a.v, 0);
-    const pickV = picksOnly.reduce((s, a) => s + a.v, 0);
-    const starterV = calcOptimalStarters(playersOnly, lg.roster_positions).total;
-    const ages = playersOnly.filter(p => p.age).map(p => ({ age: p.age, w: Math.max(500, p.v) }));
-    const wAge = ages.length ? Number((ages.reduce((s, x) => s + x.age * x.w, 0) / ages.reduce((s, x) => s + x.w, 0)).toFixed(1)) : 26.0;
-
+    const starterV = playersOnly.slice(0, 9).reduce((s, a) => s + a.v, 0);
     return {
       rid: r.roster_id,
       ownerId: r.owner_id,
@@ -724,29 +527,9 @@ async function loadLeague(lg, forceRefresh = false) {
       raw: r,
       assets,
       playersOnly,
-      picksOnly,
       totalV,
-      pickV,
-      starterV,
-      wAge
+      starterV
     };
-  });
-
-  const sortedByStarters = [...S.teams].sort((a, b) => b.starterV - a.starterV);
-  const nTeams = S.teams.length;
-  S.teams.forEach(t => {
-    t.stRank = sortedByStarters.findIndex(x => x.rid === t.rid) + 1;
-    const topThird = Math.max(2, Math.ceil(nTeams * 0.33));
-    const midCut = Math.max(3, Math.ceil(nTeams * 0.55));
-    if (t.stRank <= topThird && t.wAge <= 26.8) {
-      t.archetype = { label: "🏆 Juggernaut", cls: "bg-emerald-500/20 text-emerald-300 border border-emerald-500/40", posture: "Buy studs; title favorite" };
-    } else if (t.stRank <= midCut) {
-      t.archetype = { label: "🔥 Win-Now Contender", cls: "bg-amber-500/20 text-amber-300 border border-amber-500/40", posture: "Willing to move picks for vets" };
-    } else if (t.wAge < 25.6 || t.pickV >= 9000) {
-      t.archetype = { label: "🌱 Young Rebuilder", cls: "bg-sky-500/20 text-sky-300 border border-sky-500/40", posture: "Selling aging vets for youth/picks" };
-    } else {
-      t.archetype = { label: "⚖️ Retooling / Fringe", cls: "bg-slate-800 text-slate-300 border border-slate-700", posture: "Flexible pivot candidate" };
-    }
   });
 
   const me = S.teams.find(t => t.ownerId === S.uid) || S.teams[0];
@@ -762,16 +545,17 @@ async function loadLeague(lg, forceRefresh = false) {
     renderAll();
   };
 
+  // Populate week dropdown
   const wkSel = $("wk"); wkSel.innerHTML = "";
   for (let w = 1; w <= 18; w++) wkSel.add(new Option(`Week ${w}`, w));
-  const liveWk = S.nflState?.display_week || S.nflState?.week || lg.settings?.leg || 12;
-  wkSel.value = Math.min(18, Math.max(1, Number(liveWk)));
+  wkSel.value = lg.settings?.leg || 12;
 
   $("tabs").hidden = false;
   $("app").hidden = false;
   $("metaSub").textContent = `${lg.name} · ${S.fmt.teams}-Team ${S.fmt.numQbs === 2 ? "Superflex" : "1QB"} · ${S.fmt.ppr} PPR${S.fmt.tep ? ` (+${S.fmt.tep} TEP)` : ""}`;
   $("status").textContent = `Synced ${lg.name} (${S.teams.length} teams, ${market.all.length} priced assets).`;
 
+  // Check if redirected from trade-hub.html with a pre-loaded trade!
   try {
     const rawPending = localStorage.getItem("dd_pending_trade");
     if (rawPending) {
@@ -816,7 +600,7 @@ function renderTradeTab() {
   const prevP = S._pendingPartner || Number(pSel.value);
   S._pendingPartner = null;
   pSel.innerHTML = "";
-  S.teams.filter(t => t.rid !== me.rid).forEach(t => pSel.add(new Option(`${t.name} (${t.archetype.label.replace(/^[^\w]+/, "")})`, t.rid)));
+  S.teams.filter(t => t.rid !== me.rid).forEach(t => pSel.add(new Option(t.name, t.rid)));
   if (prevP && [...pSel.options].some(o => Number(o.value) === prevP)) pSel.value = prevP;
   pSel.onchange = () => { S.sideB = []; fillTradePickers(); renderTradeSides(); };
 
@@ -851,15 +635,8 @@ $("addB").onclick = () => {
   if (item) { S.sideB.push(item); fillTradePickers(); renderTradeSides(); }
 };
 $("clearTrade").onclick = () => { S.sideA = []; S.sideB = []; fillTradePickers(); renderTradeSides(); };
-$("swapSides").onclick = () => {
-  const tmp = S.sideA;
-  S.sideA = S.sideB;
-  S.sideB = tmp;
-  renderTradeSides();
-};
 
 function renderTradeSides() {
-  const me = S.teams.find(t => t.rid === S.viewRid);
   const renderList = (el, list, side) => {
     if (!list.length) {
       el.innerHTML = `<div class="text-xs text-slate-500 border border-dashed border-slate-800 rounded-lg p-6 text-center">No assets added yet.</div>`;
@@ -892,20 +669,11 @@ function renderTradeSides() {
   const yr3A = S.sideA.reduce((s, a) => s + (a.pick ? a.v : projV(a, 3)), 0);
   const yr3B = S.sideB.reduce((s, a) => s + (a.pick ? a.v : projV(a, 3)), 0);
 
-  const giveIds = new Set(S.sideA.map(x => x.id));
-  const postPlayers = [...me.playersOnly.filter(p => !giveIds.has(p.id)), ...S.sideB.filter(x => !x.pick)];
-  const postStarterV = calcOptimalStarters(postPlayers, S.lg.roster_positions).total;
-  const sDelta = postStarterV - me.starterV;
-
   $("totA").textContent = rawA.toLocaleString();
   $("totB").textContent = rawB.toLocaleString();
   const edge = adjB - adjA;
   $("adjEdge").textContent = (edge >= 0 ? "+" : "") + edge.toLocaleString();
   $("adjEdge").className = "text-lg font-bold " + (edge > 150 ? "text-emerald-400" : edge < -150 ? "text-rose-400" : "text-white");
-
-  $("lineupDelta").textContent = (sDelta >= 0 ? "+" : "") + sDelta.toLocaleString();
-  $("lineupDelta").className = "text-lg font-bold " + (sDelta > 0 ? "text-emerald-400" : sDelta < 0 ? "text-rose-400" : "text-slate-400");
-
   const yEdge = yr3B - yr3A;
   $("yr3Edge").textContent = (yEdge >= 0 ? "+" : "") + yEdge.toLocaleString();
 
@@ -916,16 +684,10 @@ function renderTradeSides() {
 
   if (!tot) {
     $("verdictText").textContent = "Select players or picks on both sides to evaluate";
-    $("verdictSub").textContent = "Includes stud consolidation adjustment and position-locked optimal starter delta.";
   } else {
     const diff = rawB - rawA;
     const pct = Math.round((Math.abs(diff) / Math.max(rawA, rawB)) * 100);
-    const bestAsset = [...S.sideA, ...S.sideB].sort((a, b) => b.v - a.v)[0];
-    const bestSide = S.sideB.some(x => x.id === bestAsset?.id) ? "You get" : "You give";
-    $("verdictSub").textContent = bestAsset
-      ? `Top asset: ${bestAsset.name} (${bestSide}) · Package consolidation factor applied (${S.sideA.length}-for-${S.sideB.length}).`
-      : "";
-    if (pct <= 7) $("verdictText").textContent = `⚖️ Fair Deal (${pct}% raw gap) — Stud edge ${edge >= 0 ? "favors You" : "favors Partner"}`;
+    if (pct <= 7) $("verdictText").textContent = `⚖️ Fair Deal (${pct}% gap) — Stud edge ${edge >= 0 ? "favors You" : "favors Partner"}`;
     else if (diff > 0) $("verdictText").textContent = `✅ Strong Win for You (+${diff.toLocaleString()} raw / +${pct}%)`;
     else $("verdictText").textContent = `⚠️ Overpay Alert (${diff.toLocaleString()} raw / -${pct}%)`;
   }
@@ -955,20 +717,15 @@ function renderSmartTargets() {
   S.teams.filter(t => t.rid !== me.rid).forEach(t => {
     const group = t.playersOnly.filter(x => x.pos === myNeed && x.v >= 2200);
     if (group.length >= 2) {
-      const target = group[1];
-      cards.push({ partner: t, target, tag: `Need: ${myNeed} Surplus` });
+      const target = group[1]; // tradable depth behind their #1
+      cards.push({ partner: t, target, pos: myNeed });
     }
-    t.playersOnly.filter(x => x.v >= 2800 && x.trend <= -350 && (!x.age || x.age <= 27)).slice(0, 1).forEach(dip => {
-      if (!cards.some(c => c.target.id === dip.id)) {
-        cards.push({ partner: t, target: dip, tag: `📉 Buy-Low (${dip.trend} 30d)` });
-      }
-    });
   });
 
   $("targets").innerHTML = cards.slice(0, 6).map(c => `
     <div class="bg-slate-950 border border-slate-800 rounded-lg p-3 flex items-center justify-between gap-2">
       <div>
-        <div class="text-xs text-emerald-400 font-semibold">${c.tag} · ${esc(c.partner.name)}</div>
+        <div class="text-xs text-emerald-400 font-semibold">Need: ${c.pos} · ${esc(c.partner.name)}</div>
         <div class="text-sm font-bold text-white mt-0.5">${esc(c.target.name)} <span class="text-xs text-slate-400 font-normal">(${c.target.v.toLocaleString()})</span></div>
       </div>
       <button onclick="quickTarget(${c.partner.rid},'${c.target.id}')" class="bg-emerald-600/20 hover:bg-emerald-600/30 text-emerald-300 border border-emerald-500/40 text-xs font-semibold px-2.5 py-1.5 rounded-lg cursor-pointer">Load</button>
@@ -987,7 +744,7 @@ function renderSmartTargets() {
 $("scanTrades").onclick = () => {
   const me = S.teams.find(t => t.rid === S.viewRid);
   const mode = $("finderMode").value;
-  const starterScore = list => calcOptimalStarters(list, S.lg.roster_positions).total;
+  const starterScore = list => [...list].filter(x => !x.pick).sort((a, b) => b.v - a.v).slice(0, 8).reduce((s, x) => s + x.v, 0);
   const myBase = starterScore(me.assets);
   const deals = [];
 
@@ -996,6 +753,7 @@ $("scanTrades").onclick = () => {
     const myPool = me.assets.filter(a => a.v >= 1200).slice(0, 10);
     const oppPool = opp.playersOnly.filter(a => a.v >= 2000).slice(0, 8);
 
+    // 1-for-1
     if (mode === "all" || mode === "1for1") {
       myPool.forEach(a => oppPool.forEach(b => {
         if (a.pos === b.pos) return;
@@ -1010,6 +768,7 @@ $("scanTrades").onclick = () => {
       }));
     }
 
+    // 2-for-1
     if (mode === "all" || mode === "2for1") {
       for (let i = 0; i < myPool.length; i++) {
         for (let j = i + 1; j < myPool.length; j++) {
@@ -1057,21 +816,12 @@ function renderRosterHub() {
   const me = S.teams.find(t => t.rid === S.viewRid);
   const pf = $("posFilter").value;
   const sf = $("sortFilter").value;
-  const cf = $("cliffFilter").value;
   $("posFilter").onchange = renderRosterHub;
   $("sortFilter").onchange = renderRosterHub;
-  $("cliffFilter").onchange = renderRosterHub;
   $("stashPos").onchange = renderRosterHub;
-  $("stashMode").onchange = renderRosterHub;
+  $("stashAngle").onchange = renderRosterHub;
 
-  let list = me.assets.filter(a => {
-    if (pf !== "ALL" && a.pos !== pf) return false;
-    const curve = getPositionalCurve(a);
-    if (cf === "CLIFF" && !curve.isCliff) return false;
-    if (cf === "PEAK" && !curve.isPeak) return false;
-    return true;
-  });
-
+  let list = me.assets.filter(a => pf === "ALL" || a.pos === pf);
   list.sort((a, b) => {
     if (sf === "trend") return b.trend - a.trend;
     if (sf === "proj") return (b.pick ? b.v : projV(b, 3)) - (a.pick ? a.v : projV(a, 3));
@@ -1081,31 +831,23 @@ function renderRosterHub() {
 
   $("rosterBody").innerHTML = list.map(a => {
     const [flag, lbl] = ageFlag(a);
-    const curve = getPositionalCurve(a);
-    const badgeCls = flag === "sell" ? "bg-rose-500/15 text-rose-300" : flag === "buy" ? "bg-emerald-500/15 text-emerald-300" : flag === "vol" ? "bg-purple-500/15 text-purple-300" : "bg-slate-800 text-slate-400";
+    const badgeCls = flag === "sell" ? "bg-rose-500/15 text-rose-300" : flag === "buy" ? "bg-emerald-500/15 text-emerald-300" : "bg-slate-800 text-slate-400";
     const p3 = a.pick ? a.v : projV(a, 3);
     const subTag = a.onTaxi ? `<span class="ml-1 text-[10px] bg-amber-500/20 text-amber-300 px-1.5 py-0.5 rounded">TAXI</span>` : a.onIR ? `<span class="ml-1 text-[10px] bg-rose-500/20 text-rose-300 px-1.5 py-0.5 rounded">IR</span>` : "";
-    const srcBreakdown = a.pick
-      ? "Pick Curve"
-      : `${a.fc || "—"} / ${a.sgf || "—"} / ${a.sc || "—"} / ${a.dd || "—"} / ${a.dp || "—"} / ${a.ecr || "—"}`;
     return `
       <tr class="hover:bg-slate-800/40">
         <td class="py-2.5 px-3 font-semibold text-white">${esc(a.name)}${subTag}</td>
         <td class="py-2.5 px-2"><span class="pill pos-${a.pos}">${a.pos}</span></td>
-        <td class="py-2.5 px-2">
-          <div class="flex items-center gap-1.5">
-            <span class="text-slate-300 font-mono text-xs">${a.age ? Math.floor(a.age) + "y" : "—"}</span>
-            <span class="text-[11px] px-2 py-0.5 rounded font-medium ${curve.cls}">${curve.label}</span>
-          </div>
-        </td>
+        <td class="py-2.5 px-2 text-slate-400">${a.age ? Math.floor(a.age) : "—"}</td>
         <td class="py-2.5 px-2 font-mono font-bold text-white">${a.v.toLocaleString()}</td>
-        <td class="py-2.5 px-2 text-xs text-slate-500 hidden xl:table-cell font-mono">${srcBreakdown}</td>
+        <td class="py-2.5 px-2 text-xs text-slate-500 hidden sm:table-cell">${a.pick ? "Pick Curve" : `${a.fc || "—"} / ${a.dp || "—"} / ${a.ecr || "—"}`}</td>
         <td class="py-2.5 px-2 font-mono text-xs ${a.trend > 0 ? "text-emerald-400" : a.trend < 0 ? "text-rose-400" : "text-slate-500"}">${a.trend > 0 ? "+" : ""}${a.trend}</td>
         <td class="py-2.5 px-2 font-mono text-xs text-sky-300">${p3.toLocaleString()}</td>
         <td class="py-2.5 px-3"><span class="text-xs px-2 py-0.5 rounded font-medium ${badgeCls}">${lbl}</span></td>
       </tr>`;
   }).join("");
 
+  // Taxi Squad Audit & Poach Targets
   const taxiSlots = S.lg.settings?.taxi_slots || 0;
   const maxYears = S.lg.settings?.taxi_years ?? 2;
   const taxiPlayers = me.playersOnly.filter(p => p.onTaxi);
@@ -1136,678 +878,243 @@ function renderRosterHub() {
       <span class="font-mono font-bold text-emerald-400">${x.p.v.toLocaleString()}</span>
     </div>`).join("") || `<div class="text-xs text-slate-500">No high-value players found on rival taxi squads.</div>`;
 
+  // Waiver & Deep Stash Radar (Depth-Chart & Opportunity Engine)
   const rostered = new Set(S.rosters.flatMap(r => [...(r.players || []), ...(r.taxi || []), ...(r.reserve || [])]));
   const stPos = $("stashPos").value;
-  const stMode = $("stashMode").value;
-  const stashes = [];
+  const stAngle = $("stashAngle") ? $("stashAngle").value : "ALL";
 
+  const roomMap = new Map();
+  const myRbTeams = new Set();
+  const injSet = new Set(["IR", "PUP", "OUT", "DOUBTFUL", "QUESTIONABLE"]);
+
+  me.playersOnly.forEach(p => {
+    if (p.pos === "RB" && p.team && (p.v >= 2200 || S.market.pmap[p.id]?.depth_chart_order === 1)) {
+      myRbTeams.add(p.team);
+    }
+  });
+
+  S.teams.forEach(t => {
+    t.playersOnly.forEach(p => {
+      if (!p.team || p.team === "FA" || !POS.includes(p.pos)) return;
+      const key = `${p.team}_${p.pos}`;
+      const cur = roomMap.get(key) || { rosteredCount: 0, injuredCount: 0, fragileStarter: false, topAge: 0 };
+      cur.rosteredCount += 1;
+      const injCode = String(p.injury || S.market.pmap[p.id]?.injury_status || "").toUpperCase();
+      if (injSet.has(injCode)) cur.injuredCount += 1;
+      const cliff = (DD.CLIFF && DD.CLIFF[p.pos]) || 30;
+      const isFragile = injSet.has(injCode) || (p.age && p.age >= cliff - (p.pos === "QB" ? 0 : 1));
+      if (isFragile) cur.fragileStarter = true;
+      if (p.age && p.age > cur.topAge) cur.topAge = p.age;
+      roomMap.set(key, cur);
+    });
+  });
+
+  const stashes = [];
   for (const [sid, sp] of Object.entries(S.market.pmap)) {
     if (rostered.has(sid) || !POS.includes(sp.position)) continue;
     if (stPos !== "ALL" && sp.position !== stPos) continue;
     const m = S.market.bySid.get(sid);
     const val = m?.v || 0;
-    const trendCount = S.trendingAdds.get(String(sid)) || (m?.adds48h || 0);
-    if (stMode === "TRENDING" && trendCount === 0) continue;
-    if (stMode === "VALUE" && val < 300) continue;
-
+    const trend = m?.trend || 0;
     const age = sp.age || 27;
-    let score = val + Math.min(1200, Math.round(trendCount / 15));
+    const yearsExp = sp.years_exp ?? 99;
+    const yr3 = projV({ pos: sp.position, age: sp.age || 26, v: val }, 3);
+    const team = sp.team || "FA";
+    const room = (team && team !== "FA") ? (roomMap.get(`${team}_${sp.position}`) || { rosteredCount: 0, injuredCount: 0, fragileStarter: false }) : { rosteredCount: 0, injuredCount: 0, fragileStarter: false };
+
+    let score = val;
     const tags = [];
-    if (trendCount > 0) tags.push(`🔥 +${trendCount.toLocaleString()} adds`);
-    if (age <= 24) { score += 350; tags.push(`Age ${Math.floor(age)}`); }
-    if (sp.position === "RB" && sp.depth_chart_order === 2) { score += 450; tags.push("RB2 Handcuff"); }
-    if (sp.injury_status === "IR" || sp.injury_status === "PUP") { score += 300; tags.push("IR Stash"); }
-    if (score >= 400 || trendCount > 0) stashes.push({ sid, name: sp.full_name, pos: sp.position, team: sp.team || "FA", val, score, trendCount, tags });
+    const angles = new Set();
+
+    if (age <= 23) {
+      score += 350;
+      tags.push(`Age ${Math.floor(age)}`);
+      angles.add("youth");
+    }
+    if (yearsExp <= 1 && trend > 0) {
+      score += 150;
+      tags.push(`Yr ${yearsExp} +Trend`);
+      angles.add("youth");
+    }
+
+    if (team && team !== "FA") {
+      if (room.rosteredCount <= 1) {
+        score += 300;
+        tags.push(`${room.rosteredCount} Rostered Ahead`);
+        angles.add("opp");
+      }
+      if (room.fragileStarter || room.injuredCount > 0) {
+        score += 275;
+        tags.push("Room Injury/Cliff");
+        angles.add("opp");
+      }
+    }
+
+    if (sp.position === "RB" && (sp.depth_chart_order === 2 || room.rosteredCount === 0)) {
+      if (team && myRbTeams.has(team)) {
+        score += 650;
+        tags.push("Your RB Handcuff");
+        angles.add("handcuff");
+        angles.add("opp");
+      } else if (sp.depth_chart_order === 2) {
+        score += 400;
+        tags.push("RB2 Depth");
+        angles.add("opp");
+      }
+    }
+
+    const pInj = String(sp.injury_status || "").toUpperCase();
+    if (injSet.has(pInj)) {
+      score += (pInj === "IR" || pInj === "PUP") ? 350 : 225;
+      tags.push(`${pInj} Stash`);
+      angles.add("injury");
+      angles.add("opp");
+    }
+
+    if (stAngle !== "ALL" && !angles.has(stAngle)) continue;
+    if (score >= 400 || stAngle !== "ALL") {
+      stashes.push({ sid, name: sp.full_name, pos: sp.position, team, age: sp.age ? Math.floor(sp.age) : null, val, yr3, score, tags });
+    }
   }
 
-  stashes.sort((a, b) => stMode === "TRENDING" ? b.trendCount - a.trendCount : stMode === "VALUE" ? b.val - a.val : b.score - a.score);
+  stashes.sort((a, b) => b.score - a.score);
   $("waiverList").innerHTML = stashes.slice(0, 12).map(s => `
-    <div class="bg-slate-950 border border-slate-800 rounded-lg p-3 flex items-center justify-between gap-2">
-      <div>
-        <div class="text-sm font-bold text-white"><span class="pill pos-${s.pos} mr-1">${s.pos}</span>${esc(s.name)} <span class="text-xs text-slate-500 font-normal">${s.team}</span></div>
+    <div class="bg-slate-950 border border-slate-800 rounded-lg p-3 flex items-center justify-between gap-3">
+      <div class="min-w-0">
+        <div class="text-sm font-bold text-white truncate"><span class="pill pos-${s.pos} mr-1">${s.pos}</span>${esc(s.name)} <span class="text-xs text-slate-500 font-normal">${esc(s.team)}${s.age ? ` · ${s.age}y` : ""}</span></div>
         <div class="text-[11px] text-emerald-400 mt-0.5">${s.tags.join(" · ") || "Market Value"}</div>
       </div>
-      <div class="text-right font-mono">
-        <div class="text-xs font-bold text-white">${s.val.toLocaleString()}</div>
-        <div class="text-[10px] text-slate-500">Dynasty Val</div>
+      <div class="text-right font-mono shrink-0">
+        <div class="text-xs font-bold text-white">${s.val.toLocaleString()} <span class="text-[10px] text-slate-500 font-normal">Val</span></div>
+        <div class="text-[11px] text-sky-300">${s.yr3.toLocaleString()} <span class="text-[10px] text-slate-500">3-Yr</span></div>
       </div>
     </div>`).join("") || `<div class="text-xs text-slate-500">No high-upside free agents found for this filter.</div>`;
 }
 
-// --- TAB 4: START/SIT & MATCHUPS (LIVE OPPONENT & REASONING ENGINE) ---
+// --- TAB 4: START/SIT & MATCHUPS ---
 $("refreshLineup").onclick = renderLineup;
-
-const TEAM_NORM = {
-  JAX: "JAC", WSH: "WAS", LA: "LAR",
-  NWE: "NE", NOR: "NO", SFO: "SF", TAM: "TB", KAN: "KC", GNB: "GB", LVR: "LV"
+$("loadGh").onclick = async () => {
+  const repo = $("repoInput").value.trim();
+  if (!repo) return;
+  saveState({ repo });
+  $("ghStatus").textContent = "Fetching matchups.json from GitHub...";
+  try {
+    const url = `https://raw.githubusercontent.com/${repo}/main/matchups.json?t=${Date.now()}`;
+    S.matchups = await j(url);
+    $("ghStatus").textContent = "Loaded matchups.json successfully.";
+    renderLineup();
+  } catch (e) { $("ghStatus").textContent = "Could not load matchups.json: " + e.message; }
 };
-const normTm = t => {
-  const u = String(t || "").toUpperCase().trim();
-  return TEAM_NORM[u] || u;
-};
-
-const INACTIVE_STATUSES = new Set(["IR", "OUT", "PUP", "SUS", "COV", "NFI", "DNR"]);
-
-function estimateWeeklyProj(p, sp, fmt) {
-  const v = Math.max(0, p.v || 0);
-  if (v < 300 && (sp?.depth_chart_order || 9) > 3) return 0;
-  const isSF = fmt?.numQbs === 2;
-  const ppr = fmt?.ppr ?? 1;
-  const tep = fmt?.tep ?? 0;
-
-  const normV = (p.pos === "QB" && isSF) ? v * 0.72 : v;
-  const baseByPos = {
-    QB: 11.5 + Math.pow(normV / 1000, 0.88) * 1.45,
-    RB: 4.5 + Math.pow(normV / 1000, 0.92) * 1.65 + (ppr * 1.4),
-    WR: 4.8 + Math.pow(normV / 1000, 0.90) * 1.55 + (ppr * 1.8),
-    TE: 4.0 + Math.pow(normV / 1000, 0.90) * 1.35 + (ppr * 1.5) + (tep * 1.6)
-  };
-  let pts = baseByPos[p.pos] || 6.0;
-  const dc = sp?.depth_chart_order || 1;
-  if (dc === 2) pts *= (p.pos === "WR" ? 0.88 : 0.72);
-  else if (dc === 3) pts *= (p.pos === "WR" ? 0.74 : 0.45);
-  else if (dc >= 4) pts *= 0.30;
-  return Number(Math.max(1.5, Math.min(28.5, pts)).toFixed(1));
-}
-
-async function fetchNflMatchupContext(season, week) {
-  const ctx = { games: {}, defRank: {}, offRank: {}, loaded: false };
-  const sbUrls = [
-    `https://site.api.espn.com/apis/site/v2/sports/football/nfl/scoreboard?dates=${season}&seasontype=2&week=${week}`,
-    `https://site.api.espn.com/apis/site/v2/sports/football/nfl/scoreboard?seasontype=2&week=${week}`
-  ];
-
-  let sb = null;
-  for (const url of sbUrls) {
-    try {
-      const res = await j(url);
-      if (res?.events?.length) { sb = res; break; }
-    } catch (e) {}
-  }
-
-  const st = await j(`https://site.api.espn.com/apis/site/v2/sports/football/nfl/standings?season=${season}`)
-    .catch(() => j(`https://site.api.espn.com/apis/site/v2/sports/football/nfl/standings`).catch(() => null));
-
-  const teamStats = [];
-  (st?.children || []).forEach(conf => {
-    (conf?.standings?.entries || []).forEach(ent => {
-      const abbr = normTm(ent?.team?.abbreviation);
-      const stats = Object.fromEntries((ent?.stats || []).map(s => [s.name, Number(s.value)]));
-      if (abbr) {
-        const gp = Math.max(1, (stats.wins || 0) + (stats.losses || 0) + (stats.ties || 0));
-        teamStats.push({
-          abbr,
-          ppgFor: stats.avgPointsFor || (stats.pointsFor / gp) || 21.5,
-          ppgAgainst: stats.avgPointsAgainst || (stats.pointsAgainst / gp) || 21.5
-        });
-      }
-    });
-  });
-
-  const byDef = [...teamStats].sort((a, b) => a.ppgAgainst - b.ppgAgainst);
-  const byOff = [...teamStats].sort((a, b) => b.ppgFor - a.ppgFor);
-  byDef.forEach((t, i) => { ctx.defRank[t.abbr] = { rank: i + 1, ppgAgainst: Number(t.ppgAgainst.toFixed(1)) }; });
-  byOff.forEach((t, i) => { ctx.offRank[t.abbr] = { rank: i + 1, ppgFor: Number(t.ppgFor.toFixed(1)) }; });
-
-  (sb?.events || []).forEach(ev => {
-    const comp = ev?.competitions?.[0];
-    const teams = comp?.competitors || [];
-    if (teams.length !== 2) return;
-    const home = teams.find(x => x.homeAway === "home") || teams[0];
-    const away = teams.find(x => x.homeAway === "away") || teams[1];
-    const hAbbr = normTm(home?.team?.abbreviation);
-    const aAbbr = normTm(away?.team?.abbreviation);
-    const odds = comp?.odds?.[0] || {};
-    const ou = Number(odds.overUnder) || 44.5;
-    const spread = Number(odds.spread) || 0;
-
-    ctx.games[hAbbr] = { opp: aAbbr, home: true, ou, teamSpread: spread, implied: Number(((ou - spread) / 2).toFixed(1)) };
-    ctx.games[aAbbr] = { opp: hAbbr, home: false, ou, teamSpread: -spread, implied: Number(((ou + spread) / 2).toFixed(1)) };
-  });
-
-  ctx.loaded = Object.keys(ctx.games).length >= 10;
-  return ctx;
-}
-
-function buildPlayerStartSitAnalysis(p, apiProjPts, ctx, sp) {
-  const inj = String(p.injury || sp?.injury_status || "").toUpperCase().trim();
-  const statusStr = String(p.playerStatus || sp?.status || "").toUpperCase().trim();
-  const tm = normTm(p.team);
-
-  if (p.onIR || INACTIVE_STATUSES.has(inj) || statusStr === "INACTIVE") {
-    const tag = inj || (p.onIR ? "IR" : "INACTIVE");
-    return {
-      eligible: false,
-      basePts: 0,
-      adjPts: 0,
-      badge: `🚫 ${tag}`,
-      badgeCls: "bg-rose-500/20 text-rose-300 border border-rose-500/40",
-      reason: `Do Not Start: ${p.name} is ruled ${tag}.`,
-      mult: 0
-    };
-  }
-
-  if (!tm || tm === "FA") {
-    return {
-      eligible: false,
-      basePts: 0,
-      adjPts: 0,
-      badge: "🚫 Free Agent",
-      badgeCls: "bg-slate-800 text-slate-400",
-      reason: `Do Not Start: ${p.name} is currently an NFL free agent.`,
-      mult: 0
-    };
-  }
-
-  const gm = ctx.games[tm];
-  if (ctx.loaded && !gm) {
-    return {
-      eligible: false,
-      basePts: 0,
-      adjPts: 0,
-      badge: `🛑 ${tm} BYE`,
-      badgeCls: "bg-amber-500/20 text-amber-300 border border-amber-500/40",
-      reason: `Do Not Start: ${tm} is on BYE this week.`,
-      mult: 0
-    };
-  }
-
-  const basePts = apiProjPts > 0.5 ? Number(apiProjPts.toFixed(1)) : estimateWeeklyProj(p, sp, S.fmt);
-  if (basePts <= 0.5) {
-    return {
-      eligible: false,
-      basePts: 0,
-      adjPts: 0,
-      badge: "⚠️ Depth / Inactive",
-      badgeCls: "bg-slate-800 text-slate-400",
-      reason: `Bench: ${p.name} has minimal projected snap share this week.`,
-      mult: 0
-    };
-  }
-
-  if (!gm) {
-    return {
-      eligible: true,
-      basePts,
-      adjPts: basePts,
-      badge: `${tm} · Schedule Pending`,
-      badgeCls: "bg-slate-800 text-slate-300",
-      reason: `Start ${p.name}: Projected for ${basePts} pts (live opponent schedule unavailable).`,
-      mult: 1.0
-    };
-  }
-
-  const opp = gm.opp;
-  const def = ctx.defRank[opp] || { rank: 16, ppgAgainst: 21.8 };
-  const off = ctx.offRank[tm] || { rank: 16, ppgFor: 21.8 };
-  const reasons = [];
-  let mult = 1.0;
-
-  if (inj === "DOUBTFUL") {
-    mult -= 0.35;
-    reasons.push(`listed Doubtful—high risk of sitting`);
-  } else if (inj === "QUESTIONABLE") {
-    mult -= 0.04;
-    reasons.push(`Questionable tag (monitor pregame inactives)`);
-  }
-
-  if (def.rank >= 25) {
-    mult += 0.09;
-    reasons.push(`${opp} has a bottom-8 defense (#${def.rank}, allowing ${def.ppgAgainst} PPG)`);
-  } else if (def.rank >= 19) {
-    mult += 0.04;
-    reasons.push(`favorable draw vs. ${opp}'s #${def.rank} scoring defense (${def.ppgAgainst} PPG allowed)`);
-  } else if (def.rank <= 6) {
-    mult -= 0.08;
-    reasons.push(`tough matchup against ${opp}'s elite #${def.rank} defense (${def.ppgAgainst} PPG allowed)`);
-  } else if (def.rank <= 12) {
-    mult -= 0.04;
-    reasons.push(`${opp} fields a top-12 defense (#${def.rank})`);
-  }
-
-  if (p.pos === "RB") {
-    if (gm.teamSpread <= -4.5) {
-      mult += 0.06;
-      reasons.push(`${tm} is a ${Math.abs(gm.teamSpread)}-pt favorite—prime positive rushing script`);
-    } else if (gm.teamSpread >= 6.5) {
-      mult -= 0.05;
-      reasons.push(`${tm} is a ${gm.teamSpread}-pt underdog, risking negative rush script`);
-    }
-    if (off.rank <= 10) reasons.push(`${tm} ranks #${off.rank} in scoring (${off.ppgFor} PPG) for red-zone TD equity`);
-    if (sp?.depth_chart_order === 2) reasons.push(`RB2 rotation/handcuff role`);
-  } else if (p.pos === "QB" || p.pos === "WR" || p.pos === "TE") {
-    if (gm.ou >= 48.5) {
-      mult += 0.06;
-      reasons.push(`high ${gm.ou} Vegas O/U projects strong passing volume`);
-    } else if (gm.ou <= 40.5) {
-      mult -= 0.05;
-      reasons.push(`low ${gm.ou} game total caps aerial ceiling`);
-    }
-    if (gm.implied >= 25.5) reasons.push(`${tm} carries a strong ${gm.implied}-pt implied team total`);
-  }
-
-  if (!reasons.length) {
-    reasons.push(`neutral game environment ${gm.home ? "vs." : "@"} ${opp} (${gm.ou} O/U, #${def.rank} defense)`);
-  }
-
-  const adjPts = Number((basePts * mult).toFixed(1));
-  const loc = gm.home ? `vs ${opp}` : `@ ${opp}`;
-  let badge = `${loc} · Neutral`;
-  let badgeCls = "bg-slate-800 text-slate-300";
-  if (inj === "DOUBTFUL") { badge = `🚨 ${loc} · Doubtful`; badgeCls = "bg-rose-500/20 text-rose-300 border border-rose-500/40"; }
-  else if (mult >= 1.07) { badge = `🔥 ${loc} · Smash`; badgeCls = "bg-emerald-500/20 text-emerald-300 border border-emerald-500/40"; }
-  else if (mult >= 1.03) { badge = `✅ ${loc} · Plus`; badgeCls = "bg-teal-500/15 text-teal-300"; }
-  else if (mult <= 0.94) { badge = `⚠️ ${loc} · Tough`; badgeCls = "bg-rose-500/20 text-rose-300 border border-rose-500/40"; }
-
-  const verb = mult >= 1.03 ? "Start" : mult <= 0.94 ? "Caution" : "Start";
-  const reasonText = `${verb} ${p.name}: ${reasons.join("; ")}.`;
-
-  return { eligible: true, basePts, adjPts, badge, badgeCls, reason: reasonText, mult };
-}
 
 async function renderLineup() {
   const me = S.teams.find(t => t.rid === S.viewRid);
   const wk = $("wk").value;
-  $("lineupSlots").innerHTML = `<div class="text-xs text-slate-400">Analyzing Week ${wk} projections, injury reports, bye weeks &amp; opponent defenses...</div>`;
+  $("lineupSlots").innerHTML = `<div class="text-xs text-slate-400">Loading Week ${wk} projections...</div>`;
   try {
-    const [proj, ctx] = await Promise.all([
-      j(`https://api.sleeper.app/projections/nfl/${S.lg.season}/${wk}?season_type=regular`).catch(() => ({})),
-      fetchNflMatchupContext(S.lg.season, wk)
-    ]);
+    const proj = await j(`https://api.sleeper.com/projections/nfl/${S.lg.season}/${wk}?season_type=regular`);
+    const slots = (S.lg.roster_positions || []).filter(p => p !== "BN" && p !== "IR" && p !== "TAXI");
+    const elig = { QB: ["QB"], RB: ["RB"], WR: ["WR"], TE: ["TE"], FLEX: ["RB", "WR", "TE"], SUPER_FLEX: ["QB", "RB", "WR", "TE"], REC_FLEX: ["WR", "TE"] };
 
-    const slots = (S.lg.roster_positions || []).filter(p => POS.includes(p) || p.includes("FLEX"));
-    const elig = {
-      QB: ["QB"], RB: ["RB"], WR: ["WR"], TE: ["TE"],
-      FLEX: ["RB", "WR", "TE"], SUPER_FLEX: ["QB", "RB", "WR", "TE"],
-      REC_FLEX: ["WR", "TE"], WRRB_FLEX: ["RB", "WR"]
-    };
-
-    const analyzed = me.playersOnly.filter(p => !p.onTaxi && !p.onIR).map(p => {
-      const pr = proj?.[p.id]?.stats || {};
-      const apiProjPts = Number(pr.pts_ppr ?? pr.pts_half_ppr ?? pr.pts_std ?? 0);
-      const sp = S.market.pmap[p.id];
-      const analysis = buildPlayerStartSitAnalysis(p, apiProjPts, ctx, sp);
-      return { ...p, ...analysis };
-    });
-
-    const activePool = analyzed.filter(p => p.eligible && p.adjPts > 0).sort((a, b) => b.adjPts - a.adjPts);
-    const inactivePool = analyzed.filter(p => !p.eligible || p.adjPts <= 0);
+    const pool = me.playersOnly.filter(p => !p.onTaxi && !p.onIR).map(p => {
+      const pr = proj[p.id]?.stats || {};
+      const pts = pr.pts_ppr || pr.pts_half_ppr || pr.pts_std || (p.v / 500);
+      return { ...p, pts: Number(pts.toFixed(1)) };
+    }).sort((a, b) => b.pts - a.pts);
 
     const used = new Set();
     const chosen = slots.map(sl => {
       const allowed = elig[sl] || [sl];
-      const pick = activePool.find(p => !used.has(p.id) && allowed.includes(p.pos));
+      const pick = pool.find(p => !used.has(p.id) && allowed.includes(p.pos));
       if (pick) used.add(pick.id);
       return { slot: sl, player: pick };
     });
 
-    const bench = activePool.filter(p => !used.has(p.id));
     const curStarters = new Set(me.raw.starters || []);
-    const inactiveInLineup = me.playersOnly.filter(p => curStarters.has(p.id) && (!analyzed.find(x => x.id === p.id)?.eligible));
     const missedPts = chosen.filter(c => c.player && !curStarters.has(c.player.id)).length;
+    $("lineupAlert").innerHTML = missedPts
+      ? `<div class="bg-amber-500/15 border border-amber-500/40 text-amber-200 text-xs rounded-lg p-2.5">⚠️ <b>${missedPts} lineup upgrade(s)</b> detected vs. your currently set Sleeper starters.</div>`
+      : `<div class="bg-emerald-500/15 border border-emerald-500/40 text-emerald-200 text-xs rounded-lg p-2.5">✅ Your current Sleeper lineup matches optimal projected starters.</div>`;
 
-    if (!ctx.loaded) {
-      $("lineupAlert").innerHTML = `<div class="bg-amber-500/15 border border-amber-500/40 text-amber-200 text-xs rounded-lg p-2.5">⚠️ Live ESPN NFL schedule could not be reached for Week ${wk}—bye-week filtering is paused until schedule data loads.</div>`;
-    } else if (inactiveInLineup.length) {
-      $("lineupAlert").innerHTML = `<div class="bg-rose-500/15 border border-rose-500/40 text-rose-200 text-xs rounded-lg p-2.5">🚨 <b>Action Required:</b> You currently have <b>${inactiveInLineup.map(x => esc(x.name)).join(", ")}</b> in your Sleeper starting lineup, who is on BYE, Out, or IR!</div>`;
-    } else if (missedPts) {
-      $("lineupAlert").innerHTML = `<div class="bg-amber-500/15 border border-amber-500/40 text-amber-200 text-xs rounded-lg p-2.5">⚠️ <b>${missedPts} lineup upgrade(s)</b> recommended after factoring in projections + defensive matchups.</div>`;
-    } else {
-      $("lineupAlert").innerHTML = `<div class="bg-emerald-500/15 border border-emerald-500/40 text-emerald-200 text-xs rounded-lg p-2.5">✅ Your current Sleeper starters are active and match our matchup-adjusted optimal lineup.</div>`;
-    }
-
-    $("lineupSlots").innerHTML = chosen.map(c => {
-      const p = c.player;
-      if (!p) return `<div class="bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-xs text-rose-400">${c.slot}: No healthy/active eligible player available</div>`;
-      const alt = bench.find(b => (elig[c.slot] || [c.slot]).includes(b.pos));
-      const edgeNote = alt ? ` <span class="text-slate-500">(Edges active bench option ${esc(alt.name)} [${alt.adjPts} adj pts])</span>` : "";
-      return `
-        <div class="bg-slate-950 border border-slate-800 rounded-lg p-3 space-y-1.5">
-          <div class="flex flex-wrap items-center justify-between gap-2 text-sm">
-            <div class="flex items-center gap-2">
-              <span class="text-xs font-mono font-bold text-slate-400 w-20">${c.slot}</span>
-              <span class="pill pos-${p.pos}">${p.pos}</span>
-              <span class="font-bold text-white">${esc(p.name)}</span>
-              <span class="text-[11px] px-2 py-0.5 rounded font-semibold ${p.badgeCls}">${p.badge}</span>
-            </div>
-            <div class="text-right font-mono">
-              <span class="font-bold text-emerald-400">${p.adjPts} adj</span>
-              <span class="text-xs text-slate-500 ml-1">(${p.basePts} base)</span>
-            </div>
-          </div>
-          <div class="text-xs text-slate-300 pl-0 sm:pl-[88px] leading-relaxed">
-            💡 ${esc(p.reason)}${edgeNote}
-          </div>
-        </div>`;
-    }).join("");
-
-    const rankedMatchups = [...activePool].filter(p => p.basePts >= 4).sort((a, b) => b.mult - a.mult);
-    const highlights = [...rankedMatchups.slice(0, 3), ...rankedMatchups.slice(-2).reverse()];
-    $("matchupPreview").innerHTML = highlights.map(p => `
-      <div class="bg-slate-950 border border-slate-800 rounded-lg p-2.5 space-y-1">
-        <div class="flex items-center justify-between">
-          <div><span class="pill pos-${p.pos} mr-1">${p.pos}</span><b class="text-white">${esc(p.name)}</b></div>
-          <span class="text-[10px] px-1.5 py-0.5 rounded font-semibold ${p.badgeCls}">${p.badge}</span>
+    $("lineupSlots").innerHTML = chosen.map(c => `
+      <div class="flex items-center justify-between bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-sm">
+        <div class="flex items-center gap-2.5">
+          <span class="text-xs font-mono font-bold text-slate-400 w-20">${c.slot}</span>
+          ${c.player ? `<span class="pill pos-${c.player.pos}">${c.player.pos}</span><span class="font-semibold text-white">${esc(c.player.name)}</span>` : `<span class="text-slate-600 italic">Empty</span>`}
         </div>
-        <div class="text-[11px] text-slate-400">${esc(p.reason)}</div>
-      </div>`).join("") || `<div class="text-slate-500">No active matchup data for this week.</div>`;
-
-    const flagged = [
-      ...me.playersOnly.filter(p => p.onIR).map(p => ({ ...p, statusBadge: "IR SLOT" })),
-      ...inactivePool.map(p => ({ ...p, statusBadge: p.badge.replace(/^[^\w]+/, "") }))
-    ];
-    $("injuryWatch").innerHTML = flagged.length
-      ? flagged.map(p => `
-        <div class="bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 flex items-center justify-between">
-          <div><span class="pill pos-${p.pos} mr-1">${p.pos}</span><b class="text-white">${esc(p.name)}</b> <span class="text-slate-500">${p.team}</span></div>
-          <span class="px-2 py-0.5 rounded font-bold bg-rose-500/20 text-rose-300">${esc(p.statusBadge)}</span>
-        </div>`).join("")
-      : `<div class="text-slate-400 bg-slate-950 border border-slate-800 rounded-lg p-3">✅ No active injury or bye-week flags on your roster.</div>`;
+        <span class="font-mono font-bold text-emerald-400">${c.player ? c.player.pts + " pts" : "—"}</span>
+      </div>`).join("");
   } catch (e) {
     $("lineupSlots").innerHTML = `<div class="text-xs text-rose-400">Error loading projections: ${e.message}</div>`;
   }
 }
 
-// --- TAB 5: DRAFT ROOM & 2027 ROOKIE BOARD (DYNAMIC SCHOOL, ELIGIBILITY & WEEKLY STATS) ---
-const ROOKIES_2027_BASE = [
-  { name: "Jeremiah Smith", pos: "WR", school: "Ohio State", cls: "Jr", status: "PRESUMED", sfBase: 9500, oneQbBase: 9850, note: "Consensus 1.01; dominant alpha X-receiver production." },
-  { name: "Drew Mestemaker", pos: "QB", school: "Oklahoma State", cls: "RS-So", status: "PRESUMED", sfBase: 9050, oneQbBase: 6500, note: "Top-3 NFL Draft QB favorite with elite passing TD production." },
-  { name: "Darian Mensah", pos: "QB", school: "Miami", cls: "RS-Jr", status: "PRESUMED", sfBase: 8650, oneQbBase: 6200, note: "High-efficiency passer surging into top-10 NFL Draft territory." },
-  { name: "Charlie Becker", pos: "WR", school: "Indiana", cls: "Jr", status: "PRESUMED", sfBase: 8400, oneQbBase: 8950, note: "Explosive vertical WR1; consensus top-10 NFL pick." },
-  { name: "Jadan Baugh", pos: "RB", school: "Florida", cls: "Jr", status: "PRESUMED", sfBase: 8250, oneQbBase: 9100, note: "231-lb three-down workhorse; RB1 of the 2027 class." },
-  { name: "CJ Carr", pos: "QB", school: "Notre Dame", cls: "RS-So", status: "PRESUMED", sfBase: 8050, oneQbBase: 5850, note: "Rapid first-round riser in Superflex drafts." },
-  { name: "Nick Marsh", pos: "WR", school: "Indiana", cls: "Jr", status: "PRESUMED", sfBase: 7900, oneQbBase: 8550, note: "Big-bodied route technician thriving on the perimeter." },
-  { name: "KJ Duff", pos: "WR", school: "Rutgers", cls: "Jr", status: "PRESUMED", sfBase: 7750, oneQbBase: 8350, note: "6'6\" contested-catch boundary mismatch." },
-  { name: "Arch Manning", pos: "QB", school: "Texas", cls: "RS-Jr", status: "RISK", sfBase: 7650, oneQbBase: 5650, note: "Prototypical NFL traits; late-season stretch & draft decision watch." },
-  { name: "Jamari Johnson", pos: "TE", school: "Oregon", cls: "RS-Jr", status: "PRESUMED", sfBase: 7500, oneQbBase: 8050, note: "6'5\" 255-lb TE1 of the 2027 class with Round 1 projection." },
-  { name: "Trinidad Chambliss", pos: "QB", school: "Ole Miss", cls: "Sr", status: "SR_OUT", sfBase: 7350, oneQbBase: 5400, note: "Dynamic dual-threat passer exhausting NCAA eligibility." },
-  { name: "Trey'Dez Green", pos: "TE", school: "LSU", cls: "Jr", status: "PRESUMED", sfBase: 7200, oneQbBase: 7750, note: "6'7\" red-zone mismatch; projected Round 1 NFL tight end." },
-  { name: "Ryan Williams", pos: "WR", school: "Alabama", cls: "Jr", status: "PRESUMED", sfBase: 7100, oneQbBase: 7850, note: "Elite YAC & separation playmaker." },
-  { name: "Dante Moore", pos: "QB", school: "Oregon", cls: "RS-Jr", status: "RISK", sfBase: 6950, oneQbBase: 5150, note: "High-efficiency passer; holds eligibility if he opts to return." },
-  { name: "Wyatt Young", pos: "WR", school: "Oklahoma State", cls: "Jr", status: "PRESUMED", sfBase: 6850, oneQbBase: 7450, note: "High-volume slot weapon with strong PPR floor." },
-  { name: "Isaac Brown", pos: "RB", school: "Louisville", cls: "Jr", status: "PRESUMED", sfBase: 6750, oneQbBase: 7550, note: "Home-run speed & receiving chops." },
-  { name: "Kewan Lacy", pos: "RB", school: "Ole Miss", cls: "Jr", status: "RISK", sfBase: 6650, oneQbBase: 7450, note: "Explosive 3-down back monitoring draft vs. return decision." },
-  { name: "Cam Coleman", pos: "WR", school: "Texas", cls: "Jr", status: "PRESUMED", sfBase: 6550, oneQbBase: 7300, note: "Elite perimeter traits & ball skills." },
-  { name: "Nate Frazier", pos: "RB", school: "Georgia", cls: "Jr", status: "PRESUMED", sfBase: 6450, oneQbBase: 7250, note: "Lead back in pro-style offense; strong Day 2 NFL Draft floor." },
-  { name: "Dylan Riley", pos: "RB", school: "Boise State", cls: "Jr", status: "PRESUMED", sfBase: 6350, oneQbBase: 7050, note: "Proven every-down workhorse profile." },
-  { name: "Jackson Harris", pos: "WR", school: "LSU", cls: "RS-Jr", status: "PRESUMED", sfBase: 6250, oneQbBase: 6900, note: "6'3\" vertical boundary threat climbing Day 2 mocks." },
-  { name: "Ahmad Hardy", pos: "RB", school: "Missouri", cls: "Jr", status: "PRESUMED", sfBase: 6150, oneQbBase: 6950, note: "Low center-of-gravity tackle breaker with heavy carry volume." },
-  { name: "Amare Thomas", pos: "WR", school: "Houston", cls: "Sr", status: "SR_OUT", sfBase: 6050, oneQbBase: 6700, note: "Senior playmaker exhausting eligibility; high-floor PPR slot/flanker." },
-  { name: "Reed Harris", pos: "WR", school: "Arizona State", cls: "RS-Jr", status: "PRESUMED", sfBase: 5950, oneQbBase: 6600, note: "6'5\" big-play target surging into top-50 NFL mocks." },
-  { name: "Deuce Alexander", pos: "WR", school: "Ole Miss", cls: "RS-Jr", status: "PRESUMED", sfBase: 5850, oneQbBase: 6500, note: "Explosive downfield separator in vertical passing scheme." },
-  { name: "Luke Reynolds", pos: "TE", school: "Virginia Tech", cls: "Jr", status: "PRESUMED", sfBase: 5750, oneQbBase: 6350, note: "Athletic seam-stretching TE projected inside top-60 NFL picks." },
-  { name: "Julian Sayin", pos: "QB", school: "Ohio State", cls: "RS-So", status: "RISK", sfBase: 5650, oneQbBase: 4100, note: "Razor-sharp accuracy; return-to-school option if not top-15 lock." },
-  { name: "Terrance Carter Jr.", pos: "TE", school: "Texas Tech", cls: "RS-Jr", status: "PRESUMED", sfBase: 5500, oneQbBase: 6050, note: "High-target-share receiving tight end." },
-  { name: "Griffin Wilde", pos: "WR", school: "Northwestern", cls: "Sr", status: "SR_OUT", sfBase: 5400, oneQbBase: 5950, note: "Senior target hog exhausting eligibility." },
-  { name: "Bryant Wesco Jr.", pos: "WR", school: "Clemson", cls: "Jr", status: "PRESUMED", sfBase: 5300, oneQbBase: 5850, note: "Smooth perimeter ball-tracker with Day 2 NFL Draft pedigree." },
-  { name: "Ryan Wingo", pos: "WR", school: "Texas", cls: "Jr", status: "PRESUMED", sfBase: 5200, oneQbBase: 5750, note: "210-lb YAC & vertical weapon." },
-  { name: "Mario Craver", pos: "WR", school: "Texas A&M", cls: "Jr", status: "PRESUMED", sfBase: 5100, oneQbBase: 5650, note: "Sudden open-field creator; Day 2/3 upside." },
-  { name: "Jayden Maiava", pos: "QB", school: "USC", cls: "RS-Sr", status: "SR_OUT", sfBase: 5000, oneQbBase: 3650, note: "Senior passer exhausting NCAA eligibility." },
-  { name: "Brendan Sorsby", pos: "QB", school: "Texas Tech", cls: "Sr", status: "SR_OUT", sfBase: 4900, oneQbBase: 3550, note: "Exhausting senior eligibility; physical dual-threat NFL prospect." },
-  { name: "DeSean Bishop", pos: "RB", school: "Tennessee", cls: "RS-Jr", status: "PRESUMED", sfBase: 4800, oneQbBase: 5450, note: "Breakout SEC feature back in wide-open run scheme." },
-  { name: "Collin Dixon", pos: "WR", school: "Illinois", cls: "Sr", status: "SR_OUT", sfBase: 4700, oneQbBase: 5250, note: "Big-framed senior boundary receiver out of eligibility." },
-  { name: "LaNorris Sellers", pos: "QB", school: "South Carolina", cls: "RS-Jr", status: "RISK", sfBase: 4600, oneQbBase: 3400, note: "Elite rushing tools with return-to-school flexibility." },
-  { name: "Junior Sherrill", pos: "WR", school: "Vanderbilt", cls: "Sr", status: "SR_OUT", sfBase: 4500, oneQbBase: 5050, note: "Senior slot/return specialist exhausting college eligibility." },
-  { name: "Mark Fletcher Jr.", pos: "RB", school: "Miami", cls: "Sr", status: "SR_OUT", sfBase: 4400, oneQbBase: 5100, note: "225-lb downhill bruiser & goal-line hammer; senior out of eligibility." },
-  { name: "Braylon Staley", pos: "WR", school: "Tennessee", cls: "RS-So", status: "PRESUMED", sfBase: 4300, oneQbBase: 4850, note: "Vertical field-stretcher posting elite SEC efficiency." },
-  { name: "Jamal Roberts", pos: "RB", school: "Missouri", cls: "RS-Jr", status: "PRESUMED", sfBase: 4200, oneQbBase: 4850, note: "Averaging 4+ yards after contact with verified track speed." },
-  { name: "Cam Cook", pos: "RB", school: "West Virginia", cls: "Sr", status: "SR_OUT", sfBase: 4100, oneQbBase: 4750, note: "Senior feature back exhausting eligibility; reliable PPR pass-catcher." },
-  { name: "Sam Leavitt", pos: "QB", school: "LSU", cls: "RS-Jr", status: "RISK", sfBase: 4000, oneQbBase: 2950, note: "Evaluating Day 2 draft grade vs. returning for final season." },
-  { name: "Conner Weigman", pos: "QB", school: "Houston", cls: "RS-Sr", status: "SR_OUT", sfBase: 3900, oneQbBase: 2850, note: "Senior quarterback exhausting NCAA eligibility." },
-  { name: "Duce Robinson", pos: "WR", school: "Florida State", cls: "Sr", status: "SR_OUT", sfBase: 3800, oneQbBase: 4350, note: "6'6\" hybrid WR/TE mismatch out of eligibility after senior season." },
-  { name: "J'Koby Williams", pos: "RB", school: "Texas Tech", cls: "Jr", status: "PRESUMED", sfBase: 3700, oneQbBase: 4300, note: "Dynamic space back & receiving weapon." },
-  { name: "Hollywood Smothers", pos: "RB", school: "Texas", cls: "RS-Jr", status: "PRESUMED", sfBase: 3600, oneQbBase: 4200, note: "Shifty third-down/change-of-pace back with strong burst." },
-  { name: "Quintrevion Wisner", pos: "RB", school: "Florida State", cls: "Sr", status: "SR_OUT", sfBase: 3500, oneQbBase: 4100, note: "Tough between-the-tackles senior back exhausting eligibility." },
-  { name: "Keyjuan Brown", pos: "RB", school: "Louisville", cls: "RS-Jr", status: "PRESUMED", sfBase: 3400, oneQbBase: 3950, note: "Compact, high-efficiency rusher surging in ACC play." },
-  { name: "Austin Simmons", pos: "QB", school: "Missouri", cls: "RS-Jr", status: "RISK", sfBase: 3300, oneQbBase: 2450, note: "Strong arm with return-to-school flexibility." }
-];
-
-const DRAFT_STATUS_META = {
-  CONFIRMED: { label: "🟢 Confirmed Entering", cls: "bg-emerald-500/20 text-emerald-300 border border-emerald-500/40" },
-  SR_OUT:    { label: "🎓 SR · No Eligibility Left", cls: "bg-sky-500/20 text-sky-300 border border-sky-500/40" },
-  PRESUMED:  { label: "🟡 Presumed Draft", cls: "bg-amber-500/15 text-amber-300 border border-amber-500/30" },
-  RISK:      { label: "🟠 Return-to-School Risk", cls: "bg-rose-500/15 text-rose-300 border border-rose-500/30" },
-  RETURNING: { label: "⛔ Returning to College", cls: "bg-slate-800 text-slate-400 border border-slate-700" }
-};
-
-const ROOKIE_LIVE_KEY = "dd_rookie2027_live_v1";
-let collegeCache = { ts: 0, teams: {}, playerStats: {}, liveProfiles: {} };
-
-async function resolveLiveProspectBio(name, fallbackSchool, fallbackCls, fallbackStatus, cfbNews) {
-  const key = name.toLowerCase();
-  let school = fallbackSchool;
-  let cls = fallbackCls;
-  let status = fallbackStatus;
-  let liveHeadline = "";
-
-  const hit = (cfbNews || []).find(a => {
-    const txt = `${a.headline || ""} ${a.description || ""}`.toLowerCase();
-    return txt.includes(key);
-  });
-  if (hit) {
-    const blob = `${hit.headline || ""} ${hit.description || ""}`.toLowerCase();
-    liveHeadline = hit.headline || "";
-    if (/(declar|enter(ing)? (the )?(2027 )?nfl draft|forgo(ing)? (his )?(final|remaining|senior)|head(ing|ed) to the nfl)/i.test(blob)) {
-      status = "CONFIRMED";
-    } else if (/(return(ing)? to|stay(ing)? at|forgo(ing)? the draft|back for (another|2027) season)/i.test(blob)) {
-      status = "RETURNING";
-    }
-  }
-
-  try {
-    const res = await j(`https://site.web.api.espn.com/apis/common/v3/search?region=us&lang=en&query=${encodeURIComponent(name)}&limit=4&type=player`);
-    const cfbHit = (res?.items || []).find(it => it.league === "college-football" && it.displayName?.toLowerCase() === key);
-    if (cfbHit) {
-      if (cfbHit.teamRelationships?.[0]?.core?.location) {
-        school = cfbHit.teamRelationships[0].core.location;
-      } else if (cfbHit.subtitle) {
-        const parsedSchool = cfbHit.subtitle.split("·")[0].trim();
-        if (parsedSchool && parsedSchool.length > 2) school = parsedSchool;
-      }
-      if (cfbHit.experience?.abbreviation) {
-        cls = cfbHit.experience.abbreviation;
-        if (/^SR$/i.test(cls) && status !== "CONFIRMED") status = "SR_OUT";
-      }
-    }
-  } catch (e) {}
-
-  return { school, cls, status, liveHeadline };
-}
-
-async function fetchWeeklyCollegeUpdates(force = false) {
-  if (!force) {
-    if (Date.now() - collegeCache.ts < 30 * 60 * 1000 && Object.keys(collegeCache.liveProfiles).length) {
-      return collegeCache;
-    }
-    try {
-      const saved = JSON.parse(localStorage.getItem(ROOKIE_LIVE_KEY) || "null");
-      if (saved && Date.now() - saved.ts < 6 * 3600 * 1000 && Object.keys(saved.liveProfiles || {}).length) {
-        collegeCache = saved;
-        return collegeCache;
-      }
-    } catch (e) {}
-  }
-
-  try {
-    const [sb, leaders, cfbNewsRes] = await Promise.all([
-      j(`https://site.api.espn.com/apis/site/v2/sports/football/college-football/scoreboard?groups=80&limit=100`),
-      j(`https://site.api.espn.com/apis/site/v2/sports/football/college-football/leaders`).catch(() => null),
-      j(`https://site.api.espn.com/apis/site/v2/sports/football/college-football/news?limit=50`).catch(() => ({ articles: [] }))
-    ]);
-
-    const teamMap = {};
-    (sb?.events || []).forEach(ev => {
-      const comp = ev?.competitions?.[0];
-      const cs = comp?.competitors || [];
-      if (cs.length !== 2) return;
-      cs.forEach((c, idx) => {
-        const opp = cs[1 - idx];
-        const schoolName = c?.team?.location || c?.team?.displayName || "";
-        const shortName = c?.team?.shortDisplayName || "";
-        const scoreStr = `${c?.score || 0}-${opp?.score || 0}`;
-        const won = c?.winner === true;
-        const statusTxt = comp?.status?.type?.shortDetail || "Final";
-        const info = { lastGame: `${won ? "W" : "L"} ${scoreStr} vs ${opp?.team?.abbreviation || opp?.team?.location} (${statusTxt})` };
-        if (schoolName) teamMap[schoolName.toLowerCase()] = info;
-        if (shortName) teamMap[shortName.toLowerCase()] = info;
-      });
-    });
-
-    const playerStats = {};
-    (leaders?.leaders || []).forEach(cat => {
-      const catName = cat?.displayName || cat?.name || "";
-      (cat?.leaders || []).forEach(ld => {
-        const ath = ld?.athlete?.displayName?.toLowerCase();
-        if (ath && ld?.displayValue) {
-          playerStats[ath] = playerStats[ath]
-            ? `${playerStats[ath]} · ${ld.displayValue} ${catName}`
-            : `${ld.displayValue} ${catName}`;
-        }
-      });
-    });
-
-    const liveProfiles = {};
-    const articles = cfbNewsRes?.articles || [];
-    await Promise.all(ROOKIES_2027_BASE.map(async r => {
-      liveProfiles[r.name.toLowerCase()] = await resolveLiveProspectBio(r.name, r.school, r.cls, r.status, articles);
-    }));
-
-    collegeCache = { ts: Date.now(), teams: teamMap, playerStats, liveProfiles };
-    try { localStorage.setItem(ROOKIE_LIVE_KEY, JSON.stringify(collegeCache)); } catch (e) {}
-  } catch (e) {
-    console.warn("NCAAF weekly sync fallback:", e);
-  }
-  return collegeCache;
-}
-
-$("refreshDraft").onclick = () => renderDraftRoom(true);
-$("rookieStatusFilter").onchange = () => renderDraftRoom(false);
-$("rookiePosFilter").onchange = () => renderDraftRoom(false);
-
-async function renderDraftRoom(force = false) {
+// --- TAB 5: DRAFT ROOM & 2027 BOARD ---
+$("refreshDraft").onclick = renderDraftRoom;
+async function renderDraftRoom() {
   const sel = $("draftSel");
   if (!sel.options.length && S.drafts.length) {
     S.drafts.forEach(d => sel.add(new Option(`${d.season} ${d.type} Draft (${d.status})`, d.draft_id)));
   }
   const isSF = S.fmt.numQbs === 2;
-  const tep = S.fmt.tep || 0;
-  const stFilter = $("rookieStatusFilter").value;
-  const posFilter = $("rookiePosFilter").value;
+  const board2027 = ROOKIES_2027.map(r => ({ ...r, v: isSF ? r.vsf : r.v1qb })).sort((a, b) => b.v - a.v);
 
-  $("rookie2027Sub").textContent = "Syncing live college schools, transfer portal updates, eligibility & weekly NCAAF stats...";
-  const cfb = await fetchWeeklyCollegeUpdates(force);
-  const nowStr = new Date(cfb.ts || Date.now()).toLocaleString([], { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" });
-  $("rookie2027Sub").textContent = `Top 50 2027 Prospects (${isSF ? "Superflex" : "1QB"}) · Live School, Eligibility & NCAAF Stats synced ${nowStr}.`;
-
-  let leftHtml = `
-    <div class="lg:col-span-5">
-      <h3 class="font-bold text-white text-sm mb-2">Sleeper League Draft Room</h3>
-      <div class="bg-slate-950 border border-slate-800 rounded-lg p-4 text-xs text-slate-500">No active/recent Sleeper draft found for this league.</div>
-    </div>`;
-
+  let leftHtml = `<div class="text-xs text-slate-500">No active/recent Sleeper draft found for this league.</div>`;
   if (sel.value) {
     try {
       const picks = await j(`${SL}/draft/${sel.value}/picks`);
       $("draftSummary").textContent = `${picks.length} picks logged in Sleeper draft.`;
       leftHtml = `
-        <div class="lg:col-span-5">
+        <div>
           <h3 class="font-bold text-white text-sm mb-2">Sleeper Draft Picks</h3>
-          <div class="space-y-1.5 max-h-[620px] overflow-y-auto pr-1">
+          <div class="space-y-1.5 max-h-[500px] overflow-y-auto pr-1">
             ${picks.map(pk => `
               <div class="bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 flex justify-between text-xs">
                 <span><b class="text-slate-400 mr-2">${pk.round}.${String(pk.draft_slot).padStart(2, "0")}</b><b class="text-white">${esc(pk.metadata?.first_name)} ${esc(pk.metadata?.last_name)}</b> <span class="text-emerald-400">${pk.metadata?.position || ""}</span></span>
                 <span class="text-slate-500">${esc(S.teams.find(t => t.rid === pk.roster_id)?.name || "")}</span>
-              </div>`).join("") || `<div class="bg-slate-950 border border-slate-800 rounded-lg p-4 text-xs text-slate-500">Draft hasn't started yet.</div>`}
+              </div>`).join("") || `<div class="text-xs text-slate-500">Draft hasn't started yet.</div>`}
           </div>
         </div>`;
     } catch (e) {}
   }
 
-  const rankedAll = ROOKIES_2027_BASE.map(r => {
-    const live = cfb?.liveProfiles?.[r.name.toLowerCase()] || {};
-    const liveSchool = live.school || r.school;
-    const liveCls = live.cls || r.cls;
-    const liveStatus = live.status || r.status;
-    const transferred = liveSchool.toLowerCase() !== r.school.toLowerCase();
-
-    let val = isSF ? r.sfBase : r.oneQbBase;
-    if (r.pos === "TE" && tep > 0) val = Math.round(val * (1 + tep * 0.25));
-    if (liveStatus === "RETURNING") val = Math.round(val * 0.65);
-
-    const schKey = liveSchool.toLowerCase();
-    const gameInfo = cfb?.teams?.[schKey]?.lastGame || "";
-    const liveStat = cfb?.playerStats?.[r.name.toLowerCase()] || "";
-    return { ...r, liveSchool, liveCls, liveStatus, transferred, liveHeadline: live.liveHeadline || "", val, gameInfo, liveStat };
-  }).sort((a, b) => b.val - a.val).map((r, idx) => ({ ...r, overallRank: idx + 1 }));
-
-  const filtered2027 = rankedAll.filter(r => {
-    if (stFilter !== "ALL" && r.liveStatus !== stFilter) return false;
-    if (posFilter !== "ALL" && r.pos !== posFilter) return false;
-    return true;
-  });
-
   const rightHtml = `
-    <div class="lg:col-span-7">
-      <h3 class="font-bold text-white text-sm mb-2">🎓 2027 Dynasty Rookie Top 50 Big Board (${filtered2027.length} Shown)</h3>
-      <div class="space-y-2 max-h-[620px] overflow-y-auto pr-1">
-        ${filtered2027.map(r => {
-          const stMeta = DRAFT_STATUS_META[r.liveStatus] || DRAFT_STATUS_META.PRESUMED;
-          return `
-            <div class="bg-slate-950 border border-slate-800 rounded-lg p-3 space-y-1.5">
-              <div class="flex flex-wrap items-center justify-between gap-2 text-xs">
-                <div class="flex flex-wrap items-center gap-1.5">
-                  <span class="text-slate-500 font-mono font-bold">#${r.overallRank}</span>
-                  <span class="pill pos-${r.pos}">${r.pos}</span>
-                  <b class="text-sm text-white">${esc(r.name)}</b>
-                  <span class="text-slate-300">· ${esc(r.liveSchool)} (${esc(r.liveCls)})</span>
-                  ${r.transferred ? `<span class="text-[10px] px-1.5 py-0.5 rounded bg-purple-500/20 text-purple-300 font-semibold">🔁 Transfer Updated</span>` : ""}
-                  <span class="text-[11px] px-2 py-0.5 rounded font-semibold ${stMeta.cls}">${stMeta.label}</span>
-                </div>
-                <span class="font-mono font-bold text-emerald-400 text-sm">${r.val.toLocaleString()}</span>
-              </div>
-              <div class="text-[11px] text-slate-300 leading-relaxed">
-                ${r.liveHeadline ? `<div class="text-emerald-300 font-semibold mb-0.5">📰 Latest News: ${esc(r.liveHeadline)}</div>` : ""}
-                ${r.liveStat ? `<span class="text-emerald-300 font-semibold">📊 Season Stats: ${esc(r.liveStat)} · </span>` : ""}
-                ${r.gameInfo ? `<span class="text-sky-300 font-medium">🏈 Last Game: ${esc(r.gameInfo)} · </span>` : ""}
-                <span class="text-slate-400">${esc(r.note)}</span>
-              </div>
-            </div>`;
-        }).join("")}
+    <div>
+      <h3 class="font-bold text-white text-sm mb-2">2027 Incoming Rookie Big Board (${isSF ? "Superflex" : "1QB"})</h3>
+      <div class="space-y-1.5 max-h-[500px] overflow-y-auto pr-1">
+        ${board2027.map((r, i) => `
+          <div class="bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 flex items-center justify-between text-xs">
+            <div><span class="text-slate-500 font-mono mr-2">#${i + 1}</span><span class="pill pos-${r.pos} mr-1.5">${r.pos}</span><b class="text-white">${esc(r.name)}</b> <span class="text-slate-500">· ${esc(r.college)}</span></div>
+            <span class="font-mono font-bold text-emerald-400">${r.v.toLocaleString()}</span>
+          </div>`).join("")}
       </div>
     </div>`;
 
   $("draftBoard").innerHTML = leftHtml + rightHtml;
 }
 
-// --- TAB 6: TEAM AUDIT & CONTENDER/REBUILDER MATRIX ---
+// --- TAB 6: TEAM AUDIT & POWER RANKINGS ---
 function renderAudit() {
   const me = S.teams.find(t => t.rid === S.viewRid);
   const rankedTotal = [...S.teams].sort((a, b) => b.totalV - a.totalV);
+  const rankedStart = [...S.teams].sort((a, b) => b.starterV - a.starterV);
   const totRank = rankedTotal.findIndex(t => t.rid === me.rid) + 1;
+  const stRank = rankedStart.findIndex(t => t.rid === me.rid) + 1;
+
+  const ages = me.playersOnly.filter(p => p.age).map(p => ({ age: p.age, w: Math.max(500, p.v) }));
+  const wAge = ages.length ? (ages.reduce((s, x) => s + x.age * x.w, 0) / ages.reduce((s, x) => s + x.w, 0)).toFixed(1) : "—";
+  const arch = stRank <= 4 && Number(wAge) <= 26.8 ? "🏆 Juggernaut" : stRank <= 5 ? "🔥 Win-Now Contender" : Number(wAge) < 25.5 ? "🌱 Young Rebuilder" : "⚖️ Retooling";
 
   $("auditSummary").innerHTML = [
     ["Dynasty Rank", `#${totRank} / ${S.teams.length}`, `${me.totalV.toLocaleString()} total val`],
-    ["Starter Rank", `#${me.stRank} / ${S.teams.length}`, `${me.starterV.toLocaleString()} optimal starters`],
-    ["Weighted Age", `${me.wAge} yrs`, `${me.pickV.toLocaleString()} pick capital`],
-    ["Team Archetype", me.archetype.label, me.archetype.posture]
+    ["Starter Rank", `#${stRank} / ${S.teams.length}`, `${me.starterV.toLocaleString()} top-9 val`],
+    ["Weighted Age", `${wAge} yrs`, "Value-weighted roster"],
+    ["Team Archetype", arch, `${me.wins}-${me.losses} record`]
   ].map(c => `
     <div class="bg-slate-900 border border-slate-800 rounded-xl p-4">
       <div class="text-xs text-slate-400">${c[0]}</div>
       <div class="text-lg sm:text-xl font-bold text-white mt-1">${c[1]}</div>
       <div class="text-xs text-emerald-400 mt-0.5">${c[2]}</div>
     </div>`).join("");
-
-  const matrixTeams = [...S.teams].sort((a, b) => a.stRank - b.stRank);
-  $("matrixBody").innerHTML = matrixTeams.map(t => `
-    <tr class="${t.rid === me.rid ? "bg-emerald-500/10" : "hover:bg-slate-800/40"}">
-      <td class="py-2.5 px-3 font-semibold text-white">${esc(t.name)}</td>
-      <td class="py-2.5 px-2"><span class="text-xs px-2 py-0.5 rounded font-medium ${t.archetype.cls}">${t.archetype.label}</span></td>
-      <td class="py-2.5 px-2 font-mono text-xs text-slate-300">${t.wins}-${t.losses}</td>
-      <td class="py-2.5 px-2 font-mono text-xs text-white">${t.starterV.toLocaleString()} <span class="text-slate-500">(#${t.stRank})</span></td>
-      <td class="py-2.5 px-2 font-mono text-xs ${t.wAge <= 25.5 ? "text-sky-400" : t.wAge >= 27.2 ? "text-amber-400" : "text-slate-300"}">${t.wAge}y</td>
-      <td class="py-2.5 px-2 font-mono text-xs text-purple-300">${t.pickV.toLocaleString()}</td>
-      <td class="py-2.5 px-3 text-xs text-slate-400">${t.archetype.posture}</td>
-    </tr>`).join("");
 
   $("powerBoard").innerHTML = rankedTotal.map((t, i) => `
     <div class="flex items-center justify-between px-3 py-2 rounded-lg border text-xs ${t.rid === me.rid ? "bg-emerald-500/10 border-emerald-500/40" : "bg-slate-950 border-slate-800"}">
@@ -1833,145 +1140,15 @@ function renderAudit() {
   }).join("");
 }
 
-// --- TAB 8: LIVE NFL NEWS & X (TWITTER) INSIDER FEED ---
-let cachedArticles = [];
-let activeXHandle = "NFL";
-
-$("refreshNews").onclick = () => renderNewsAndX(true);
-$("newsFilter").onchange = () => paintNewsList();
-
-async function loadXTimeline(handle) {
-  activeXHandle = handle;
-  document.querySelectorAll(".x-handle-btn").forEach(btn => {
-    const isSel = btn.dataset.handle === handle;
-    btn.className = isSel
-      ? "x-handle-btn bg-emerald-600 text-white text-xs font-semibold px-2.5 py-1 rounded-lg cursor-pointer"
-      : "x-handle-btn bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold px-2.5 py-1 rounded-lg cursor-pointer";
-  });
-
-  const wrap = $("xEmbedWrap");
-  wrap.innerHTML = `
-    <div class="flex items-center justify-between px-3 py-2 border-b border-slate-800 mb-2 text-xs">
-      <span class="font-bold text-white">Live Feed: <span class="text-emerald-400">@${esc(handle)}</span></span>
-      <a href="https://x.com/${encodeURIComponent(handle)}" target="_blank" rel="noopener noreferrer" class="bg-sky-500/20 text-sky-300 border border-sky-500/40 px-2.5 py-1 rounded font-semibold hover:bg-sky-500/30">Open @${esc(handle)} on X ↗</a>
-    </div>
-    <div id="xPostsBody" class="space-y-2.5 p-2 text-xs text-slate-400">Loading latest @${esc(handle)} updates...</div>`;
-
-  const rssMirrors = [
-    `https://api.rss2json.com/v1/api.json?rss_url=${encodeURIComponent(`https://nitter.poast.org/${handle}/rss`)}`,
-    `https://api.rss2json.com/v1/api.json?rss_url=${encodeURIComponent(`https://xcancel.com/${handle}/rss`)}`
-  ];
-
-  let items = [];
-  for (const url of rssMirrors) {
-    try {
-      const res = await j(url);
-      if (res?.status === "ok" && res.items?.length) {
-        items = res.items;
-        break;
-      }
-    } catch (e) {}
-  }
-
-  const body = $("xPostsBody");
-  if (!body) return;
-
-  if (items.length) {
-    body.innerHTML = items.slice(0, 15).map(it => {
-      const cleanTxt = (it.description || it.title || "").replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim();
-      const dt = it.pubDate ? new Date(it.pubDate).toLocaleString([], { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" }) : "";
-      const xUrl = (it.link || "").replace(/^https?:\/\/[^/]+/, "https://x.com");
-      return `
-        <a href="${esc(xUrl)}" target="_blank" rel="noopener noreferrer" class="block bg-slate-900 hover:bg-slate-800/80 border border-slate-800 rounded-lg p-3 transition">
-          <div class="flex items-center justify-between text-[11px] mb-1">
-            <span class="font-bold text-sky-400">@${esc(handle)}</span>
-            <span class="text-slate-500">${dt}</span>
-          </div>
-          <p class="text-xs text-slate-200 leading-relaxed">${esc(cleanTxt.slice(0, 280))}${cleanTxt.length > 280 ? "…" : ""}</p>
-        </a>`;
-    }).join("");
-  } else {
-    body.innerHTML = `
-      <a class="twitter-timeline" data-theme="dark" data-height="490" data-chrome="noheader nofooter transparent" href="https://twitter.com/${encodeURIComponent(handle)}?ref_src=twsrc%5Etfw">
-        View @${esc(handle)} on X ↗
-      </a>`;
-    if (!window.twttr) {
-      const s = document.createElement("script");
-      s.src = "https://platform.twitter.com/widgets.js";
-      s.async = true;
-      document.body.appendChild(s);
-    } else if (window.twttr.widgets) {
-      window.twttr.widgets.load(body);
-    }
-  }
-}
-
-document.querySelectorAll(".x-handle-btn").forEach(btn => {
-  btn.onclick = () => loadXTimeline(btn.dataset.handle);
-});
-
-function paintNewsList() {
-  const mode = $("newsFilter").value;
-  const me = S.teams.find(t => t.rid === S.viewRid);
-  const myNames = (me?.playersOnly || []).map(p => p.name.toLowerCase()).filter(n => n.length > 4);
-
-  const filtered = cachedArticles.filter(art => {
-    const blob = `${art.headline || ""} ${art.description || ""}`.toLowerCase();
-    const mentionsMe = myNames.some(n => blob.includes(n));
-    if (mode === "MY_ROSTER") return mentionsMe;
-    if (mode === "INJURY") return /(injur|ir|out|questionable|doubtful|concussion|knee|hamstring|ankle|surgery|practice)/i.test(blob);
-    if (mode === "MOVES") return /(trade|sign|waive|release|claim|activate|elevate|contract|deal)/i.test(blob);
-    return true;
-  });
-
-  $("newsFeedList").innerHTML = filtered.map(art => {
-    const blob = `${art.headline || ""} ${art.description || ""}`.toLowerCase();
-    const matchedPlayer = myNames.find(n => blob.includes(n));
-    const pub = art.published ? new Date(art.published).toLocaleString([], { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" }) : "";
-    const link = art.links?.web?.href || "#";
-    const img = art.images?.[0]?.url || "";
-    return `
-      <a href="${esc(link)}" target="_blank" rel="noopener noreferrer" class="block bg-slate-950 hover:bg-slate-800/70 border ${matchedPlayer ? "border-emerald-500/50" : "border-slate-800"} rounded-xl p-3.5 transition">
-        <div class="flex gap-3">
-          ${img ? `<img src="${esc(img)}" alt="" class="w-20 h-16 object-cover rounded-lg shrink-0 bg-slate-900">` : ""}
-          <div class="flex-1 min-w-0">
-            <div class="flex flex-wrap items-center gap-2 text-[11px] text-slate-400 mb-1">
-              <span>${pub}</span>
-              ${matchedPlayer ? `<span class="bg-emerald-500/20 text-emerald-300 px-2 py-0.5 rounded font-bold uppercase">⭐ On Your Roster</span>` : ""}
-            </div>
-            <h4 class="text-sm font-bold text-white leading-snug">${esc(art.headline)}</h4>
-            <p class="text-xs text-slate-400 mt-1 line-clamp-2">${esc(art.description || "")}</p>
-          </div>
-        </div>
-      </a>`;
-  }).join("") || `<div class="text-xs text-slate-500 p-4 text-center">No articles match that filter right now.</div>`;
-}
-
-async function renderNewsAndX(force = false) {
-  loadXTimeline(activeXHandle);
-  if (!force && cachedArticles.length) {
-    paintNewsList();
-    return;
-  }
-  $("newsFeedList").innerHTML = `<div class="text-xs text-slate-400 p-3">Fetching live NFL breaking news...</div>`;
-  try {
-    const data = await j(`https://site.api.espn.com/apis/site/v2/sports/football/nfl/news?limit=40`);
-    cachedArticles = data?.articles || [];
-    paintNewsList();
-  } catch (e) {
-    $("newsFeedList").innerHTML = `<div class="text-xs text-rose-400 p-3">Could not load live NFL news: ${e.message}</div>`;
-  }
-}
-
-// --- TAB 7: AI ADVISOR & 6-SOURCE WEIGHTS ---
+// --- TAB 7: AI ADVISOR & WEIGHTS ---
 function renderAI() {
   $("genPrompt").onclick = () => {
     const me = S.teams.find(t => t.rid === S.viewRid);
     const lines = [
       `Act as an expert Dynasty Fantasy Football GM. Analyze my roster and give 3 concrete trade & roster moves.`,
       `League: ${S.lg.name} (${S.fmt.teams} teams, ${S.fmt.numQbs === 2 ? "Superflex" : "1QB"}, ${S.fmt.ppr} PPR, TEP: ${S.fmt.tep})`,
-      `My Team: ${me.name} (${me.wins}-${me.losses}) — Archetype: ${me.archetype.label}`,
-      `\nPlayers (6-Source Blended Value | Age | 30d Trend):`,
+      `My Team: ${me.name} (${me.wins}-${me.losses})`,
+      `\nPlayers (Blended Value | Age | 30d Trend):`,
       ...me.playersOnly.map(p => `- ${p.name} (${p.pos}, ${p.team}): ${p.v} | Age ${p.age ? Math.floor(p.age) : "?"} | Trend ${p.trend >= 0 ? "+" : ""}${p.trend}`),
       `\nDraft Picks:`,
       ...me.assets.filter(a => a.pick).map(p => `- ${p.name}: ${p.v}`)
@@ -1983,25 +1160,10 @@ function renderAI() {
     $("copyPrompt").textContent = "Copied!";
     setTimeout(() => $("copyPrompt").textContent = "Copy to Clipboard", 1500);
   };
-
-  const applyAndReload = (label = "Saved!") => {
-    const arr = WEIGHT_IDS.map(id => Number($(id).value));
-    setWeights(arr);
-    $("presetStatus").textContent = label;
-    setTimeout(() => { if ($("presetStatus")) $("presetStatus").textContent = ""; }, 2200);
-    if (S.lg) loadLeague(S.lg, true);
+  $("applyWeights").onclick = () => {
+    setWeights([$("wFc").value, $("wDp").value, $("wEcr").value]);
+    if (S.lg) loadLeague(S.lg);
   };
-
-  document.querySelectorAll(".preset-btn").forEach(btn => {
-    btn.onclick = () => {
-      const vals = btn.dataset.preset.split(",");
-      WEIGHT_IDS.forEach((id, idx) => { $(id).value = vals[idx] ?? 0; });
-      syncWeightLabels();
-      applyAndReload(`Applied ${btn.querySelector("div").textContent.trim()}!`);
-    };
-  });
-
-  $("applyWeights").onclick = () => applyAndReload("Recalculated!");
 }
 
 if ($("user").value) $("go").click();
